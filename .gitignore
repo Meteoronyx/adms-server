@@ -1,0 +1,6 @@
+.clinerules
+node_modules
+
+.env
+
+/generated/prisma

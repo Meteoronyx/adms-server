@@ -1,0 +1,54 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Device {
+  sn           String   @id
+  name         String?
+  ipAddress    String?
+  lastActivity DateTime @updatedAt
+  timezone     String?
+  status       String   @default("offline")
+
+  attendanceLogs AttendanceLog[]
+
+  @@map("devices")
+}
+
+model AttendanceLog {
+  id          BigInt   @id @default(autoincrement())
+  deviceSn    String
+  userPin     String
+  checkTime   DateTime
+  status      Int
+  verifyMode  Int
+  rawData     String?
+
+  device Device @relation(fields: [deviceSn], references: [sn], onDelete: Cascade)
+
+  @@unique([deviceSn, userPin, checkTime])
+  @@map("attendance_logs")
+}
+
+model OperationLog {
+  id        BigInt   @id @default(autoincrement())
+  deviceSn  String
+  opcode    Int
+  adminId   String
+  opTime    DateTime @db.Timestamp()
+  obj1      String?
+  obj2      String?
+  obj3      String?
+  obj4      String?
+  rawData   String?
+
+  device Device @relation(fields: [deviceSn], references: [sn], onDelete: Cascade)
+
+  @@unique([deviceSn, adminId, opTime])
+  @@map("operation_logs")
+}
