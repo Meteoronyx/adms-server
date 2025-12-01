@@ -40,11 +40,11 @@ async function main() {
 
   // 2. ATTLOG POST
   console.log('\n2. Sending ATTLOG...');
-  const attlogBody = `101	2025-11-28 13:00:00	0	1	0	0
-102	2025-11-28 13:05:00	0	1	0	0
-101	2025-11-28 17:00:00	1	1	0	0
-103	2025-11-28 17:05:00	1	15	0	0
-104	2025-11-28 17:10:00	1	1	0	0
+  const attlogBody = `101	2025-12-01 22:40:00	0	1	0	0
+102	2025-12-01 22:45:00	0	1	0	0
+101	2025-12-01 23:00:00	1	1	0	0
+103	2025-12-01 23:05:00	1	15	0	0
+104	2025-12-01 23:10:00	1	1	0	0
 `;
   const attlogUrl = `${BASE_URL}/iclock/cdata?SN=${SN}&table=ATTLOG&Stamp=12345`;
   await request({
@@ -80,6 +80,19 @@ async function main() {
     hostname: 'localhost',
     port: 3000,
     path: timeUrl.slice(BASE_URL.length),
+    headers: { 'User-Agent': 'ADMS/3.2.0' }
+  });
+
+  // 5. INFO Report + Cmd Poll
+  console.log('\n5. INFO Report + Poll Commands...');
+  const infoData = 'Ver 8.0.4.2-20180428,178,78,78,192.168.1.100,10,7,12,77,111';
+  const infoUrl = `${BASE_URL}/iclock/getrequest?SN=${SN}&INFO=${encodeURIComponent(infoData)}`;
+  await request({
+    method: 'GET',
+    protocol: 'http:',
+    hostname: 'localhost',
+    port: 3000,
+    path: infoUrl.slice(BASE_URL.length),
     headers: { 'User-Agent': 'ADMS/3.2.0' }
   });
 
