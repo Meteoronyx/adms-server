@@ -20,7 +20,8 @@ CREATE TABLE devices (
   ip_address VARCHAR(255),
   last_activity TIMESTAMP DEFAULT NOW(),
   timezone VARCHAR(10) DEFAULT '+07:00',
-  status VARCHAR(20) DEFAULT 'offline'
+  status VARCHAR(20) DEFAULT 'offline',
+  verified BOOLEAN DEFAULT FALSE
 );
 
 -- Table: attendance_logs

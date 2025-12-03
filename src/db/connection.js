@@ -1,13 +1,13 @@
 'use strict';
 
 const { Pool } = require('pg');
-require('dotenv/config');
+const config = require('../config');
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  max: 20, // connection pool size
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+  connectionString: config.DATABASE_URL,
+  max: config.DATABASE.MAX_CONNECTIONS,
+  idleTimeoutMillis: config.DATABASE.IDLE_TIMEOUT_MS,
+  connectionTimeoutMillis: config.DATABASE.CONNECTION_TIMEOUT_MS,
 });
 
 // Test connection on startup

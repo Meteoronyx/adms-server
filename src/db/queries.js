@@ -1,12 +1,13 @@
 'use strict';
 
-const db = require('./db');
+const db = require('./connection');
+const config = require('../config');
 
 // Device operations
-const upsertDevice = async (sn, ip, timezone = '+07:00', status = 'online') => {
+const upsertDevice = async (sn, ip, timezone = config.DEVICE.DEFAULT_TIMEZONE, status = config.DEVICE.DEFAULT_STATUS) => {
   const query = `
-    INSERT INTO devices (sn, ip_address, timezone, status, last_activity, name)
-    VALUES ($1, $2, $3, $4, NOW(), $1)
+    INSERT INTO devices (sn, ip_address, timezone, status, last_activity, name, verified)
+    VALUES ($1, $2, $3, $4, NOW(), $1, FALSE)
     ON CONFLICT (sn) DO UPDATE SET
       ip_address = EXCLUDED.ip_address,
       timezone = EXCLUDED.timezone,
@@ -109,9 +110,22 @@ const insertOperationLog = async (sn, opcode, adminId, opTime, obj1, obj2, obj3,
   return db.query(query, [sn, opcode, adminId, opTime, obj1, obj2, obj3, obj4]);
 };
 
+// Get device verification status
+const getDeviceVerificationStatus = async (sn) => {
+  const query = `
+    SELECT verified FROM devices WHERE sn = $1
+  `;
+  const result = await db.query(query, [sn]);
+  if (result.rows.length === 0) {
+    return false;
+  }
+  return result.rows[0].verified;
+};
+
 module.exports = {
   upsertDevice,
   updateDeviceInfo,
   insertAttendanceLogs,
   insertOperationLog,
+  getDeviceVerificationStatus,
 };

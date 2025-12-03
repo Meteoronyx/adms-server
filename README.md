@@ -1,60 +1,82 @@
-# ADMS Server (Simplified Stack)
+# dbspot - ADMS Server (Modular Stack)
 
-HTTP Backend Server untuk menangani komunikasi dengan mesin absensi (Fingerprint/Face ID) menggunakan protokol PUSH SDK (ADMS).
+HTTP Backend Server untuk menangani komunikasi dengan mesin absensi iClock/ZKTeco menggunakan protokol PUSH SDK (ADMS).
+
+[![Node.js](https://img.shields.io/badge/Node.js-%5E20-green)](https://nodejs.org)
+[![Express](https://img.shields.io/badge/Express-4.x-blue)](https://expressjs.com)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-purple)](https://postgresql.org)
 
 ## Fitur
-- Device Handshake (Initialization)
+- Device Handshake & Initialization
 - Real-time Attendance Log Receiver (ATTLOG)
 - Heartbeat & Connectivity Monitoring
 - Time Synchronization
 - Device Information Management
+- Bulk Insert untuk high-volume logs (20k+/hari)
 
-## Teknologi
-- **Runtime**: Node.js
+## Tech Stack
+- **Runtime**: Node.js ^20
 - **Framework**: Express.js
-- **Database**: PostgreSQL dengan native `pg` driver
-- **Connection Pooling**: Built-in pg pool
-- **Raw Body Parser**: `raw-body` untuk text/plain parsing
+- **DB**: PostgreSQL + `pg` pool
+- **Middleware**: Custom raw-body parser
+- **No ORM**: Raw SQL untuk performance
 
-## Struktur Folder Sederhana
+## 🗂️ Struktur Folder (Updated)
 ```
 dbspot/
 ├── src/
-│   ├── server.js          # Entry point & routes
-│   ├── db.js              # Database connection pool
-│   ├── queries.js         # Raw SQL queries
-│   └── handlers.js        # Request handlers
+│   ├── server.js              # Express app setup & server start
+│   ├── config/                # Configs
+│   │   ├── constants.js       # DB creds, ADMS constants
+│   │   └── index.js           # Config export
+│   ├── db/                    # Database layer
+│   │   ├── connection.js      # pg Pool init
+│   │   └── queries.js         # SQL functions (ATTLOG insert, etc.)
+│   ├── middleware/            # Custom middleware
+│   │   └── rawBodyParser.js   # Parse text/plain payloads
+│   ├── routes/                # API routes
+│   │   └── iclock.js          # /iclock/* endpoints (cdata, getrequest)
+│   ├── services/              # Business logic
+│   │   ├── deviceService.js   # Handshake, info, sync
+│   │   └── attendanceService.js # ATTLOG processing & DB save
+│   └── utils/                 # Helpers
+│       └── parsers.js         # Parse ADMS payloads (tab-separated)
 ├── package.json
-├── .env
-├── setup_tables.sql       # Database schema
-├── simulator.js           # Client simulator
-└── README.md
+├── package-lock.json
+├── .gitignore
+├── README.md
+├── setup_tables.sql           # DB schema (users, attlogs, devices)
+└── simulator.js               # Test client
 ```
 
-## Setup
+## 🚀 Quick Setup
 
 ### 1. Install Dependencies
 ```bash
 npm install
 ```
 
-### 2. Database Setup
-- Buat database PostgreSQL
-- Set `DATABASE_URL` di file `.env`
-- Jalankan SQL migration:
-```bash
-# Gunakan psql atau import file SQL
-psql -d your_database -f setup_tables.sql
+### 2. Environment (.env)
+Buat file `.env` di root:
+```
+DATABASE_URL=postgresql://user:pass@localhost:5432/dbspot
 ```
 
-### 3. Run Server
+### 3. Database Setup
+- Buat database PostgreSQL `dbspot`
+- Jalankan schema:
+```bash
+psql -d dbspot -f setup_tables.sql
+```
+
+### 4. Run Server
 ```bash
 npm start
-# atau untuk development
+# atau development dengan nodemon
 npm run dev
 ```
 
-### 4. Test dengan Simulator
+### 5. Test dengan Simulator
 ```bash
 node simulator.js
 ```
@@ -97,6 +119,11 @@ Response: `Time=YYYY-MM-DDThh:mm:ss`
 - Puncak jam 16:30: ~3,300 log/jam ≈ 0.9 log/detik
 - Bulk insert handling untuk batch processing
 - Connection pool cukup untuk handle concurrent requests
+
+## Visual Diagrams (Next)
+- Architecture flow
+- Data processing sequence
+- (akan ditambahkan via Excalidraw)
 
 ## License
 ISC
