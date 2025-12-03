@@ -99,16 +99,6 @@ const insertAttendanceLogs = async (sn, logs) => {
   return db.query(query, params);
 };
 
-// Operation logs operations
-const insertOperationLog = async (sn, opcode, adminId, opTime, obj1, obj2, obj3, obj4) => {
-  const query = `
-    INSERT INTO operation_logs (device_sn, opcode, admin_id, op_time, obj1, obj2, obj3, obj4)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-    ON CONFLICT (device_sn, admin_id, op_time) DO NOTHING
-    RETURNING id
-  `;
-  return db.query(query, [sn, opcode, adminId, opTime, obj1, obj2, obj3, obj4]);
-};
 
 // Get device verification status
 const getDeviceVerificationStatus = async (sn) => {
@@ -126,6 +116,5 @@ module.exports = {
   upsertDevice,
   updateDeviceInfo,
   insertAttendanceLogs,
-  insertOperationLog,
   getDeviceVerificationStatus,
 };
