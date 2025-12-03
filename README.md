@@ -1,6 +1,6 @@
 # dbspot - ADMS Server (Modular Stack)
 
-HTTP Backend Server untuk menangani komunikasi dengan mesin absensi iClock/ZKTeco menggunakan protokol PUSH SDK (ADMS).
+ADMS Server
 
 [![Node.js](https://img.shields.io/badge/Node.js-%5E20-green)](https://nodejs.org)
 [![Express](https://img.shields.io/badge/Express-4.x-blue)](https://expressjs.com)
@@ -9,19 +9,17 @@ HTTP Backend Server untuk menangani komunikasi dengan mesin absensi iClock/ZKTec
 ## Fitur
 - Device Handshake & Initialization
 - Real-time Attendance Log Receiver (ATTLOG)
-- Heartbeat & Connectivity Monitoring
+- Heartbeat
 - Time Synchronization
 - Device Information Management
-- Bulk Insert untuk high-volume logs (20k+/hari)
 
 ## Tech Stack
 - **Runtime**: Node.js ^20
 - **Framework**: Express.js
 - **DB**: PostgreSQL + `pg` pool
-- **Middleware**: Custom raw-body parser
-- **No ORM**: Raw SQL untuk performance
+- **RAW SQL**
 
-## 🗂️ Struktur Folder (Updated)
+## 🗂️ Struktur Folder
 ```
 dbspot/
 ├── src/
@@ -72,7 +70,6 @@ psql -d dbspot -f setup_tables.sql
 ### 4. Run Server
 ```bash
 npm start
-# atau development dengan nodemon
 npm run dev
 ```
 
@@ -108,22 +105,3 @@ Response: `OK` atau `C:{ID}:{COMMAND_STRING}`
 GET /iclock/cdata?SN={DeviceSN}&type=time
 ```
 Response: `Time=YYYY-MM-DDThh:mm:ss`
-
-## Performance Optimizations
-- **Bulk Insert** untuk attendance logs (bukan individual upsert)
-- **Connection Pooling** dengan 20 connections
-- **Database Indexes** untuk query performance
-- **Raw SQL** tanpa ORM overhead
-
-## Untuk 20k Log/Hari
-- Puncak jam 16:30: ~3,300 log/jam ≈ 0.9 log/detik
-- Bulk insert handling untuk batch processing
-- Connection pool cukup untuk handle concurrent requests
-
-## Visual Diagrams (Next)
-- Architecture flow
-- Data processing sequence
-- (akan ditambahkan via Excalidraw)
-
-## License
-ISC
