@@ -7,6 +7,7 @@ const rawBodyParser = require('../middleware/rawBodyParser');
 const parsers = require('../utils/parsers');
 const deviceService = require('../services/deviceService');
 const attendanceService = require('../services/attendanceService');
+const logger = require('../utils/logger');
 
 // GET /iclock/cdata - Handshake & Time sync
 router.get(config.PATHS.ICLOCK.CDATA, async (req, res) => {
@@ -31,7 +32,13 @@ router.get(config.PATHS.ICLOCK.CDATA, async (req, res) => {
       res.send(response);
     }
   } catch (err) {
-    console.error(err);
+    logger.error('iclock/cdata GET error', {
+      message: err.message,
+      stack: err.stack,
+      url: req.url,
+      ip: req.ip,
+      sn: SN
+    });
     res.status(500).send(config.RESPONSE.ERROR.INTERNAL_SERVER_ERROR);
   }
 });
@@ -66,7 +73,13 @@ router.post(config.PATHS.ICLOCK.CDATA, rawBodyParser, async (req, res) => {
     res.set('Content-Type', 'text/plain');
     res.send(config.RESPONSE.OK);
   } catch (err) {
-    console.error(err);
+    logger.error('iclock/cdata POST ATTLOG error', {
+      message: err.message,
+      stack: err.stack,
+      url: req.url,
+      ip: req.ip,
+      sn: SN
+    });
     res.status(500).send(config.RESPONSE.ERROR.INTERNAL_SERVER_ERROR);
   }
 });
@@ -92,7 +105,13 @@ router.get(config.PATHS.ICLOCK.GETREQUEST, async (req, res) => {
       res.send(config.RESPONSE.OK);
     }
   } catch (err) {
-    console.error(err);
+    logger.error('iclock/getrequest heartbeat error', {
+      message: err.message,
+      stack: err.stack,
+      url: req.url,
+      ip: req.ip,
+      sn: SN
+    });
     res.status(500).send(config.RESPONSE.ERROR.INTERNAL_SERVER_ERROR);
   }
 });
@@ -114,7 +133,13 @@ router.post(config.PATHS.ICLOCK.DEVICECMD, rawBodyParser, async (req, res) => {
     res.set('Content-Type', 'text/plain');
     res.send(config.RESPONSE.OK);
   } catch (err) {
-    console.error(err);
+    logger.error('iclock/devicecmd error', {
+      message: err.message,
+      stack: err.stack,
+      url: req.url,
+      ip: req.ip,
+      sn: SN
+    });
     res.status(500).send(config.RESPONSE.ERROR.INTERNAL_SERVER_ERROR);
   }
 });

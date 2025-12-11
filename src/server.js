@@ -4,16 +4,26 @@ require('dotenv/config');
 
 const express = require('express');
 const cors = require('cors');
+const morgan = require('morgan');
+const logger = require('./utils/logger');
 const config = require('./config');
 const iclockRoutes = require('./routes/iclock');
 
 const app = express();
+
+app.set('trust proxy', 1);
+
 const port = config.PORT;
 
 // Middleware
 app.use(cors({
   origin: config.SERVER.CORS_ORIGIN
 }));
+
+app.use(morgan(
+  config.NODE_ENV === 'production' ? 'combined' : 'dev',
+  { skip: (req, res) => res.statusCode < 400 }
+));
 
 // Routes
 app.get(config.PATHS.ROOT, (req, res) => {
@@ -25,7 +35,13 @@ app.use(iclockRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error('Unhandled error:', err);
+  logger.error('Unhandled error', { 
+    message: err.message, 
+    stack: err.stack,
+    url: req.url,
+    method: req.method,
+    ip: req.ip 
+  });
   res.status(500).send(config.RESPONSE.ERROR.INTERNAL_SERVER_ERROR);
 });
 
@@ -35,5 +51,5 @@ app.use((req, res) => {
 });
 
 app.listen(port, config.SERVER.HOST, () => {
-  console.log(`${config.APP.NAME} v${config.APP.VERSION} running on http://${config.SERVER.HOST}:${port}`);
+  logger.info(`${config.APP.NAME} v${config.APP.VERSION} running on http://${config.SERVER.HOST}:${port}`);
 });

@@ -2,6 +2,7 @@
 
 const getRawBody = require('raw-body');
 const config = require('../config');
+const logger = require('../utils/logger');
 
 // Middleware untuk parse raw body for device requests
 const rawBodyParser = async (req, res, next) => {
@@ -15,7 +16,10 @@ const rawBodyParser = async (req, res, next) => {
       });
       next();
     } catch (err) {
-      console.error('Error parsing raw body:', err.message);
+      logger.error('Raw body parse error', {
+        message: err.message,
+        contentLength: req.headers['content-length']
+      });
       // If parsing fails, set rawBody to empty string to avoid undefined
       req.rawBody = '';
       next();
