@@ -30,7 +30,6 @@ CREATE TABLE attendance_logs (
   check_time TIMESTAMP NOT NULL,
   status SMALLINT NOT NULL,
   verify_mode SMALLINT NOT NULL,
-  raw_data TEXT,
   
   -- Unique constraint to prevent duplicate logs
   UNIQUE(device_sn, user_pin, check_time)
