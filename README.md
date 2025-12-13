@@ -82,27 +82,13 @@ npm run dev
 node simulator.js
 ```
 
-## PM2 Production Deployment (Recommended)
-Install PM2: `npm install -g pm2`
-
-Run:
-- Dev: `pm2 start ecosystem.config.js`
-- Prod: `pm2 start ecosystem.config.js --env production`
-
-Commands:
-- `pm2 monit` : Dashboard monitoring
-- `pm2 logs dbspot` : Tail logs
-- `pm2 reload dbspot` : Zero-downtime restart
-- `pm2 stop/restart/delete dbspot`
-- Boot auto-start: `pm2 startup && pm2 save`
-
 ## API Endpoints
 
 ### Handshake & Configuration
 ```
 GET /iclock/cdata?SN={DeviceSN}&options=all&pushver={ver}
 ```
-Response: Plain text dengan format ADMS
+Response: GET OPTION FROM: {DeviceSN} ......
 
 ### Attendance Logs
 ```
@@ -110,13 +96,14 @@ POST /iclock/cdata?SN={DeviceSN}&table=ATTLOG&Stamp=9999
 Content-Type: text/plain
 ```
 Payload: `{UserPIN}\t{Time}\t{Status}\t{VerifyMode}\t{Validation}\t{WorkCode}`
+
 Response: `OK`
 
 ### Heartbeat
 ```
 GET /iclock/getrequest?SN={DeviceSN}
 ```
-Response: `OK` atau `C:{ID}:{COMMAND_STRING}`
+Response: `OK` / `C:{ID}:{COMMAND_STRING}`
 
 ### Time Synchronization
 ```
@@ -129,9 +116,24 @@ Response: `Time=YYYY-MM-DDThh:mm:ss`
 POST /admin/reupload
 ```
 Payload: `{SN: "DeviceSN"}`
+
 Response: `OK`
 
 ```
 GET /admin/reupload/queue
 ```
 Response: `{"success": true,"queue": {"ABC123456": {"queuedAt": "2025-12-13T03:08:48.423Z"}}}`
+
+## PM2 Production Deployment
+Install PM2: `npm install -g pm2`
+
+Run:
+- Dev: `pm2 start ecosystem.config.js`
+- Prod: `pm2 start ecosystem.config.js --env production`
+
+Commands:
+- `pm2 monit` : Dashboard monitoring
+- `pm2 logs dbspot` : Tail logs
+- `pm2 reload dbspot` : Zero-downtime restart
+- `pm2 stop/restart/delete dbspot`
+- Boot auto-start: `pm2 startup && pm2 save`
