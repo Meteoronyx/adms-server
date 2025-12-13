@@ -112,9 +112,24 @@ const getDeviceVerificationStatus = async (sn) => {
   return result.rows[0].verified;
 };
 
+// Get device info for admin
+const getDeviceInfo = async (sn) => {
+  const query = `
+    SELECT sn, name, last_activity, status, ip_address, verified
+    FROM devices 
+    WHERE sn = $1
+  `;
+  const result = await db.query(query, [sn]);
+  if (result.rows.length === 0) {
+    return null;
+  }
+  return result.rows[0];
+};
+
 module.exports = {
   upsertDevice,
   updateDeviceInfo,
   insertAttendanceLogs,
   getDeviceVerificationStatus,
+  getDeviceInfo,
 };

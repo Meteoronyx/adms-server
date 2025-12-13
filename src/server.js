@@ -8,6 +8,7 @@ const morgan = require('morgan');
 const logger = require('./utils/logger');
 const config = require('./config');
 const iclockRoutes = require('./routes/iclock');
+const adminRoutes = require('./routes/admin');
 
 const app = express();
 
@@ -25,13 +26,16 @@ app.use(morgan(
   { skip: (req, res) => res.statusCode < 400 }
 ));
 
+// JSON body parser for admin routes
+app.use(express.json());
+
 // Routes
 app.get(config.PATHS.ROOT, (req, res) => {
   res.send(`${config.APP.NAME} Ready`);
 });
 
-// Mount iclock routes
 app.use(iclockRoutes);
+app.use(adminRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

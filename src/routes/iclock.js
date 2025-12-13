@@ -7,6 +7,7 @@ const rawBodyParser = require('../middleware/rawBodyParser');
 const parsers = require('../utils/parsers');
 const deviceService = require('../services/deviceService');
 const attendanceService = require('../services/attendanceService');
+const reuploadService = require('../services/reuploadService');
 const logger = require('../utils/logger');
 
 // GET /iclock/cdata - Handshake & Time sync
@@ -96,6 +97,14 @@ router.get(config.PATHS.ICLOCK.GETREQUEST, async (req, res) => {
 
   try {
     await deviceService.handleDeviceHeartbeat(SN, ip, INFO);
+    const needsReupload = reuploadService.checkAndRemove(SN);
+    
+    if (needsReupload) {
+      logger.info('Triggering reupload for device', { sn: SN });
+      res.set('Content-Type', 'text/plain');
+      res.send(config.COMMANDS.CHECK);
+      return;
+    }
     
     if (INFO) {
       res.set('Content-Type', 'text/plain');

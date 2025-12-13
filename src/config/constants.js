@@ -8,6 +8,9 @@ module.exports = {
       CDATA: '/iclock/cdata',
       GETREQUEST: '/iclock/getrequest',
       DEVICECMD: '/iclock/devicecmd'
+    },
+    ADMIN: {
+      REUPLOAD: '/admin/reupload/:sn'
     }
   },
 
@@ -29,7 +32,17 @@ module.exports = {
       INVALID_REQUEST: 'Invalid request: Missing SN',
       DEVICE_NOT_VERIFIED: 'ERROR: Device not verified',
       INTERNAL_SERVER_ERROR: 'Internal Server Error'
+    },
+    ADMIN: {
+      REUPLOAD_QUEUED: 'Reupload queued for device',
+      DEVICE_NOT_FOUND: 'Device not found',
+      UNAUTHORIZED: 'Unauthorized: Invalid API Key'
     }
+  },
+
+  // Device commands
+  COMMANDS: {
+    CHECK: 'C:10:CHECK'
   },
 
   // Table names
