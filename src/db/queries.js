@@ -181,6 +181,53 @@ const getAllDevices = async () => {
   return result.rows;
 };
 
+// Insert a command into queue
+const insertCommand = async (sn, commandType, params = {}) => {
+  const query = `
+    INSERT INTO device_commands (device_sn, command_type, command_params)
+    VALUES ($1, $2, $3)
+    RETURNING id, device_sn, command_type, command_params, status, created_at
+  `;
+  const result = await db.query(query, [sn, commandType, JSON.stringify(params)]);
+  return result.rows[0];
+};
+
+// Get next pending command for a device (FIFO)
+const getNextPendingCommand = async (sn) => {
+  const query = `
+    SELECT id, device_sn, command_type, command_params, created_at
+    FROM device_commands
+    WHERE device_sn = $1 AND status = 'pending'
+    ORDER BY created_at ASC
+    LIMIT 1
+  `;
+  const result = await db.query(query, [sn]);
+  return result.rows[0] || null;
+};
+
+// Mark command as executed
+const markCommandExecuted = async (id) => {
+  const query = `
+    UPDATE device_commands
+    SET status = 'executed', executed_at = NOW()
+    WHERE id = $1
+  `;
+  return db.query(query, [id]);
+};
+
+// Get all pending commands (for admin view)
+const getAllPendingCommands = async () => {
+  const query = `
+    SELECT dc.id, dc.device_sn, dc.command_type, dc.command_params, dc.created_at, d.name as device_name
+    FROM device_commands dc
+    LEFT JOIN devices d ON dc.device_sn = d.sn
+    WHERE dc.status = 'pending'
+    ORDER BY dc.created_at ASC
+  `;
+  const result = await db.query(query, []);
+  return result.rows;
+};
+
 module.exports = {
   upsertDevice,
   updateDeviceInfo,
@@ -193,4 +240,9 @@ module.exports = {
   verifyDevice,
   unverifyDevice,
   getAllDevices,
+  insertCommand,
+  getNextPendingCommand,
+  markCommandExecuted,
+  getAllPendingCommands,
 };
+

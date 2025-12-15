@@ -8,6 +8,7 @@ const parsers = require('../utils/parsers');
 const deviceService = require('../services/deviceService');
 const attendanceService = require('../services/attendanceService');
 const reuploadService = require('../services/reuploadService');
+const commandService = require('../services/commandService');
 const logger = require('../utils/logger');
 
 // GET /iclock/cdata - Handshake & Time sync
@@ -98,7 +99,7 @@ router.get(config.PATHS.ICLOCK.GETREQUEST, async (req, res) => {
   try {
     await deviceService.handleDeviceHeartbeat(SN, ip, INFO);
     
-    // Check if admin requested reupload
+    // Step 1: Check if admin requested reupload
     const needsReupload = reuploadService.checkAndRemove(SN);
     if (needsReupload) {
       logger.info('Triggering reupload for device', { sn: SN });
@@ -107,7 +108,20 @@ router.get(config.PATHS.ICLOCK.GETREQUEST, async (req, res) => {
       return;
     }
     
-    // Only send CHECK command on first connection (when initial_sync_completed is false)
+    // Step 2: Check for pending commands in queue
+    const pendingCommand = await commandService.getAndExecuteNext(SN);
+    if (pendingCommand) {
+      logger.info('Sending command to device', { 
+        sn: SN, 
+        type: pendingCommand.type,
+        command: pendingCommand.commandString 
+      });
+      res.set('Content-Type', 'text/plain');
+      res.send(pendingCommand.commandString);
+      return;
+    }
+    
+    // Step 3: Only send CHECK command on first connection (when initial_sync_completed is false)
     if (INFO) {
       const syncCompleted = await deviceService.getInitialSyncStatus(SN);
       

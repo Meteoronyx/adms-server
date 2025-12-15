@@ -12,7 +12,7 @@ module.exports = {
   
   // App specific config
   APP: {
-    NAME: 'ADMS Server',
+    NAME: 'DBSPOT',
     VERSION: '1.0.0'
   },
   
