@@ -44,8 +44,20 @@ CREATE INDEX idx_attendance_logs_user_pin ON attendance_logs(user_pin);
 CREATE INDEX idx_att_device_time ON attendance_logs (device_sn, check_time);
 CREATE INDEX idx_att_device_time_desc ON attendance_logs (device_sn, check_time DESC);
 
+CREATE TABLE device_commands (
+  id BIGSERIAL PRIMARY KEY,
+  device_sn VARCHAR(32) NOT NULL REFERENCES devices(sn) ON DELETE CASCADE,
+  command_type VARCHAR(32) NOT NULL,
+  command_params JSONB DEFAULT '{}',
+  status VARCHAR(20) DEFAULT 'pending',
+  created_at TIMESTAMP DEFAULT NOW(),
+  executed_at TIMESTAMP
+);
+
+CREATE INDEX idx_device_commands_pending ON device_commands(device_sn, status) WHERE status = 'pending';
 
 -- Insert a test device for development
 INSERT INTO devices (sn, name, ip_address, status) 
 VALUES ('TEST_DEVICE_001', 'Test Device', '127.0.0.1', 'online')
 ON CONFLICT (sn) DO NOTHING;
+
