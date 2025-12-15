@@ -19,7 +19,8 @@ CREATE TABLE devices (
   last_activity TIMESTAMP DEFAULT NOW(),
   timezone VARCHAR(10) DEFAULT '+07:00',
   status VARCHAR(20) DEFAULT 'offline',
-  verified BOOLEAN DEFAULT FALSE
+  verified BOOLEAN DEFAULT FALSE,
+  initial_sync_completed BOOLEAN DEFAULT FALSE
 );
 
 -- Table: attendance_logs
