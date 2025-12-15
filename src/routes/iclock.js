@@ -97,8 +97,9 @@ router.get(config.PATHS.ICLOCK.GETREQUEST, async (req, res) => {
 
   try {
     await deviceService.handleDeviceHeartbeat(SN, ip, INFO);
-    const needsReupload = reuploadService.checkAndRemove(SN);
     
+    // Check if admin requested reupload
+    const needsReupload = reuploadService.checkAndRemove(SN);
     if (needsReupload) {
       logger.info('Triggering reupload for device', { sn: SN });
       res.set('Content-Type', 'text/plain');
@@ -106,13 +107,23 @@ router.get(config.PATHS.ICLOCK.GETREQUEST, async (req, res) => {
       return;
     }
     
+    // Only send CHECK command on first connection (when initial_sync_completed is false)
     if (INFO) {
-      res.set('Content-Type', 'text/plain');
-      res.send(`C:9:INFO\nC:10:CHECK`);
-    } else {
-      res.set('Content-Type', 'text/plain');
-      res.send(config.RESPONSE.OK);
+      const syncCompleted = await deviceService.getInitialSyncStatus(SN);
+      
+      if (!syncCompleted) {
+        // First time sync - send CHECK command and mark as completed
+        logger.info('Initial sync triggered for device', { sn: SN });
+        await deviceService.markInitialSyncCompleted(SN);
+        res.set('Content-Type', 'text/plain');
+        res.send(config.COMMANDS.CHECK);
+        return;
+      }
     }
+    
+    // Normal response - just OK
+    res.set('Content-Type', 'text/plain');
+    res.send(config.RESPONSE.OK);
   } catch (err) {
     logger.error('iclock/getrequest heartbeat error', {
       message: err.message,

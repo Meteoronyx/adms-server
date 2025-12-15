@@ -37,10 +37,25 @@ const handleDeviceCommand = async (sn, ip, deviceInfo) => {
   await updateDeviceInfo(sn, deviceInfo);
 };
 
+const getInitialSyncStatus = async (sn) => {
+  return queries.getInitialSyncStatus(sn);
+};
+
+const markInitialSyncCompleted = async (sn) => {
+  return queries.markInitialSyncCompleted(sn);
+};
+
+const resetInitialSync = async (sn) => {
+  return queries.resetInitialSync(sn);
+};
+
 module.exports = {
   upsertDevice,
   updateDeviceInfo,
   getDeviceVerificationStatus,
   handleDeviceHeartbeat,
   handleDeviceCommand,
+  getInitialSyncStatus,
+  markInitialSyncCompleted,
+  resetInitialSync,
 };

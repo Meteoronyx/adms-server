@@ -126,10 +126,71 @@ const getDeviceInfo = async (sn) => {
   return result.rows[0];
 };
 
+// Check if initial sync is completed
+const getInitialSyncStatus = async (sn) => {
+  const query = `
+    SELECT initial_sync_completed FROM devices WHERE sn = $1
+  `;
+  const result = await db.query(query, [sn]);
+  if (result.rows.length === 0) {
+    return false;
+  }
+  return result.rows[0].initial_sync_completed;
+};
+
+// Mark initial sync as completed
+const markInitialSyncCompleted = async (sn) => {
+  const query = `
+    UPDATE devices SET initial_sync_completed = TRUE WHERE sn = $1
+  `;
+  return db.query(query, [sn]);
+};
+
+// Reset initial sync (for admin reupload)
+const resetInitialSync = async (sn) => {
+  const query = `
+    UPDATE devices SET initial_sync_completed = FALSE WHERE sn = $1
+  `;
+  return db.query(query, [sn]);
+};
+
+// Verify a device
+const verifyDevice = async (sn) => {
+  const query = `
+    UPDATE devices SET verified = TRUE WHERE sn = $1
+  `;
+  return db.query(query, [sn]);
+};
+
+// Unverify a device
+const unverifyDevice = async (sn) => {
+  const query = `
+    UPDATE devices SET verified = FALSE WHERE sn = $1
+  `;
+  return db.query(query, [sn]);
+};
+
+// Get all devices
+const getAllDevices = async () => {
+  const query = `
+    SELECT sn, name, ip_address, last_activity, status, verified, initial_sync_completed
+    FROM devices 
+    ORDER BY last_activity DESC
+  `;
+  const result = await db.query(query, []);
+  return result.rows;
+};
+
 module.exports = {
   upsertDevice,
   updateDeviceInfo,
   insertAttendanceLogs,
   getDeviceVerificationStatus,
   getDeviceInfo,
+  getInitialSyncStatus,
+  markInitialSyncCompleted,
+  resetInitialSync,
+  verifyDevice,
+  unverifyDevice,
+  getAllDevices,
 };
