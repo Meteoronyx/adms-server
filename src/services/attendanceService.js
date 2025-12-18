@@ -40,9 +40,9 @@ const getHandshakeResponse = (sn) => {
 Stamp=9999
 OpStamp=9999
 PhotoStamp=9999
-ErrorDelay=30
-Delay=30
-TransTimes=00:00;14:05
+ErrorDelay=60
+Delay=300
+TransTimes=00:00
 TransInterval=1
 TransFlag=1011000000
 Realtime=1
