@@ -2,9 +2,9 @@
 -- 1. BERSIH-BERSIH (RESET)
 -- Hati-hati, ini menghapus semua data yang ada!
 -- =========================================================
-DROP TABLE IF EXISTS device_commands CASCADE;
-DROP TABLE IF EXISTS attendance_logs CASCADE;
-DROP TABLE IF EXISTS devices CASCADE;
+--- DROP TABLE IF EXISTS device_commands CASCADE;
+--- DROP TABLE IF EXISTS attendance_logs CASCADE;
+--- DROP TABLE IF EXISTS devices CASCADE;
 
 -- =========================================================
 -- 2. TABEL MASTER: DEVICES
@@ -100,6 +100,8 @@ CREATE TABLE attendance_logs_default PARTITION OF attendance_logs DEFAULT;
 CREATE INDEX idx_attendance_logs_check_time ON attendance_logs(check_time DESC);
 CREATE INDEX idx_attendance_logs_user_pin ON attendance_logs(user_pin);
 CREATE INDEX idx_att_device_time ON attendance_logs (device_sn, check_time DESC);
+
+CREATE INDEX idx_devices_last_activity ON devices (last_activity DESC);
 
 -- =========================================================
 -- 7. TABEL PENDUKUNG: COMMANDS
