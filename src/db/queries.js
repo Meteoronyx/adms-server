@@ -4,18 +4,17 @@ const db = require('./connection');
 const config = require('../config');
 
 // Device operations
-const upsertDevice = async (sn, ip, timezone = config.DEVICE.DEFAULT_TIMEZONE, status = config.DEVICE.DEFAULT_STATUS) => {
+const upsertDevice = async (sn, ip, timezone = config.DEVICE.DEFAULT_TIMEZONE) => {
   const query = `
-    INSERT INTO devices (sn, ip_address, timezone, status, last_activity, name, verified)
-    VALUES ($1, $2, $3, $4, NOW(), $1, FALSE)
+    INSERT INTO devices (sn, ip_address, timezone, last_activity, name, verified)
+    VALUES ($1, $2, $3, NOW(), $1, FALSE)
     ON CONFLICT (sn) DO UPDATE SET
       ip_address = EXCLUDED.ip_address,
       timezone = EXCLUDED.timezone,
-      status = EXCLUDED.status,
       last_activity = NOW()
     RETURNING sn
   `;
-  return db.query(query, [sn, ip, timezone, status]);
+  return db.query(query, [sn, ip, timezone]);
 };
 
 const updateDeviceInfo = async (sn, info) => {
@@ -115,7 +114,9 @@ const getDeviceVerificationStatus = async (sn) => {
 // Get device info for admin
 const getDeviceInfo = async (sn) => {
   const query = `
-    SELECT sn, name, last_activity, status, ip_address, verified
+    SELECT sn, name, last_activity, 
+           CASE WHEN NOW() - last_activity < INTERVAL '10 minutes' THEN 'online' ELSE 'offline' END AS status,
+           ip_address, verified
     FROM devices 
     WHERE sn = $1
   `;
@@ -173,7 +174,9 @@ const unverifyDevice = async (sn) => {
 // Get all devices
 const getAllDevices = async () => {
   const query = `
-    SELECT sn, name, ip_address, last_activity, status, verified, initial_sync_completed
+    SELECT sn, name, ip_address, last_activity, 
+           CASE WHEN NOW() - last_activity < INTERVAL '10 minutes' THEN 'online' ELSE 'offline' END AS status,
+           verified, initial_sync_completed
     FROM devices 
     ORDER BY last_activity DESC
   `;
@@ -245,4 +248,3 @@ module.exports = {
   markCommandExecuted,
   getAllPendingCommands,
 };
-

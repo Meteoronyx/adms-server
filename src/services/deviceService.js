@@ -4,8 +4,8 @@ const queries = require('../db/queries');
 const config = require('../config');
 
 // Device service functions
-const upsertDevice = async (sn, ip, timezone = config.DEVICE.DEFAULT_TIMEZONE, status = config.DEVICE.DEFAULT_STATUS) => {
-  return queries.upsertDevice(sn, ip, timezone, status);
+const upsertDevice = async (sn, ip, timezone = config.DEVICE.DEFAULT_TIMEZONE) => {
+  return queries.upsertDevice(sn, ip, timezone);
 };
 
 const updateDeviceInfo = async (sn, info) => {
