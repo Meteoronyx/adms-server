@@ -22,10 +22,34 @@ CREATE TABLE devices (
   ip_address VARCHAR(255),
   last_activity TIMESTAMP DEFAULT NOW(),
   timezone VARCHAR(10) DEFAULT '+07:00',
-  status VARCHAR(20) DEFAULT 'offline',
   verified BOOLEAN DEFAULT FALSE,
   initial_sync_completed BOOLEAN DEFAULT FALSE
 );
+
+-- =========================================================
+-- VIEW: DEVICES WITH REAL-TIME STATUS
+-- =========================================================
+CREATE OR REPLACE VIEW devices_with_status AS
+SELECT 
+  sn, 
+  name,
+  device_name,
+  mac,
+  user_count,
+  transaction_count,
+  main_time,
+  platform,
+  fw_version,
+  ip_address,
+  last_activity,
+  timezone,
+  CASE 
+    WHEN NOW() - last_activity < INTERVAL '10 minutes' THEN 'online'
+    ELSE 'offline' 
+  END AS status,
+  verified,
+  initial_sync_completed
+FROM devices;
 
 -- =========================================================
 -- 3. TABEL UTAMA: ATTENDANCE_LOGS (PARTITIONED)
@@ -100,7 +124,6 @@ CREATE TABLE attendance_logs_default PARTITION OF attendance_logs DEFAULT;
 CREATE INDEX idx_attendance_logs_check_time ON attendance_logs(check_time DESC);
 CREATE INDEX idx_attendance_logs_user_pin ON attendance_logs(user_pin);
 CREATE INDEX idx_att_device_time ON attendance_logs (device_sn, check_time DESC);
-
 CREATE INDEX idx_devices_last_activity ON devices (last_activity DESC);
 
 -- =========================================================
