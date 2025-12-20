@@ -114,10 +114,8 @@ const getDeviceVerificationStatus = async (sn) => {
 // Get device info for admin
 const getDeviceInfo = async (sn) => {
   const query = `
-    SELECT sn, name, last_activity, 
-           CASE WHEN NOW() - last_activity < INTERVAL '10 minutes' THEN 'online' ELSE 'offline' END AS status,
-           ip_address, verified
-    FROM devices 
+    SELECT sn, name, last_activity, status, ip_address, verified
+    FROM devices_with_status
     WHERE sn = $1
   `;
   const result = await db.query(query, [sn]);
@@ -174,10 +172,8 @@ const unverifyDevice = async (sn) => {
 // Get all devices
 const getAllDevices = async () => {
   const query = `
-    SELECT sn, name, ip_address, last_activity, 
-           CASE WHEN NOW() - last_activity < INTERVAL '10 minutes' THEN 'online' ELSE 'offline' END AS status,
-           verified, initial_sync_completed
-    FROM devices 
+    SELECT sn, name, ip_address, last_activity, status, verified, initial_sync_completed
+    FROM devices_with_status
     ORDER BY last_activity DESC
   `;
   const result = await db.query(query, []);
