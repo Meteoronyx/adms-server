@@ -40,8 +40,10 @@ dbspot/
 │   │   ├── deviceService.js   # Handshake, info, sync
 │   │   └── attendanceService.js # ATTLOG processing & DB save
 │   │   └── reuploadService.js  # Reupload logic
+│   │   └── commandService.js   # Command logic
 │   └── utils/                 # Helpers
 │       └── parsers.js         # Parse ADMS payloads (tab-separated)
+│       └── logger.js          # Logger
 ├── package.json
 ├── package-lock.json
 ├── .gitignore
@@ -123,6 +125,12 @@ Response: `OK`
 GET /admin/reupload/queue
 ```
 Response: `{"success": true,"queue": {"ABC123456": {"queuedAt": "2025-12-13T03:08:48.423Z"}}}`
+
+```
+POST /admin/verify/{DeviceSN}
+```
+Response: `OK`
+
 
 ## PM2 Production Deployment
 Install PM2: `npm install -g pm2`
