@@ -31,7 +31,18 @@ app.use(express.json());
 
 // Routes
 app.get(config.PATHS.ROOT, (req, res) => {
-  res.send(`${config.APP.NAME} Ready`);
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${config.APP.NAME}</title>
+</head>
+<body>
+  <h1>${config.APP.NAME} Ready</h1>
+  <!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "4f2de2d054294dff85c0a2dd420f870b"}'></script><!-- End Cloudflare Web Analytics -->
+</body>
+</html>`);
 });
 
 app.use(iclockRoutes);
