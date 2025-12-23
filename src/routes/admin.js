@@ -277,10 +277,10 @@ router.post(config.PATHS.ADMIN.REBOOT, async (req, res) => {
   }
 });
 
-// POST /admin/userinfo/:sn - Queue UPDATE USERINFO command (for privilege change)
-router.post(config.PATHS.ADMIN.USERINFO, async (req, res) => {
+// POST /admin/user/:sn - Queue UPDATE USER command (for privilege change)
+router.post(config.PATHS.ADMIN.USER, async (req, res) => {
   const { sn } = req.params;
-  const { pin, privilege } = req.body;
+  const { pin, privilege, passwd } = req.body;
 
   if (pin === undefined || pin === null) {
     res.status(400).json({
@@ -309,20 +309,21 @@ router.post(config.PATHS.ADMIN.USERINFO, async (req, res) => {
       return;
     }
 
-    await commandService.queueCommand(sn, config.COMMAND_TYPES.UPDATE_USERINFO, {
+    await commandService.queueCommand(sn, config.COMMAND_TYPES.UPDATE_USER, {
       pin: parseInt(pin),
-      privilege: parseInt(privilege)
+      privilege: parseInt(privilege),
+      passwd: passwd !== undefined ? parseInt(passwd) : 0
     });
-    logger.info('Update userinfo command queued', { sn, pin, privilege, ip: req.ip });
+    logger.info('Update user command queued', { sn, pin, privilege, passwd, ip: req.ip });
 
     res.json({
       success: true,
-      message: `${config.RESPONSE.ADMIN.COMMAND_QUEUED}: UPDATE USERINFO`,
+      message: `${config.RESPONSE.ADMIN.COMMAND_QUEUED}: UPDATE USER`,
       device: { sn: device.sn, name: device.name },
-      params: { pin, privilege }
+      params: { pin, privilege, passwd: passwd !== undefined ? parseInt(passwd) : 0 }
     });
   } catch (err) {
-    logger.error('Admin update userinfo error', {
+    logger.error('Admin update user error', {
       message: err.message,
       stack: err.stack,
       sn
@@ -334,8 +335,8 @@ router.post(config.PATHS.ADMIN.USERINFO, async (req, res) => {
   }
 });
 
-// DELETE /admin/userinfo/:sn/:pin - Queue DELETE USERINFO command
-router.delete(config.PATHS.ADMIN.USERINFO_DELETE, async (req, res) => {
+// DELETE /admin/user/:sn/:pin - Queue DELETE USER command (for delete user)
+router.delete(config.PATHS.ADMIN.USER_DELETE, async (req, res) => {
   const { sn, pin } = req.params;
 
   try {
@@ -349,19 +350,90 @@ router.delete(config.PATHS.ADMIN.USERINFO_DELETE, async (req, res) => {
       return;
     }
 
-    await commandService.queueCommand(sn, config.COMMAND_TYPES.DELETE_USERINFO, {
+    await commandService.queueCommand(sn, config.COMMAND_TYPES.DELETE_USER, {
       pin: parseInt(pin)
     });
-    logger.info('Delete userinfo command queued', { sn, pin, ip: req.ip });
+    logger.info('Delete user command queued', { sn, pin, ip: req.ip });
 
     res.json({
       success: true,
-      message: `${config.RESPONSE.ADMIN.COMMAND_QUEUED}: DELETE USERINFO`,
+      message: `${config.RESPONSE.ADMIN.COMMAND_QUEUED}: DELETE USER`,
       device: { sn: device.sn, name: device.name },
       params: { pin }
     });
   } catch (err) {
-    logger.error('Admin delete userinfo error', {
+    logger.error('Admin delete user error', {
+      message: err.message,
+      stack: err.stack,
+      sn
+    });
+    res.status(500).json({
+      success: false,
+      message: config.RESPONSE.ERROR.INTERNAL_SERVER_ERROR
+    });
+  }
+});
+
+// POST /admin/enrollfp/:sn - Queue ENROLL_FP command (for fingerprint enrollment)
+router.post(config.PATHS.ADMIN.ENROLL_FP, async (req, res) => {
+  const { sn } = req.params;
+  const { pin, fid, retry, overwrite } = req.body;
+
+  if (pin === undefined || pin === null) {
+    res.status(400).json({
+      success: false,
+      message: 'Missing required parameter: pin'
+    });
+    return;
+  }
+
+  if (fid === undefined || fid === null) {
+    res.status(400).json({
+      success: false,
+      message: 'Missing required parameter: fid'
+    });
+    return;
+  }
+
+  try {
+    const device = await queries.getDeviceInfo(sn);
+
+    if (!device) {
+      res.status(404).json({
+        success: false,
+        message: `${config.RESPONSE.ADMIN.DEVICE_NOT_FOUND}: ${sn}`
+      });
+      return;
+    }
+
+    await commandService.queueCommand(sn, config.COMMAND_TYPES.ENROLL_FP, {
+      pin: parseInt(pin),
+      fid: parseInt(fid),
+      retry: retry !== undefined ? parseInt(retry) : 3,
+      overwrite: overwrite !== undefined ? parseInt(overwrite) : 0
+    });
+    logger.info('Enroll fingerprint command queued', { 
+      sn, 
+      pin, 
+      fid, 
+      retry: retry !== undefined ? parseInt(retry) : 3,
+      overwrite: overwrite !== undefined ? parseInt(overwrite) : 0,
+      ip: req.ip 
+    });
+
+    res.json({
+      success: true,
+      message: `${config.RESPONSE.ADMIN.COMMAND_QUEUED}: ENROLL_FP`,
+      device: { sn: device.sn, name: device.name },
+      params: { 
+        pin: parseInt(pin), 
+        fid: parseInt(fid),
+        retry: retry !== undefined ? parseInt(retry) : 3,
+        overwrite: overwrite !== undefined ? parseInt(overwrite) : 0
+      }
+    });
+  } catch (err) {
+    logger.error('Admin enroll fingerprint error', {
       message: err.message,
       stack: err.stack,
       sn
@@ -394,4 +466,3 @@ router.get(config.PATHS.ADMIN.COMMAND_QUEUE, async (req, res) => {
 });
 
 module.exports = router;
-
