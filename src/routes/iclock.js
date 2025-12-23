@@ -29,7 +29,7 @@ router.get(config.PATHS.ICLOCK.CDATA, async (req, res) => {
       res.set('Content-Type', 'text/plain');
       res.send(response);
     } else {
-      const response = attendanceService.getHandshakeResponse(SN);
+      const response = await attendanceService.getHandshakeResponse(SN);
       res.set('Content-Type', 'text/plain');
       res.send(response);
     }
