@@ -1,0 +1,632 @@
+{
+    "info": {
+        "_postman_id": "dbspot-collection-001",
+        "name": "DBSpot ADMS Server",
+        "description": "Collection for testing DBSpot ADMS Server endpoints - includes iClock device endpoints and Admin endpoints",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "variable": [
+        {
+            "key": "baseUrl",
+            "value": "http://localhost:3000",
+            "type": "string"
+        },
+        {
+            "key": "adminApiKey",
+            "value": "your-admin-api-key-here",
+            "type": "string"
+        },
+        {
+            "key": "deviceSN",
+            "value": "ABC123456",
+            "type": "string"
+        }
+    ],
+    "item": [
+        {
+            "name": "Root",
+            "item": [
+                {
+                    "name": "Health Check",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                ""
+                            ]
+                        },
+                        "description": "Check if the server is running and ready"
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "iClock",
+            "item": [
+                {
+                    "name": "cdata",
+                    "item": [
+                        {
+                            "name": "Handshake",
+                            "request": {
+                                "method": "GET",
+                                "header": [],
+                                "url": {
+                                    "raw": "{{baseUrl}}/iclock/cdata?SN={{deviceSN}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "iclock",
+                                        "cdata"
+                                    ],
+                                    "query": [
+                                        {
+                                            "key": "SN",
+                                            "value": "{{deviceSN}}",
+                                            "description": "Device Serial Number (required)"
+                                        }
+                                    ]
+                                },
+                                "description": "Device handshake - initial connection from device. Returns device configuration."
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "Time Sync",
+                            "request": {
+                                "method": "GET",
+                                "header": [],
+                                "url": {
+                                    "raw": "{{baseUrl}}/iclock/cdata?SN={{deviceSN}}&type=time",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "iclock",
+                                        "cdata"
+                                    ],
+                                    "query": [
+                                        {
+                                            "key": "SN",
+                                            "value": "{{deviceSN}}",
+                                            "description": "Device Serial Number (required)"
+                                        },
+                                        {
+                                            "key": "type",
+                                            "value": "time",
+                                            "description": "Request type: 'time' for time synchronization"
+                                        }
+                                    ]
+                                },
+                                "description": "Time synchronization request from device. Returns current server time for device to sync."
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "Post Attendance Log (ATTLOG)",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "text/plain"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "1\t2024-12-13 09:00:00\t1\t0\t0\t0\n2\t2024-12-13 09:05:00\t1\t0\t0\t0\n3\t2024-12-13 17:00:00\t1\t0\t0\t0"
+                                },
+                                "url": {
+                                    "raw": "{{baseUrl}}/iclock/cdata?SN={{deviceSN}}&table=ATTLOG",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "iclock",
+                                        "cdata"
+                                    ],
+                                    "query": [
+                                        {
+                                            "key": "SN",
+                                            "value": "{{deviceSN}}",
+                                            "description": "Device Serial Number (required)"
+                                        },
+                                        {
+                                            "key": "table",
+                                            "value": "ATTLOG",
+                                            "description": "Table type: ATTLOG for attendance logs"
+                                        }
+                                    ]
+                                },
+                                "description": "Submit attendance logs from device. Body format: PIN\\tDatetime\\tStatus\\tVerify\\tWorkCode\\tReserved (tab-separated, newline for each record)"
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "Post Operation Log (OPERLOG)",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "text/plain"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "OPERLOG 2024-12-13 09:00:00 0 0 0 0 0 0"
+                                },
+                                "url": {
+                                    "raw": "{{baseUrl}}/iclock/cdata?SN={{deviceSN}}&table=OPERLOG",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "iclock",
+                                        "cdata"
+                                    ],
+                                    "query": [
+                                        {
+                                            "key": "SN",
+                                            "value": "{{deviceSN}}",
+                                            "description": "Device Serial Number (required)"
+                                        },
+                                        {
+                                            "key": "table",
+                                            "value": "OPERLOG",
+                                            "description": "Table type: OPERLOG for operation logs (ignored by server)"
+                                        }
+                                    ]
+                                },
+                                "description": "Submit operation logs from device. Server returns OK without processing (only ATTLOG is processed)."
+                            },
+                            "response": []
+                        }
+                    ]
+                },
+                {
+                    "name": "getrequest",
+                    "item": [
+                        {
+                            "name": "Heartbeat",
+                            "request": {
+                                "method": "GET",
+                                "header": [],
+                                "url": {
+                                    "raw": "{{baseUrl}}/iclock/getrequest?SN={{deviceSN}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "iclock",
+                                        "getrequest"
+                                    ],
+                                    "query": [
+                                        {
+                                            "key": "SN",
+                                            "value": "{{deviceSN}}",
+                                            "description": "Device Serial Number (required)"
+                                        }
+                                    ]
+                                },
+                                "description": "Device heartbeat - periodic ping from device to server. Returns OK or commands if there are pending actions."
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "Heartbeat with INFO",
+                            "request": {
+                                "method": "GET",
+                                "header": [],
+                                "url": {
+                                    "raw": "{{baseUrl}}/iclock/getrequest?SN={{deviceSN}}&INFO=Ver%206.60%20Aug%2023%202016%20(Show%20T9%20v5)",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "iclock",
+                                        "getrequest"
+                                    ],
+                                    "query": [
+                                        {
+                                            "key": "SN",
+                                            "value": "{{deviceSN}}",
+                                            "description": "Device Serial Number (required)"
+                                        },
+                                        {
+                                            "key": "INFO",
+                                            "value": "Ver 6.60 Aug 23 2016 (Show T9 v5)",
+                                            "description": "Device firmware info (optional)"
+                                        }
+                                    ]
+                                },
+                                "description": "Device heartbeat with device info. Server may respond with INFO and CHECK commands."
+                            },
+                            "response": []
+                        }
+                    ]
+                },
+                {
+                    "name": "devicecmd",
+                    "item": [
+                        {
+                            "name": "Post Device Info",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "text/plain"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "~DeviceName=ABC123456\nMAC=00:17:61:01:02:03\nFWVersion=Ver 6.60 Aug 23 2016\nUserCount=100\nFPCount=50\nAttCount=5000\nTransactionCount=10000\nIPAddress=192.168.1.100\nSubnetMask=255.255.255.0\nGATEIPAddress=192.168.1.1\nSerialNumber=ABC123456"
+                                },
+                                "url": {
+                                    "raw": "{{baseUrl}}/iclock/devicecmd?SN={{deviceSN}}",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "iclock",
+                                        "devicecmd"
+                                    ],
+                                    "query": [
+                                        {
+                                            "key": "SN",
+                                            "value": "{{deviceSN}}",
+                                            "description": "Device Serial Number (required)"
+                                        }
+                                    ]
+                                },
+                                "description": "Device sends its information/status to server. Used for device registration and info updates."
+                            },
+                            "response": []
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Admin",
+            "item": [
+                {
+                    "name": "Request Reupload",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{adminApiKey}}",
+                                "description": "Admin API Key for authentication"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/admin/reupload/{{deviceSN}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "reupload",
+                                "{{deviceSN}}"
+                            ]
+                        },
+                        "description": "Request a device to reupload all attendance logs. Device will resend data on next heartbeat."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Reupload Queue",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{adminApiKey}}",
+                                "description": "Admin API Key for authentication"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/admin/reupload/queue",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "reupload",
+                                "queue"
+                            ]
+                        },
+                        "description": "Get the current reupload queue status - shows which devices are pending reupload."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Verify Device",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{adminApiKey}}",
+                                "description": "Admin API Key for authentication"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/admin/verify/{{deviceSN}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "verify",
+                                "{{deviceSN}}"
+                            ]
+                        },
+                        "description": "Verify a device by SN. Verified devices can submit attendance logs."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Unverify Device",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{adminApiKey}}",
+                                "description": "Admin API Key for authentication"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/admin/verify/{{deviceSN}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "verify",
+                                "{{deviceSN}}"
+                            ]
+                        },
+                        "description": "Unverify a device by SN. Unverified devices cannot submit attendance logs."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "List All Devices",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{adminApiKey}}",
+                                "description": "Admin API Key for authentication"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/admin/devices",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "devices"
+                            ]
+                        },
+                        "description": "List all registered devices with their status, verification, and sync info."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Clear Log (Device)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{adminApiKey}}",
+                                "description": "Admin API Key for authentication"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/admin/clearlog/{{deviceSN}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "clearlog",
+                                "{{deviceSN}}"
+                            ]
+                        },
+                        "description": "Queue CLEAR LOG command for device. Device will clear attendance logs on next heartbeat. Note: Database logs are preserved."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Request Device Info",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{adminApiKey}}",
+                                "description": "Admin API Key for authentication"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/admin/info/{{deviceSN}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "info",
+                                "{{deviceSN}}"
+                            ]
+                        },
+                        "description": "Queue INFO command for device. Device will send its information on next heartbeat."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Reboot Device",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{adminApiKey}}",
+                                "description": "Admin API Key for authentication"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/admin/reboot/{{deviceSN}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "reboot",
+                                "{{deviceSN}}"
+                            ]
+                        },
+                        "description": "Queue REBOOT command for device. Device will restart on next heartbeat."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Update User Privilege",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{adminApiKey}}",
+                                "description": "Admin API Key for authentication"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"pin\": 1,\n    \"privilege\": 0\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/admin/user/{{deviceSN}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "user",
+                                "{{deviceSN}}"
+                            ]
+                        },
+                        "description": "Queue UPDATE USER command to change user privilege. Body: {pin: number, privilege: number}. Privilege 0 = normal user."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Delete User from Device",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{adminApiKey}}",
+                                "description": "Admin API Key for authentication"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/admin/user/{{deviceSN}}/1",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "user",
+                                "{{deviceSN}}",
+                                "1"
+                            ]
+                        },
+                        "description": "Queue DELETE USER command to delete user from device. Replace '1' with actual user PIN."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Enroll Fingerprint",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{adminApiKey}}",
+                                "description": "Admin API Key for authentication"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"pin\": 8888,\n    \"fid\": 0,\n    \"retry\": 3,\n    \"overwrite\": 0\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/admin/enrollfp/{{deviceSN}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "enrollfp",
+                                "{{deviceSN}}"
+                            ]
+                        },
+                        "description": "Queue ENROLL_FP command to enroll fingerprint for a user. Body: {pin: number, fid: number, retry: number (default 3), overwrite: number (0=no overwrite, 1=overwrite)}. FID 0-9 represents fingerprint slots per user. OVERWRITE=0 will fail if FID already has fingerprint."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Command Queue",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{adminApiKey}}",
+                                "description": "Admin API Key for authentication"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/admin/commands/queue",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "commands",
+                                "queue"
+                            ]
+                        },
+                        "description": "Get all pending commands in queue. Shows commands waiting to be sent to devices on next heartbeat."
+                    },
+                    "response": []
+                }
+            ]
+        }
+    ]
+}
