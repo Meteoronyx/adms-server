@@ -16,17 +16,22 @@ const buildCommandString = (command) => {
     case config.COMMAND_TYPES.REBOOT:
       return config.COMMANDS.REBOOT;
       
-    case config.COMMAND_TYPES.UPDATE_USERINFO:
-      // Format: C:10:UPDATE USERINFO PIN=1\tPri=0
-      const { pin, privilege } = command_params;
-      return `${config.COMMANDS.UPDATE_USERINFO} PIN=${pin}\tPri=${privilege}`;
+    case config.COMMAND_TYPES.UPDATE_USER:
+      // Format: C:10:UPDATE USER PIN=1\tPri=0\tPasswd=0
+      const { pin, privilege, passwd = 0 } = command_params;
+      return `${config.COMMANDS.UPDATE_USER} PIN=${pin}\tPri=${privilege}\tPasswd=${passwd}`;
       
-    case config.COMMAND_TYPES.DELETE_USERINFO:
-      // Format: C:10:DELETE USERINFO PIN=1
-      return `${config.COMMANDS.DELETE_USERINFO} PIN=${command_params.pin}`;
+      case config.COMMAND_TYPES.DELETE_USER:
+      // Format: C:10:DATA DEL_USER PIN=1
+      return `${config.COMMANDS.DELETE_USER} PIN=${command_params.pin}`;
       
-    default:
-      return null;
+    case config.COMMAND_TYPES.ENROLL_FP:
+      // Format: C:10:ENROLL_FP PIN=8888\tFID=0\tRETRY=3\tOVERWRITE=0
+      const { pin: fpPin, fid, retry = 3, overwrite = 0 } = command_params;
+      return `${config.COMMANDS.ENROLL_FP} PIN=${fpPin}\tFID=${fid}\tRETRY=${retry}\tOVERWRITE=${overwrite}`;
+      
+      default:
+        return null;
   }
 };
 
