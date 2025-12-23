@@ -13,7 +13,7 @@ module.exports = {
   // App specific config
   APP: {
     NAME: 'DBSPOT',
-    VERSION: '1.0.0'
+    VERSION: '1.3'
   },
   
   // Server config
