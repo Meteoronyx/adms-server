@@ -14,8 +14,9 @@ module.exports = {
       CLEAR_LOG: '/admin/clearlog/:sn',
       INFO: '/admin/info/:sn',
       REBOOT: '/admin/reboot/:sn',
-      USERINFO: '/admin/userinfo/:sn',
-      USERINFO_DELETE: '/admin/userinfo/:sn/:pin',
+      USER: '/admin/user/:sn',
+      USER_DELETE: '/admin/user/:sn/:pin',
+      ENROLL_FP: '/admin/enrollfp/:sn',
       COMMAND_QUEUE: '/admin/commands/queue'
     }
   },
@@ -55,8 +56,9 @@ module.exports = {
     CLEAR_LOG: 'C:10:CLEAR LOG',
     INFO: 'C:10:INFO',
     REBOOT: 'C:10:REBOOT',
-    UPDATE_USERINFO: 'C:10:DATA USER',
-    DELETE_USERINFO: 'C:10:DELETE USERINFO'
+    UPDATE_USER: 'C:10:DATA USER',
+    DELETE_USER: 'C:10:DATA DEL_USER',
+    ENROLL_FP: 'C:10:ENROLL_FP'
   },
 
   // Command types for database
@@ -65,8 +67,9 @@ module.exports = {
     CLEAR_LOG: 'CLEAR_LOG',
     INFO: 'INFO',
     REBOOT: 'REBOOT',
-    UPDATE_USERINFO: 'UPDATE_USERINFO',
-    DELETE_USERINFO: 'DELETE_USERINFO'
+    UPDATE_USER: 'UPDATE_USER',
+    DELETE_USER: 'DELETE_USER',
+    ENROLL_FP: 'ENROLL_FP'
   },
 
   // Command status
@@ -82,7 +85,7 @@ module.exports = {
 
   // Time constants
   TIME: {
-    VERIFIED_OFFSET_HOURS: parseInt(process.env.VERIFIED_OFFSET_HOURS) || 5
+    UNVERIFIED_OFFSET_HOURS: parseInt(process.env.UNVERIFIED_OFFSET_HOURS) || 1,
+    UNVERIFIED_TIMEZONE: '+08:00'
   }
 };
-
