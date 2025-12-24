@@ -14,7 +14,7 @@ module.exports = {
     },
     log_file: './logs/pm2-combined.log',
     error_file: './logs/pm2-error.log',
-    out_file: './logs/pm2-out.log',
+    out_file: '/dev/null', //if windows use 'NUL'
     log_date_format: 'YYYY-MM-DD HH:mm Z',
     max_memory_restart: '1G',
     kill_timeout: 5000,
