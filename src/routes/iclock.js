@@ -17,6 +17,10 @@ router.get(config.PATHS.ICLOCK.CDATA, async (req, res) => {
   const ip = req.ip || 'unknown';
 
   if (!SN) {
+    logger.warn('Missing device serial number in request', {
+      ip: ip,
+      query: req.query
+    });
     res.status(400).send(config.RESPONSE.ERROR.MISSING_SN);
     return;
   }
@@ -30,6 +34,7 @@ router.get(config.PATHS.ICLOCK.CDATA, async (req, res) => {
       res.send(response);
     } else {
       const response = await attendanceService.getHandshakeResponse(SN);
+      logger.info('Device handshake completed', { sn: SN, ip: ip });
       res.set('Content-Type', 'text/plain');
       res.send(response);
     }
@@ -48,14 +53,20 @@ router.get(config.PATHS.ICLOCK.CDATA, async (req, res) => {
 // POST /iclock/cdata - Attendance logs
 router.post(config.PATHS.ICLOCK.CDATA, rawBodyParser, async (req, res) => {
   const { SN, table } = req.query;
+  const ip = req.ip || 'unknown';
 
   if (!SN) {
+    logger.warn('Missing device serial number in POST request', {
+      ip: ip,
+      query: req.query
+    });
     res.status(400).send(config.RESPONSE.ERROR.INVALID_REQUEST);
     return;
   }
 
   // Jika table bukan ATTLOG (misalnya OPERLOG), langsung return OK tanpa proses
   if (table !== config.TABLES.ATTLOG) {
+    logger.debug('Ignoring non-ATTLOG table', { sn: SN, table: table, ip: ip });
     res.set('Content-Type', 'text/plain');
     res.send(config.RESPONSE.OK);
     return;
@@ -64,12 +75,25 @@ router.post(config.PATHS.ICLOCK.CDATA, rawBodyParser, async (req, res) => {
   try {
     const verified = await deviceService.getDeviceVerificationStatus(SN);
     if (!verified) {
+      logger.warn('Unverified device attempted to send data', {
+        sn: SN,
+        ip: ip,
+        action: 'blocked'
+      });
       res.set('Content-Type', 'text/plain');
       res.send(config.RESPONSE.ERROR.DEVICE_NOT_VERIFIED);
       return;
     }
     
     const logs = parsers.parseAttendanceLogs(req.rawBody);
+    
+    // Log when receiving attendance data
+    logger.info('Receiving attendance logs from device', {
+      sn: SN,
+      ip: ip,
+      log_count: logs.length
+    });
+    
     await attendanceService.insertAttendanceLogs(SN, logs);
     
     res.set('Content-Type', 'text/plain');

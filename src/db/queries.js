@@ -2,6 +2,7 @@
 
 const db = require('./connection');
 const config = require('../config');
+const logger = require('../utils/logger');
 
 // Device operations
 const upsertDevice = async (sn, ip, timezone = config.DEVICE.DEFAULT_TIMEZONE) => {
@@ -78,26 +79,71 @@ const updateDeviceInfo = async (sn, info) => {
 const insertAttendanceLogs = async (sn, logs) => {
   if (logs.length === 0) return;
 
-  // Build values for bulk insert
-  const values = [];
-  const params = [];
-  let paramCount = 1;
+  const startTime = Date.now();
+  const timeRange = {
+    earliest: logs[0].checkTime,
+    latest: logs[logs.length - 1].checkTime
+  };
 
-  for (const log of logs) {
-    values.push(`($${paramCount}, $${paramCount + 1}, $${paramCount + 2}, $${paramCount + 3}, $${paramCount + 4})`);
-    params.push(sn, log.userPin, log.checkTime, log.status, log.verifyMode);
-    paramCount += 5;
+  try {
+    // Build values for bulk insert
+    const values = [];
+    const params = [];
+    let paramCount = 1;
+
+    for (const log of logs) {
+      values.push(`($${paramCount}, $${paramCount + 1}, $${paramCount + 2}, $${paramCount + 3}, $${paramCount + 4})`);
+      params.push(sn, log.userPin, log.checkTime, log.status, log.verifyMode);
+      paramCount += 5;
+    }
+
+    const query = `
+      INSERT INTO attendance_logs (device_sn, user_pin, check_time, status, verify_mode)
+      VALUES ${values.join(', ')}
+      ON CONFLICT (device_sn, user_pin, check_time) DO NOTHING
+    `;
+
+    const result = await db.query(query, params);
+    const duration = Date.now() - startTime;
+
+    // Log successful insert with metrics
+    logger.info('Attendance logs inserted successfully', {
+      sn: sn,
+      log_count: logs.length,
+      time_range: `${timeRange.earliest} to ${timeRange.latest}`,
+      duration_ms: duration,
+      affected_rows: result.rowCount
+    });
+
+    // Warning if query is slow (> 2 seconds)
+    if (duration > 2000) {
+      logger.warn('Slow attendance logs insert detected', {
+        sn: sn,
+        log_count: logs.length,
+        duration_ms: duration
+      });
+    }
+
+    return result;
+  } catch (err) {
+    const duration = Date.now() - startTime;
+    
+    // Log detailed error information
+    logger.error('Failed to insert attendance logs', {
+      sn: sn,
+      log_count: logs.length,
+      time_range: `${timeRange.earliest} to ${timeRange.latest}`,
+      duration_ms: duration,
+      error: err.message,
+      code: err.code,
+      hint: err.hint,
+      detail: err.detail,
+      stack: err.stack
+    });
+    
+    throw err;
   }
-
-  const query = `
-    INSERT INTO attendance_logs (device_sn, user_pin, check_time, status, verify_mode)
-    VALUES ${values.join(', ')}
-    ON CONFLICT (device_sn, user_pin, check_time) DO NOTHING
-  `;
-
-  return db.query(query, params);
 };
-
 
 // Get device verification status
 const getDeviceVerificationStatus = async (sn) => {
