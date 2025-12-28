@@ -22,6 +22,8 @@ ADMS Server
 ## Folder Structure
 ```
 dbspot/
+├── migrations/                # Database migrations
+│   └── 001_initial_schema.sql # Initial schema (baseline)
 ├── src/
 │   ├── server.js              # Express app setup & server start
 │   ├── config/                # Configs
@@ -48,7 +50,6 @@ dbspot/
 ├── package-lock.json
 ├── .gitignore
 ├── README.md
-├── setup_tables.sql           # DB schema (users, attlogs, devices)
 └── simulator.js               # Test client
 ```
 
@@ -68,10 +69,15 @@ ADMIN_API_KEY=your_admin_api_key
 
 ### 3. Database Setup
 - Create database PostgreSQL `dbspot`
-- Run schema:
+- Run migrations:
 ```bash
-psql -d dbspot -f setup_tables.sql
+npm run migrate
 ```
+
+**Migration Commands:**
+- `npm run migrate` - Jalankan semua migration yang belum dijalankan
+- `npm run migrate:down` - Rollback migration terakhir
+- `npm run migrate:create -- nama_migration` - Buat migration baru
 
 ### 4. Run Server
 ```bash

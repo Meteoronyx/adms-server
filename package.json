@@ -5,7 +5,11 @@
   "main": "index.js",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "node src/server.js"
+    "dev": "node src/server.js",
+    "migrate": "node-pg-migrate up --migrations-dir migrations --migration-file-language sql",
+    "migrate:up": "node-pg-migrate up --migrations-dir migrations --migration-file-language sql",
+    "migrate:down": "node-pg-migrate down --migrations-dir migrations --migration-file-language sql",
+    "migrate:create": "node-pg-migrate create --migrations-dir migrations --migration-file-language sql"
   },
   "keywords": [],
   "author": "",
@@ -16,6 +20,7 @@
     "dotenv": "^17.2.3",
     "express": "^4.22.1",
     "morgan": "^1.10.1",
+    "node-pg-migrate": "^8.0.4",
     "pg": "^8.16.3",
     "raw-body": "^3.0.2",
     "winston": "^3.19.0"
