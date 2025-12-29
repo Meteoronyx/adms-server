@@ -160,7 +160,7 @@ const getDeviceVerificationStatus = async (sn) => {
 // Get device info for admin
 const getDeviceInfo = async (sn) => {
   const query = `
-    SELECT sn, name, last_activity, status, ip_address, verified
+    SELECT sn, name, device_name, last_activity, status, ip_address, verified
     FROM devices_with_status
     WHERE sn = $1
   `;
@@ -273,6 +273,154 @@ const getAllPendingCommands = async () => {
   return result.rows;
 };
 
+// Upsert pegawai
+const upsertPegawai = async (userData) => {
+  const query = `
+    INSERT INTO pegawai (pin, name, privilege, password, card, group_no, timezone, verify_mode, updated_at)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+    ON CONFLICT (pin) DO UPDATE SET
+      name = EXCLUDED.name,
+      privilege = EXCLUDED.privilege,
+      password = EXCLUDED.password,
+      card = EXCLUDED.card,
+      group_no = EXCLUDED.group_no,
+      timezone = EXCLUDED.timezone,
+      verify_mode = EXCLUDED.verify_mode,
+      updated_at = NOW()
+    WHERE
+      pegawai.name IS DISTINCT FROM EXCLUDED.name OR
+      pegawai.privilege IS DISTINCT FROM EXCLUDED.privilege OR
+      pegawai.password IS DISTINCT FROM EXCLUDED.password OR
+      pegawai.card IS DISTINCT FROM EXCLUDED.card OR
+      pegawai.group_no IS DISTINCT FROM EXCLUDED.group_no OR
+      pegawai.timezone IS DISTINCT FROM EXCLUDED.timezone OR
+      pegawai.verify_mode IS DISTINCT FROM EXCLUDED.verify_mode
+    RETURNING pin
+  `;
+  return db.query(query, [
+    userData.pin,
+    userData.name,
+    userData.privilege,
+    userData.password,
+    userData.card,
+    userData.groupNo,
+    userData.timezone,
+    userData.verifyMode
+  ]);
+};
+
+// Upsert pegawai-device mapping
+const upsertPegawaiDeviceMapping = async (pin, deviceSN, deviceName) => {
+  const query = `
+    INSERT INTO pegawai_device_mapping (pegawai_pin, device_sn, device_name, synced_at)
+    VALUES ($1, $2, $3, NOW())
+    ON CONFLICT (pegawai_pin, device_sn) DO UPDATE SET
+      device_name = EXCLUDED.device_name,
+      synced_at = NOW()
+    WHERE
+      pegawai_device_mapping.device_name IS DISTINCT FROM EXCLUDED.device_name
+    RETURNING id
+  `;
+  return db.query(query, [pin, deviceSN, deviceName]);
+};
+
+// Ensure pegawai-device mapping exists (for fingerprint sync when USER data hasn't arrived)
+const ensurePegawaiDeviceMapping = async (pin, deviceSN) => {
+  // First check if pegawai exists
+  const checkPegawai = await db.query('SELECT pin FROM pegawai WHERE pin = $1', [pin]);
+  if (checkPegawai.rows.length === 0) {
+    // Create placeholder pegawai
+    await db.query(`
+      INSERT INTO pegawai (pin, name, updated_at)
+      VALUES ($1, $1, NOW())
+      ON CONFLICT (pin) DO NOTHING
+    `, [pin]);
+  }
+
+  // Then ensure mapping exists
+  const query = `
+    INSERT INTO pegawai_device_mapping (pegawai_pin, device_sn, synced_at)
+    VALUES ($1, $2, NOW())
+    ON CONFLICT (pegawai_pin, device_sn) DO NOTHING
+    RETURNING id
+  `;
+  return db.query(query, [pin, deviceSN]);
+};
+
+// Upsert fingerprint
+const upsertFingerprint = async (pin, deviceSN, fingerId, template) => {
+  const query = `
+    INSERT INTO pegawai_fingerprints (pegawai_pin, device_sn, finger_id, template, synced_at)
+    VALUES ($1, $2, $3, $4, NOW())
+    ON CONFLICT (pegawai_pin, device_sn, finger_id) DO UPDATE SET
+      template = EXCLUDED.template,
+      synced_at = NOW()
+    WHERE
+      pegawai_fingerprints.template != EXCLUDED.template
+    RETURNING id
+  `;
+  return db.query(query, [pin, deviceSN, fingerId, template]);
+};
+
+// Get pegawai with fingerprint summary across all devices
+const getPegawaiWithFingerprints = async (pin) => {
+  const pegawaiQuery = `
+    SELECT e.*, 
+           (SELECT COUNT(*) FROM pegawai_fingerprints ef WHERE ef.pegawai_pin = e.pin) as total_fingerprints
+    FROM pegawai e
+    WHERE e.pin = $1
+  `;
+  const pegawaiResult = await db.query(pegawaiQuery, [pin]);
+  if (pegawaiResult.rows.length === 0) {
+    return null;
+  }
+
+  const pegawai = pegawaiResult.rows[0];
+
+  // Get device mappings
+  const mappingQuery = `
+    SELECT edm.device_sn, edm.device_name, edm.synced_at,
+           (SELECT COUNT(*) FROM pegawai_fingerprints ef 
+            WHERE ef.pegawai_pin = edm.pegawai_pin AND ef.device_sn = edm.device_sn) as fingerprint_count
+    FROM pegawai_device_mapping edm
+    WHERE edm.pegawai_pin = $1
+    ORDER BY edm.synced_at DESC
+  `;
+  const mappingResult = await db.query(mappingQuery, [pin]);
+
+  return {
+    ...pegawai,
+    devices: mappingResult.rows
+  };
+};
+
+// Get all pegawai at a specific device
+const getPegawaiByDevice = async (deviceSN) => {
+  const query = `
+    SELECT e.pin, e.name, e.privilege, e.password, edm.synced_at,
+           (SELECT COUNT(*) FROM pegawai_fingerprints ef 
+            WHERE ef.pegawai_pin = e.pin AND ef.device_sn = $1) as fingerprint_count
+    FROM pegawai e
+    JOIN pegawai_device_mapping edm ON e.pin = edm.pegawai_pin
+    WHERE edm.device_sn = $1
+    ORDER BY e.name ASC
+  `;
+  const result = await db.query(query, [deviceSN]);
+  return result.rows;
+};
+
+// Get fingerprints for transfer
+const getPegawaiFingerprints = async (pin, deviceSN) => {
+  const query = `
+    SELECT ef.finger_id, ef.template, ef.synced_at
+    FROM pegawai_fingerprints ef
+    WHERE ef.pegawai_pin = $1 AND ef.device_sn = $2
+    ORDER BY ef.finger_id ASC
+  `;
+  const result = await db.query(query, [pin, deviceSN]);
+  return result.rows;
+};
+
 module.exports = {
   upsertDevice,
   updateDeviceInfo,
@@ -289,4 +437,11 @@ module.exports = {
   getNextPendingCommand,
   markCommandExecuted,
   getAllPendingCommands,
+  upsertPegawai,
+  upsertPegawaiDeviceMapping,
+  ensurePegawaiDeviceMapping,
+  upsertFingerprint,
+  getPegawaiWithFingerprints,
+  getPegawaiByDevice,
+  getPegawaiFingerprints,
 };

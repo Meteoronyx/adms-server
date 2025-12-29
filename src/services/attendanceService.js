@@ -40,14 +40,14 @@ const getHandshakeResponse = async (sn) => {
   const timezone = verified ? config.DEVICE.DEFAULT_TIMEZONE : config.TIME.UNVERIFIED_TIMEZONE;
   
   return `GET OPTION FROM: ${sn}
-Stamp=9999
-OpStamp=9999
-PhotoStamp=9999
+Stamp=0
+OpStamp=0
+PhotoStamp=0
 ErrorDelay=60
 Delay=30
 TransTimes=00:00
 TransInterval=1
-TransFlag=1011000000
+TransFlag=1111111100
 Realtime=1
 Encrypt=0
 TimeZone=${timezone}

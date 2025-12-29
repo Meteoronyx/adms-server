@@ -17,6 +17,7 @@ module.exports = {
       USER: '/admin/user/:sn',
       USER_DELETE: '/admin/user/:sn/:pin',
       ENROLL_FP: '/admin/enrollfp/:sn',
+      TRANSFER_FP: '/admin/transferfp/:sn',
       COMMAND_QUEUE: '/admin/commands/queue'
     }
   },
@@ -58,7 +59,8 @@ module.exports = {
     REBOOT: 'C:10:REBOOT',
     UPDATE_USER: 'C:10:DATA USER',
     DELETE_USER: 'C:10:DATA DEL_USER',
-    ENROLL_FP: 'C:10:ENROLL_FP'
+    ENROLL_FP: 'C:10:ENROLL_FP',
+    DATA_FP: 'C:10:DATA FP'
   },
 
   // Command types for database
@@ -69,7 +71,8 @@ module.exports = {
     REBOOT: 'REBOOT',
     UPDATE_USER: 'UPDATE_USER',
     DELETE_USER: 'DELETE_USER',
-    ENROLL_FP: 'ENROLL_FP'
+    ENROLL_FP: 'ENROLL_FP',
+    DATA_FP: 'DATA_FP'
   },
 
   // Command status
@@ -80,7 +83,8 @@ module.exports = {
 
   // Table names
   TABLES: {
-    ATTLOG: 'ATTLOG'
+    ATTLOG: 'ATTLOG',
+    OPERLOG: 'OPERLOG'
   },
 
   // Time constants

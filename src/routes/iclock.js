@@ -9,6 +9,7 @@ const deviceService = require('../services/deviceService');
 const attendanceService = require('../services/attendanceService');
 const reuploadService = require('../services/reuploadService');
 const commandService = require('../services/commandService');
+const userService = require('../services/userService');
 const logger = require('../utils/logger');
 
 // GET /iclock/cdata - Handshake & Time sync
@@ -64,9 +65,40 @@ router.post(config.PATHS.ICLOCK.CDATA, rawBodyParser, async (req, res) => {
     return;
   }
 
-  // Jika table bukan ATTLOG (misalnya OPERLOG), langsung return OK tanpa proses
+  // Handle OPERLOG (User & Fingerprint data)
+  if (table === config.TABLES.OPERLOG) {
+    try {
+      const verified = await deviceService.getDeviceVerificationStatus(SN);
+      if (!verified) {
+        logger.warn('Unverified device attempted to send OPERLOG', {
+          sn: SN,
+          ip: ip,
+          action: 'blocked'
+        });
+        res.set('Content-Type', 'text/plain');
+        res.send(config.RESPONSE.ERROR.DEVICE_NOT_VERIFIED);
+        return;
+      }
+
+      await userService.handleOperlog(SN, req.rawBody);
+      res.set('Content-Type', 'text/plain');
+      res.send(config.RESPONSE.OK);
+    } catch (err) {
+      logger.error('iclock/cdata POST OPERLOG error', {
+        message: err.message,
+        stack: err.stack,
+        url: req.url,
+        ip: req.ip,
+        sn: SN
+      });
+      res.status(500).send(config.RESPONSE.ERROR.INTERNAL_SERVER_ERROR);
+    }
+    return;
+  }
+
+  // Ignore other non-ATTLOG tables
   if (table !== config.TABLES.ATTLOG) {
-    logger.debug('Ignoring non-ATTLOG table', { sn: SN, table: table, ip: ip });
+    logger.debug('Ignoring non-ATTLOG/OPERLOG table', { sn: SN, table: table, ip: ip });
     res.set('Content-Type', 'text/plain');
     res.send(config.RESPONSE.OK);
     return;

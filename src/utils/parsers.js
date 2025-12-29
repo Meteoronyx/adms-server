@@ -82,7 +82,98 @@ const parseDeviceInfo = (rawBody) => {
   return mappedInfo;
 };
 
+// Parse USER data dari OPERLOG
+// Format: USER PIN=336\t Name=RACHMAT MAULANA\tPri=0\tPasswd=\tCard=\tGrp=1\tTZ=0000000000000000\tVerify=0\tViceCard=\tStartDatetime=0\tEndDatetime=0
+const parseUserData = (rawBody) => {
+  if (!rawBody || typeof rawBody !== 'string') {
+    return [];
+  }
+
+  const lines = rawBody.trim().split('\n');
+  const users = [];
+
+  for (const line of lines) {
+    if (!line || typeof line !== 'string') continue;
+    const trimmedLine = line.trim();
+    if (!trimmedLine.startsWith('USER ')) continue;
+
+    // Remove 'USER ' prefix and parse key=value pairs
+    const content = trimmedLine.substring(5);
+    const fields = content.split('\t');
+    const userData = {};
+
+    for (const field of fields) {
+      const eqIdx = field.indexOf('=');
+      if (eqIdx > 0) {
+        const key = field.slice(0, eqIdx).trim();
+        const val = field.slice(eqIdx + 1).trim();
+        userData[key] = val;
+      }
+    }
+
+    // Only add if PIN exists
+    if (userData.PIN) {
+      users.push({
+        pin: userData.PIN,
+        name: userData.Name || '',
+        privilege: parseInt(userData.Pri, 10) || 0,
+        password: userData.Passwd || '',
+        card: userData.Card || '',
+        groupNo: parseInt(userData.Grp, 10) || 1,
+        timezone: userData.TZ || '',
+        verifyMode: parseInt(userData.Verify, 10) || 0
+      });
+    }
+  }
+
+  return users;
+};
+
+// Parse FP (Fingerprint) data dari OPERLOG
+// Format: FP PIN=66\tFID=6\tSize=1656\tValid=1\tTMP=stringbase64==
+const parseFingerprintData = (rawBody) => {
+  if (!rawBody || typeof rawBody !== 'string') {
+    return [];
+  }
+
+  const lines = rawBody.trim().split('\n');
+  const fingerprints = [];
+
+  for (const line of lines) {
+    if (!line || typeof line !== 'string') continue;
+    const trimmedLine = line.trim();
+    if (!trimmedLine.startsWith('FP ')) continue;
+
+    // Remove 'FP ' prefix and parse key=value pairs
+    const content = trimmedLine.substring(3);
+    const fields = content.split('\t');
+    const fpData = {};
+
+    for (const field of fields) {
+      const eqIdx = field.indexOf('=');
+      if (eqIdx > 0) {
+        const key = field.slice(0, eqIdx).trim();
+        const val = field.slice(eqIdx + 1).trim();
+        fpData[key] = val;
+      }
+    }
+
+    // Only add if PIN, FID, and TMP exist
+    if (fpData.PIN && fpData.FID !== undefined && fpData.TMP) {
+      fingerprints.push({
+        pin: fpData.PIN,
+        fingerId: parseInt(fpData.FID, 10),
+        template: fpData.TMP
+      });
+    }
+  }
+
+  return fingerprints;
+};
+
 module.exports = {
   parseAttendanceLogs,
   parseDeviceInfo,
+  parseUserData,
+  parseFingerprintData,
 };
