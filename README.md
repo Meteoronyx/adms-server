@@ -1,153 +1,91 @@
-# dbspot - ADMS Server
-ADMS Server
+# new-DBSPOT
+
+Server ADMS (Automatic Data Master Server) berbasis Node.js untuk pengelolaan mesin absensi ZKTeco (push protocol) dan manajemen data kehadiran secara realtime.
 
 [![Node.js](https://img.shields.io/badge/Node.js-%5E20-green)](https://nodejs.org)
 [![Express](https://img.shields.io/badge/Express-4.x-blue)](https://expressjs.com)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-purple)](https://postgresql.org)
 
-## Features
-- Device Handshake & Initialization
-- Real-time Attendance Log Receiver (ATTLOG)
-- Heartbeat
-- Time Synchronization
-- Device Information Management
-- Reupload Attendance Logs
+## Fitur Utama
+- **Device Handshake**: Inisialisasi koneksi otomatis dengan mesin.
+- **Real-time Attendance**: Menerima log kehadiran (ATTLOG) secara langsung saat terjadi scan.
+- **Device Management**: Manajemen status perangkat (Online/Offline), info perangkat, dan verifikasi.
+- **Remote Commands**: Kirim perintah jarak jauh (Reboot, Clear Log, Info).
+- **Fingerprint Management**: Manajemen sidik jari (Upload, Download, Transfer antar mesin).
+- **Resilience**: Fitur re-upload log dan sinkronisasi waktu otomatis.
+
+## Dokumentasi API
+Dokumentasi lengkap mengenai protokol perangkat dan API Admin tersedia di folder `docs`:
+ **[Dokumentasi API Lengkap (docs/api.md)](docs/api.md)**
 
 ## Tech Stack
 - **Runtime**: Node.js ^20
 - **Framework**: Express.js
-- **DB**: PostgreSQL + `pg` pool
-- **RAW SQL**
+- **Database**: PostgreSQL (dengan `pg` pool)
 
-## Folder Structure
+## Struktur Folder
 ```
 dbspot/
-├── migrations/                # Database migrations
-│   └── 001_initial_schema.sql # Initial schema (baseline)
+├── migrations/                # Script database migrations
 ├── src/
-│   ├── server.js              # Express app setup & server start
-│   ├── config/                # Configs
-│   │   ├── constants.js       # DB creds, ADMS constants
-│   │   └── index.js           # Config export
-│   ├── db/                    # Database layer
-│   │   ├── connection.js      # pg Pool init
-│   │   └── queries.js         # SQL functions (ATTLOG insert, etc.)
-│   ├── middleware/            # Custom middleware
-│   │   └── rawBodyParser.js   # Parse text/plain payloads
-│   │   └── apiKeyAuth.js      # API key authentication
-│   ├── routes/                # API routes
-│   │   └── admin.js           # /admin/* endpoints (reupload, queue)
-│   │   └── iclock.js          # /iclock/* endpoints (cdata, getrequest)
-│   ├── services/              # Business logic
-│   │   ├── deviceService.js   # Handshake, info, sync
-│   │   └── attendanceService.js # ATTLOG processing & DB save
-│   │   └── reuploadService.js  # Reupload logic
-│   │   └── commandService.js   # Command logic
-│   └── utils/                 # Helpers
-│       └── parsers.js         # Parse ADMS payloads (tab-separated)
-│       └── logger.js          # Logger
-├── package.json
-├── package-lock.json
-├── .gitignore
-├── README.md
-└── simulator.js               # Test client
+│   ├── config/                # Konfigurasi (ENV, Konstanta)
+│   ├── db/                    # Koneksi & Query Database
+│   ├── routes/                # Rute API (/iclock, /admin)
+│   ├── services/              # Logika Bisnis (Device, Attendance, Command)
+│   └── utils/                 # Utilities (Logger, Parsers)
+├── docs/                      # Dokumentasi 
+└── simulator.js               # Script simulator untuk testing
 ```
 
-## Quick Setup
+## Instalasi
 
-### 1. Install Dependencies
+### 1. Instalasi Dependensi
 ```bash
 npm install
 ```
 
-### 2. Environment (.env)
-Create file `.env` in root:
-```
+### 2. Konfigurasi Environment (.env)
+Buat file `.env` di root folder dan sesuaikan konfigurasi:
+```env
 DATABASE_URL=postgresql://user:pass@localhost:5432/dbspot
-ADMIN_API_KEY=your_admin_api_key
+ADMIN_API_KEY=your-custom-api-key
 ```
 
-### 3. Database Setup
-- Create database PostgreSQL `dbspot`
-- Run migrations:
+### 3. Setup Database
+- Buat database PostgreSQL bernama `dbspot`.
+- Jalankan migrasi untuk membuat tabel:
 ```bash
 npm run migrate
 ```
+*Gunakan `npm run migrate:down` untuk membatalkan (rollback).*
 
-**Migration Commands:**
-- `npm run migrate` - Jalankan semua migration yang belum dijalankan
-- `npm run migrate:down` - Rollback migration terakhir
-- `npm run migrate:create -- nama_migration` - Buat migration baru
-
-### 4. Run Server
+### 4. Menjalankan Server
+Mode Development (dengan hot-reload):
 ```bash
-npm start
 npm run dev
 ```
+Mode Production:
+```bash
+npm start
+```
 
-### 5. Test using Simulator
+### 5. Testing dengan Simulator
+Anda dapat menggunakan script simulator untuk meniru perilaku mesin absensi:
 ```bash
 node simulator.js
 ```
 
-## API Endpoints
+## Deployment (PM2)
+Untuk environemnt produksi, disarankan menggunakan PM2.
 
-### Handshake & Configuration
-```
-GET /iclock/cdata?SN={DeviceSN}&options=all&pushver={ver}
-```
-Response: GET OPTION FROM: {DeviceSN} ......
+```bash
+# Instal Global PM2
+npm install -g pm2
 
-### Attendance Logs
-```
-POST /iclock/cdata?SN={DeviceSN}&table=ATTLOG&Stamp=9999
-Content-Type: text/plain
-```
-Payload: `{UserPIN}\t{Time}\t{Status}\t{VerifyMode}\t{Validation}\t{WorkCode}`
+# Jalankan Service
+pm2 start ecosystem.config.js --env production
 
-Response: `OK`
-
-### Heartbeat
+# Monitoring
+pm2 monit
+pm2 logs dbspot
 ```
-GET /iclock/getrequest?SN={DeviceSN}
-```
-Response: `OK` / `C:{ID}:{COMMAND_STRING}`
-
-### Time Synchronization
-```
-GET /iclock/cdata?SN={DeviceSN}&type=time
-```
-Response: `Time=YYYY-MM-DDThh:mm:ss`
-
-### Admin API
-```
-POST /admin/reupload
-```
-Payload: `{SN: "DeviceSN"}`
-
-Response: `OK`
-
-```
-GET /admin/reupload/queue
-```
-Response: `{"success": true,"queue": {"ABC123456": {"queuedAt": "2025-12-13T03:08:48.423Z"}}}`
-
-```
-POST /admin/verify/{DeviceSN}
-```
-Response: `OK`
-
-
-## PM2 Production Deployment
-Install PM2: `npm install -g pm2`
-
-Run:
-- Dev: `pm2 start ecosystem.config.js`
-- Prod: `pm2 start ecosystem.config.js --env production`
-
-Commands:
-- `pm2 monit` : Dashboard monitoring
-- `pm2 logs dbspot` : Tail logs
-- `pm2 reload dbspot` : Zero-downtime restart
-- `pm2 stop/restart/delete dbspot`
-- Boot auto-start: `pm2 startup && pm2 save`
