@@ -421,6 +421,17 @@ const getPegawaiFingerprints = async (pin, deviceSN) => {
   return result.rows;
 };
 
+// Get pegawai basic info for DATA USER command
+const getPegawaiBasicInfo = async (pin) => {
+  const query = `
+    SELECT pin, name, privilege, timezone, group_no
+    FROM pegawai
+    WHERE pin = $1
+  `;
+  const result = await db.query(query, [pin]);
+  return result.rows[0] || null;
+};
+
 module.exports = {
   upsertDevice,
   updateDeviceInfo,
@@ -444,4 +455,5 @@ module.exports = {
   getPegawaiWithFingerprints,
   getPegawaiByDevice,
   getPegawaiFingerprints,
+  getPegawaiBasicInfo,
 };
