@@ -57,7 +57,7 @@ module.exports = {
     CLEAR_LOG: 'C:10:CLEAR LOG',
     INFO: 'C:10:INFO',
     REBOOT: 'C:10:REBOOT',
-    UPDATE_USER: 'C:10:DATA USER',
+    DATA_USER: 'C:10:DATA USER',
     DELETE_USER: 'C:10:DATA DEL_USER',
     ENROLL_FP: 'C:10:ENROLL_FP',
     DATA_FP: 'C:10:DATA FP'
@@ -69,7 +69,7 @@ module.exports = {
     CLEAR_LOG: 'CLEAR_LOG',
     INFO: 'INFO',
     REBOOT: 'REBOOT',
-    UPDATE_USER: 'UPDATE_USER',
+    DATA_USER: 'DATA_USER',
     DELETE_USER: 'DELETE_USER',
     ENROLL_FP: 'ENROLL_FP',
     DATA_FP: 'DATA_FP'
