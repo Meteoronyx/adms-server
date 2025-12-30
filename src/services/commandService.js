@@ -16,10 +16,10 @@ const buildCommandString = (command) => {
     case config.COMMAND_TYPES.REBOOT:
       return config.COMMANDS.REBOOT;
       
-    case config.COMMAND_TYPES.UPDATE_USER:
-      // Format: C:10:UPDATE USER PIN=1\tPri=0 (passwd: 0 → hapus password, passwd: 123 → set password)
+    case config.COMMAND_TYPES.DATA_USER:
+      // Format: C:10:DATA USER PIN=1\tPri=0 (passwd: 0 → hapus password, passwd: 123 → set password)
       const { pin, privilege, passwd } = command_params;
-      let cmd = `${config.COMMANDS.UPDATE_USER} PIN=${pin}\tPri=${privilege}`;
+      let cmd = `${config.COMMANDS.DATA_USER} PIN=${pin}\tPri=${privilege}`;
       if (passwd !== undefined && passwd !== null) {
         if (passwd === 0) {
           cmd += `\tPasswd=`;
@@ -39,10 +39,21 @@ const buildCommandString = (command) => {
       return `${config.COMMANDS.ENROLL_FP} PIN=${fpPin}\tFID=${fid}\tRETRY=${retry}\tOVERWRITE=${overwrite}`;
       
     case config.COMMAND_TYPES.DATA_FP:
-      // Format: C:10:DATA FP PIN=xxx\tFID=x\tSize=x\tValid=1\tTMP=base64
-      const { pin: dataFpPin, finger_id, template } = command_params;
+      // Format: 
+      // C:10:DATA USER PIN=xxx\tName=xxx\tPri=x\tTZ=xxx\tGrp=x
+      // C:10:DATA FP PIN=xxx\tFID=x\tSize=x\tValid=1\tTMP=base64
+      const { pin: dataFpPin, finger_id, template, user_info } = command_params;
       const size = template ? template.length : 0;
-      return `${config.COMMANDS.DATA_FP} PIN=${dataFpPin}\tFID=${finger_id}\tSize=${size}\tValid=1\tTMP=${template}`;
+      
+      const userName = user_info?.name || dataFpPin;
+      const userPri = user_info?.privilege || 0;
+      const userTZ = user_info?.timezone || '0001000100000000';
+      const userGrp = user_info?.group_no || 1;
+      
+      const dataUserLine = `${config.COMMANDS.DATA_USER} PIN=${dataFpPin}\tName=${userName}\tPri=${userPri}\t\t\tTZ=${userTZ}\tGrp=${userGrp}`;
+      const dataFpLine = `${config.COMMANDS.DATA_FP} PIN=${dataFpPin}\tFID=${finger_id}\tSize=${size}\tValid=1\tTMP=${template}`;
+      
+      return `${dataUserLine}\n${dataFpLine}`;
       
       default:
         return null;
