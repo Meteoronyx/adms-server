@@ -320,7 +320,7 @@ router.post(config.PATHS.ADMIN.USER, async (req, res) => {
       params.passwd = parseInt(passwd);
     }
 
-    await commandService.queueCommand(sn, config.COMMAND_TYPES.UPDATE_USER, params);
+    await commandService.queueCommand(sn, config.COMMAND_TYPES.DATA_USER, params);
     logger.info('Update user command queued', { sn, pin, privilege, passwd, ip: req.ip });
 
     res.json({
@@ -630,13 +630,29 @@ router.post(config.PATHS.ADMIN.TRANSFER_FP, async (req, res) => {
       return;
     }
 
+    // Get pegawai info for DATA USER line
+    const pegawaiInfo = await queries.getPegawaiBasicInfo(pin);
+    if (!pegawaiInfo) {
+      res.status(404).json({
+        success: false,
+        message: `Pegawai not found: ${pin}`
+      });
+      return;
+    }
+
     // Queue DATA_FP command for transfer fingerprint
     const queuedCommands = [];
     for (const fp of fingerprints) {
       await commandService.queueCommand(sn, config.COMMAND_TYPES.DATA_FP, {
         pin: pin,
         finger_id: fp.finger_id,
-        template: fp.template
+        template: fp.template,
+        user_info: {
+          name: pegawaiInfo.name,
+          privilege: pegawaiInfo.privilege,
+          timezone: pegawaiInfo.timezone,
+          group_no: pegawaiInfo.group_no
+        }
       });
       queuedCommands.push(fp.finger_id);
     }
