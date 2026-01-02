@@ -39,9 +39,39 @@ app.get(config.PATHS.ROOT, (req, res) => {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${config.APP.NAME}</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #f9f9f9;
+      color: #333;
+    }
+    .container {
+      text-align: center;
+    }
+    h1 {
+      font-weight: 600;
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+      letter-spacing: -0.5px;
+    }
+    p {
+      color: #666;
+      font-size: 0.95rem;
+      margin: 0;
+    }
+  </style>
 </head>
 <body>
-  <h1>${config.APP.NAME} Ready</h1>
+  <div class="container">
+    <h1>${config.APP.NAME}</h1>
+    <p>Diskominfo Kabupaten Tangerang - 2026</p>
+  </div>
   <!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "4f2de2d054294dff85c0a2dd420f870b"}'></script><!-- End Cloudflare Web Analytics -->
 </body>
 </html>`);
