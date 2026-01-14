@@ -273,15 +273,13 @@ const getAllPendingCommands = async () => {
   return result.rows;
 };
 
-// Upsert pegawai
+// Upsert pegawai (master data only - privilege/password moved to device mapping)
 const upsertPegawai = async (userData) => {
   const query = `
-    INSERT INTO pegawai (pin, name, privilege, password, card, group_no, timezone, verify_mode, updated_at)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+    INSERT INTO pegawai (pin, name, card, group_no, timezone, verify_mode, updated_at)
+    VALUES ($1, $2, $3, $4, $5, $6, NOW())
     ON CONFLICT (pin) DO UPDATE SET
       name = EXCLUDED.name,
-      privilege = EXCLUDED.privilege,
-      password = EXCLUDED.password,
       card = EXCLUDED.card,
       group_no = EXCLUDED.group_no,
       timezone = EXCLUDED.timezone,
@@ -289,8 +287,6 @@ const upsertPegawai = async (userData) => {
       updated_at = NOW()
     WHERE
       pegawai.name IS DISTINCT FROM EXCLUDED.name OR
-      pegawai.privilege IS DISTINCT FROM EXCLUDED.privilege OR
-      pegawai.password IS DISTINCT FROM EXCLUDED.password OR
       pegawai.card IS DISTINCT FROM EXCLUDED.card OR
       pegawai.group_no IS DISTINCT FROM EXCLUDED.group_no OR
       pegawai.timezone IS DISTINCT FROM EXCLUDED.timezone OR
@@ -300,8 +296,6 @@ const upsertPegawai = async (userData) => {
   return db.query(query, [
     userData.pin,
     userData.name,
-    userData.privilege,
-    userData.password,
     userData.card,
     userData.groupNo,
     userData.timezone,
@@ -310,18 +304,24 @@ const upsertPegawai = async (userData) => {
 };
 
 // Upsert pegawai-device mapping
-const upsertPegawaiDeviceMapping = async (pin, deviceSN, deviceName) => {
+const upsertPegawaiDeviceMapping = async (pin, deviceSN, deviceName, privilege = 0, password = null) => {
   const query = `
-    INSERT INTO pegawai_device_mapping (pegawai_pin, device_sn, device_name, synced_at)
-    VALUES ($1, $2, $3, NOW())
+    INSERT INTO pegawai_device_mapping (pegawai_pin, device_sn, device_name, privilege, password, synced_at)
+    VALUES ($1, $2, $3, $4, $5, NOW())
     ON CONFLICT (pegawai_pin, device_sn) DO UPDATE SET
       device_name = EXCLUDED.device_name,
+      privilege = CASE 
+        WHEN EXCLUDED.privilege > 0 THEN EXCLUDED.privilege
+        ELSE pegawai_device_mapping.privilege
+      END,
+      password = CASE 
+        WHEN EXCLUDED.password IS NOT NULL AND EXCLUDED.password != '' THEN EXCLUDED.password
+        ELSE pegawai_device_mapping.password
+      END,
       synced_at = NOW()
-    WHERE
-      pegawai_device_mapping.device_name IS DISTINCT FROM EXCLUDED.device_name
     RETURNING id
   `;
-  return db.query(query, [pin, deviceSN, deviceName]);
+  return db.query(query, [pin, deviceSN, deviceName, privilege, password]);
 };
 
 // Ensure pegawai-device mapping exists (for fingerprint sync when USER data hasn't arrived)
@@ -377,9 +377,9 @@ const getPegawaiWithFingerprints = async (pin) => {
 
   const pegawai = pegawaiResult.rows[0];
 
-  // Get device mappings
+  // Get device mappings with privilege/password
   const mappingQuery = `
-    SELECT edm.device_sn, edm.device_name, edm.synced_at,
+    SELECT edm.device_sn, edm.device_name, edm.privilege, edm.password, edm.synced_at,
            (SELECT COUNT(*) FROM pegawai_fingerprints ef 
             WHERE ef.pegawai_pin = edm.pegawai_pin AND ef.device_sn = edm.device_sn) as fingerprint_count
     FROM pegawai_device_mapping edm
@@ -394,10 +394,10 @@ const getPegawaiWithFingerprints = async (pin) => {
   };
 };
 
-// Get all pegawai at a specific device
+// Get all pegawai at a specific device (privilege/password from device mapping)
 const getPegawaiByDevice = async (deviceSN) => {
   const query = `
-    SELECT e.pin, e.name, e.privilege, e.password, edm.synced_at,
+    SELECT e.pin, e.name, edm.privilege, edm.password, edm.synced_at,
            (SELECT COUNT(*) FROM pegawai_fingerprints ef 
             WHERE ef.pegawai_pin = e.pin AND ef.device_sn = $1) as fingerprint_count
     FROM pegawai e
@@ -421,10 +421,22 @@ const getPegawaiFingerprints = async (pin, deviceSN) => {
   return result.rows;
 };
 
-// Get pegawai basic info for DATA USER command
-const getPegawaiBasicInfo = async (pin) => {
+// Get pegawai basic info for DATA USER command (includes device-specific privilege)
+const getPegawaiBasicInfo = async (pin, deviceSN = null) => {
+  if (deviceSN) {
+    // Get privilege from specific device
+    const query = `
+      SELECT e.pin, e.name, edm.privilege, e.timezone, e.group_no
+      FROM pegawai e
+      LEFT JOIN pegawai_device_mapping edm ON e.pin = edm.pegawai_pin AND edm.device_sn = $2
+      WHERE e.pin = $1
+    `;
+    const result = await db.query(query, [pin, deviceSN]);
+    return result.rows[0] || null;
+  }
+  // Fallback: get basic info without device-specific privilege
   const query = `
-    SELECT pin, name, privilege, timezone, group_no
+    SELECT pin, name, 0 as privilege, timezone, group_no
     FROM pegawai
     WHERE pin = $1
   `;

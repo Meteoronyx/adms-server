@@ -39,7 +39,7 @@ const syncPegawai = async (deviceSN, deviceName, users) => {
       await queries.upsertPegawai(user);
       
       // Upsert device mapping
-      await queries.upsertPegawaiDeviceMapping(user.pin, deviceSN, deviceName);
+      await queries.upsertPegawaiDeviceMapping(user.pin, deviceSN, deviceName, user.privilege, user.password);
     } catch (err) {
       logger.error('Failed to sync pegawai', {
         pin: user.pin,

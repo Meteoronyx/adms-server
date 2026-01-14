@@ -345,7 +345,7 @@ exports.transferFingerprint = async (req, res) => {
   }
 
   // Get pegawai info for DATA USER line
-  const pegawaiInfo = await queries.getPegawaiBasicInfo(pin);
+  const pegawaiInfo = await queries.getPegawaiBasicInfo(pin, source_sn);
   if (!pegawaiInfo) {
     return res.status(404).json({
       success: false,
