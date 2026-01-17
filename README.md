@@ -1,4 +1,4 @@
-# new-DBSPOT
+# ADMS-Server
 
 Server ADMS (Automatic Data Master Server) berbasis Node.js untuk pengelolaan mesin absensi ZKTeco (push protocol) dan manajemen data kehadiran secara realtime.
 
@@ -69,12 +69,6 @@ Mode Production:
 npm start
 ```
 
-### 5. Testing dengan Simulator
-Anda dapat menggunakan script simulator untuk meniru perilaku mesin absensi:
-```bash
-node simulator.js
-```
-
 ## Deployment (PM2)
 Untuk environemnt produksi, disarankan menggunakan PM2.
 
@@ -89,3 +83,10 @@ pm2 start ecosystem.config.js --env production
 pm2 monit
 pm2 logs dbspot
 ```
+
+## Support
+Jika Anda merasa project ini bermanfaat, Anda bisa memberikan dukungan melalui Ko-fi:
+
+[![Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/meteoronyx)
+
+Untuk pertanyaan atau support via QRIS, silakan hubungi: **ardian@sgbteam.id**
