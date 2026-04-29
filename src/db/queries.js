@@ -92,13 +92,13 @@ const insertAttendanceLogs = async (sn, logs) => {
     let paramCount = 1;
 
     for (const log of logs) {
-      values.push(`($${paramCount}, $${paramCount + 1}, $${paramCount + 2}, $${paramCount + 3}, $${paramCount + 4})`);
-      params.push(sn, log.userPin, log.checkTime, log.status, log.verifyMode);
-      paramCount += 5;
+      values.push(`($${paramCount}, $${paramCount + 1}, $${paramCount + 2}, $${paramCount + 3}, $${paramCount + 4}, $${paramCount + 5})`);
+      params.push(sn, log.userPin, log.checkTime, log.status, log.verifyMode, new Date());
+      paramCount += 6;
     }
 
     const query = `
-      INSERT INTO attendance_logs (device_sn, user_pin, check_time, status, verify_mode)
+      INSERT INTO attendance_logs (device_sn, user_pin, check_time, status, verify_mode, received_at)
       VALUES ${values.join(', ')}
       ON CONFLICT (device_sn, user_pin, check_time) DO NOTHING
     `;
