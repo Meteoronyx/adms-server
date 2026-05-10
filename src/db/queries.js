@@ -218,8 +218,20 @@ const unverifyDevice = async (sn) => {
 // Get all devices
 const getAllDevices = async () => {
   const query = `
-    SELECT sn, name, ip_address, last_activity, status, verified, initial_sync_completed
+    SELECT sn, name, device_name, ip_address, last_activity, status, verified, initial_sync_completed
     FROM devices_with_status
+    ORDER BY last_activity DESC
+  `;
+  const result = await db.query(query, []);
+  return result.rows;
+};
+
+// Get offline devices
+const getOfflineDevices = async () => {
+  const query = `
+    SELECT sn, name, device_name, ip_address, last_activity, status, verified, initial_sync_completed
+    FROM devices_with_status
+    WHERE status = 'offline'
     ORDER BY last_activity DESC
   `;
   const result = await db.query(query, []);
@@ -229,11 +241,11 @@ const getAllDevices = async () => {
 // Insert a command into queue
 const insertCommand = async (sn, commandType, params = {}) => {
   const query = `
-    INSERT INTO device_commands (device_sn, command_type, command_params)
-    VALUES ($1, $2, $3)
+    INSERT INTO device_commands (device_sn, command_type, command_params, created_at)
+    VALUES ($1, $2, $3, $4)
     RETURNING id, device_sn, command_type, command_params, status, created_at
   `;
-  const result = await db.query(query, [sn, commandType, JSON.stringify(params)]);
+  const result = await db.query(query, [sn, commandType, JSON.stringify(params), new Date()]);
   return result.rows[0];
 };
 
@@ -254,10 +266,10 @@ const getNextPendingCommand = async (sn) => {
 const markCommandExecuted = async (id) => {
   const query = `
     UPDATE device_commands
-    SET status = 'executed', executed_at = NOW()
+    SET status = 'executed', executed_at = $2
     WHERE id = $1
   `;
-  return db.query(query, [id]);
+  return db.query(query, [id, new Date()]);
 };
 
 // Get all pending commands (for admin view)
@@ -421,6 +433,135 @@ const getPegawaiFingerprints = async (pin, deviceSN) => {
   return result.rows;
 };
 
+// Search pegawai by name using ILIKE
+const searchPegawaiByName = async (name, limit = 10) => {
+  const query = `
+    SELECT p.pin, p.name, p.card, p.group_no, p.timezone,
+           (SELECT COUNT(*) FROM pegawai_fingerprints ef WHERE ef.pegawai_pin = p.pin) as total_fingerprints
+    FROM pegawai p
+    WHERE p.name ILIKE $1
+    ORDER BY p.name ASC
+    LIMIT $2
+  `;
+  const result = await db.query(query, [`%${name}%`, limit]);
+  return result.rows;
+};
+
+// Get attendance logs
+const getAttendanceLogs = async (limit = 100, offset = 0, sn = null, pin = null, year = null, month = null, startDate = null, endDate = null, search = null) => {
+  let query = `
+    SELECT 
+      a.device_sn, 
+      a.user_pin, 
+      a.check_time, 
+      a.status, 
+      a.verify_mode, 
+      a.received_at,
+      p.name as pegawai_name,
+      d.device_name as device_name
+    FROM attendance_logs a
+    LEFT JOIN pegawai p ON a.user_pin = p.pin
+    LEFT JOIN devices d ON a.device_sn = d.sn
+    WHERE 1=1
+  `;
+  const params = [];
+
+  if (sn) {
+    params.push(sn);
+    query += ` AND a.device_sn = $${params.length}`;
+  }
+
+  if (pin) {
+    params.push(pin);
+    query += ` AND a.user_pin = $${params.length}`;
+  }
+  
+  if (startDate) {
+    params.push(startDate);
+    query += ` AND a.check_time >= $${params.length}`;
+  }
+  
+  if (endDate) {
+    params.push(endDate);
+    // Add 1 day to include the whole end date, or use <= with time 23:59:59
+    query += ` AND a.check_time <= $${params.length}::timestamp + interval '1 day' - interval '1 second'`;
+  }
+  
+  if (!startDate && !endDate) {
+    if (year) {
+      params.push(year);
+      query += ` AND EXTRACT(YEAR FROM a.check_time) = $${params.length}`;
+    }
+    
+    if (month) {
+      params.push(month);
+      query += ` AND EXTRACT(MONTH FROM a.check_time) = $${params.length}`;
+    }
+  }
+
+  if (search) {
+    params.push(`%${search}%`);
+    query += ` AND (p.name ILIKE $${params.length} OR a.user_pin ILIKE $${params.length})`;
+  }
+
+  query += ` ORDER BY a.check_time DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+  params.push(limit, offset);
+
+  const { rows } = await db.query(query, params);
+  
+  let countQuery = `
+    SELECT COUNT(*) 
+    FROM attendance_logs a
+    LEFT JOIN pegawai p ON a.user_pin = p.pin
+    WHERE 1=1
+  `;
+  const countParams = [];
+  
+  if (sn) { countParams.push(sn); countQuery += ` AND a.device_sn = $${countParams.length}`; }
+  if (pin) { countParams.push(pin); countQuery += ` AND a.user_pin = $${countParams.length}`; }
+  
+  if (startDate) {
+    countParams.push(startDate);
+    countQuery += ` AND a.check_time >= $${countParams.length}`;
+  }
+  if (endDate) {
+    countParams.push(endDate);
+    countQuery += ` AND a.check_time <= $${countParams.length}::timestamp + interval '1 day' - interval '1 second'`;
+  }
+  
+  if (!startDate && !endDate) {
+    if (year) { countParams.push(year); countQuery += ` AND EXTRACT(YEAR FROM a.check_time) = $${countParams.length}`; }
+    if (month) { countParams.push(month); countQuery += ` AND EXTRACT(MONTH FROM a.check_time) = $${countParams.length}`; }
+  }
+
+  if (search) {
+    countParams.push(`%${search}%`);
+    countQuery += ` AND (p.name ILIKE $${countParams.length} OR a.user_pin ILIKE $${countParams.length})`;
+  }
+
+  const countRes = await db.query(countQuery, countParams);
+  
+  return {
+    data: rows,
+    total: parseInt(countRes.rows[0].count)
+  };
+};
+
+// Get dashboard statistics
+const getDashboardStats = async () => {
+  const query = `
+    SELECT
+      (SELECT COUNT(*) FROM pegawai) AS total_pegawai,
+      (SELECT COUNT(*) FROM pegawai_fingerprints) AS total_fingerprints,
+      (SELECT COUNT(*) FROM pegawai_device_mapping WHERE privilege > 0) AS total_admins,
+      (SELECT COUNT(*) FROM attendance_logs WHERE check_time >= CURRENT_DATE) AS logs_today,
+      (SELECT COUNT(*) FROM attendance_logs WHERE check_time >= CURRENT_DATE - INTERVAL '7 days') AS logs_weekly,
+      (SELECT COUNT(*) FROM attendance_logs WHERE check_time >= DATE_TRUNC('month', CURRENT_DATE)) AS logs_monthly
+  `;
+  const result = await db.query(query, []);
+  return result.rows[0];
+};
+
 // Get pegawai basic info for DATA USER command (includes device-specific privilege)
 const getPegawaiBasicInfo = async (pin, deviceSN = null) => {
   if (deviceSN) {
@@ -456,6 +597,7 @@ module.exports = {
   verifyDevice,
   unverifyDevice,
   getAllDevices,
+  getOfflineDevices,
   insertCommand,
   getNextPendingCommand,
   markCommandExecuted,
@@ -468,4 +610,7 @@ module.exports = {
   getPegawaiByDevice,
   getPegawaiFingerprints,
   getPegawaiBasicInfo,
+  searchPegawaiByName,
+  getAttendanceLogs,
+  getDashboardStats,
 };

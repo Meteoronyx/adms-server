@@ -128,6 +128,12 @@ router.post(config.PATHS.ICLOCK.CDATA, rawBodyParser, async (req, res) => {
     
     await attendanceService.insertAttendanceLogs(SN, logs);
     
+    // Broadcast attendance update
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('attendance_update', { sn: SN, logCount: logs.length });
+    }
+
     res.set('Content-Type', 'text/plain');
     res.send(config.RESPONSE.OK);
   } catch (err) {
@@ -155,6 +161,12 @@ router.get(config.PATHS.ICLOCK.GETREQUEST, async (req, res) => {
   try {
     await deviceService.handleDeviceHeartbeat(SN, ip, INFO);
     
+    // Broadcast device status update
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('device_update', { sn: SN });
+    }
+
     // Step 1: Check if admin requested reupload
     const needsReupload = reuploadService.checkAndRemove(SN);
     if (needsReupload) {

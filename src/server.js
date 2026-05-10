@@ -3,12 +3,15 @@
 require('dotenv/config');
 
 const express = require('express');
+const path = require('path');
 const cors = require('cors');
+const { Server } = require('socket.io');
 const morgan = require('morgan');
 const logger = require('./utils/logger');
 const config = require('./config');
 const iclockRoutes = require('./routes/iclock');
 const adminRoutes = require('./routes/admin');
+const authRoutes = require('./routes/auth');
 const { getDatabaseStatus } = require('./db/connection');
 
 const app = express();
@@ -23,7 +26,7 @@ app.use(cors({
 }));
 
 // Morgan HTTP logger
-app.use(morgan('combined', { 
+app.use(morgan('combined', {
   stream: logger.stream,
   skip: (req) => req.url.includes('/iclock/getrequest')
 }));
@@ -31,64 +34,23 @@ app.use(morgan('combined', {
 // JSON body parser for admin routes
 app.use(express.json());
 
-// Routes
-app.get(config.PATHS.ROOT, (req, res) => {
-  res.send(`<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${config.APP.NAME}</title>
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background-color: #f9f9f9;
-      color: #333;
-    }
-    .container {
-      text-align: center;
-    }
-    h1 {
-      font-weight: 600;
-      font-size: 2rem;
-      margin-bottom: 0.5rem;
-      letter-spacing: -0.5px;
-    }
-    p {
-      color: #666;
-      font-size: 0.95rem;
-      margin: 0;
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>${config.APP.NAME}</h1>
-    <p>Diskominfo Kabupaten Tangerang - 2026</p>
-  </div>
-  <!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "4f2de2d054294dff85c0a2dd420f870b"}'></script><!-- End Cloudflare Web Analytics -->
-</body>
-</html>`);
-});
+// Serve frontend static files
+const frontendPath = path.join(__dirname, '../frontend/dist');
+app.use(express.static(frontendPath));
 
+app.use(authRoutes);
 app.use(iclockRoutes);
 app.use(adminRoutes);
 
 // Health check endpoint
 app.get('/health', async (req, res) => {
   const startTime = Date.now();
-  
+
   try {
     const dbStatus = await getDatabaseStatus();
     const uptime = process.uptime();
     const memory = process.memoryUsage();
-    
+
     const healthData = {
       status: 'healthy',
       timestamp: new Date().toISOString(),
@@ -102,12 +64,12 @@ app.get('/health', async (req, res) => {
       node_version: process.version,
       app_version: `${config.APP.NAME} v${config.APP.VERSION}`
     };
-    
+
     // Log health check access occasionally (not every time to avoid flooding)
     if (Math.random() < 0.05) { // 5% chance to log
       logger.debug('Health check accessed', healthData);
     }
-    
+
     const responseTime = Date.now() - startTime;
     res.set('X-Response-Time', `${responseTime}ms`);
     res.json(healthData);
@@ -127,16 +89,11 @@ app.get('/health', async (req, res) => {
   }
 });
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  logger.error('Unhandled error', { 
-    message: err.message, 
-    stack: err.stack,
-    url: req.url,
-    method: req.method,
-    ip: req.ip 
-  });
-  res.status(500).send(config.RESPONSE.ERROR.INTERNAL_SERVER_ERROR);
+app.get('*', (req, res, next) => {
+  if (req.url.startsWith('/iclock') || req.url.startsWith('/admin') || req.url.startsWith('/api') || !req.accepts('html')) {
+    return next();
+  }
+  res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
 // 404 handler
@@ -144,29 +101,41 @@ app.use((req, res) => {
   res.status(404).send('Not Found');
 });
 
+// Error handling middleware
+app.use((err, req, res, next) => {
+  logger.error('Unhandled error', {
+    message: err.message,
+    stack: err.stack,
+    url: req.url,
+    method: req.method,
+    ip: req.ip
+  });
+  res.status(500).send(config.RESPONSE.ERROR.INTERNAL_SERVER_ERROR);
+});
+
 // Graceful shutdown handling
 const gracefulShutdown = (signal) => {
   logger.warn(`Received ${signal}, starting graceful shutdown...`);
-  
+
   // Stop accepting new connections
   server.close((err) => {
     if (err) {
       logger.error('Error during server shutdown', { error: err.message, stack: err.stack });
       process.exit(1);
     }
-    
+
     logger.info('Server closed successfully');
     logger.info('Shutdown complete', {
       uptime: `${Math.floor(process.uptime() / 60)}m ${Math.floor(process.uptime() % 60)}s`
     });
-    
+
     // Close database connections
     const { pool } = require('./db/connection');
     pool.end(() => {
       logger.info('Database pool closed');
       process.exit(0);
     });
-    
+
     // Force exit after 10 seconds
     setTimeout(() => {
       logger.error('Forced shutdown after timeout');
@@ -209,6 +178,24 @@ const server = app.listen(port, config.SERVER.HOST, () => {
     },
     database: config.DATABASE_URL ? 'configured' : 'not configured'
   });
-  
+
   logger.info('Ready to accept attendance data from devices');
 });
+
+// Setup Socket.IO
+const io = new Server(server, {
+  cors: {
+    origin: config.SERVER.CORS_ORIGIN,
+    methods: ["GET", "POST"]
+  }
+});
+
+io.on('connection', (socket) => {
+  logger.info(`Client connected: ${socket.id}`);
+
+  socket.on('disconnect', () => {
+    logger.info(`Client disconnected: ${socket.id}`);
+  });
+});
+
+app.set('io', io);

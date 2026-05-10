@@ -37,9 +37,16 @@ router.post(config.PATHS.ADMIN.ENROLL_FP, validateDevice, asyncHandler(adminCont
 router.get(config.PATHS.ADMIN.COMMAND_QUEUE, asyncHandler(adminController.getCommandQueue));
 
 // Data Retrieval Routes
+router.get('/admin/pegawai/search', asyncHandler(adminController.searchPegawai));
 router.get('/admin/pegawai/:pin', asyncHandler(adminController.getPegawai));
 router.get('/admin/devices/:sn/pegawai', validateDevice, asyncHandler(adminController.getPegawaiByDevice));
 router.get('/admin/fingerprint-check', asyncHandler(adminController.checkFingerprintOnDevice));
+
+// Attendance Logs
+router.get('/admin/attendance', asyncHandler(adminController.getAttendanceLogs));
+
+// Dashboard Stats
+router.get('/admin/stats', asyncHandler(adminController.getDashboardStats));
 
 // Fingerprint Transfer
 router.post(config.PATHS.ADMIN.TRANSFER_FP, validateDevice, asyncHandler(adminController.transferFingerprint));

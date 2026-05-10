@@ -74,9 +74,12 @@ exports.unverifyDevice = async (req, res) => {
 
 exports.listDevices = async (req, res) => {
   const devices = await queries.getAllDevices();
+  const offlineDevices = await queries.getOfflineDevices();
+  
   res.json({
     success: true,
-    devices
+    devices,
+    offlineDevices
   });
 };
 
@@ -256,6 +259,57 @@ exports.getPegawai = async (req, res) => {
   res.json({
     success: true,
     pegawai
+  });
+};
+
+// Data Retrieval Routes (searchPegawai by name)
+exports.searchPegawai = async (req, res) => {
+  const { q, limit } = req.query;
+
+  if (!q || !q.trim()) {
+    return res.status(400).json({
+      success: false,
+      message: 'Missing query parameter: q'
+    });
+  }
+
+  const results = await queries.searchPegawaiByName(q.trim(), limit ? parseInt(limit) : 10);
+  res.json({
+    success: true,
+    query: q.trim(),
+    count: results.length,
+    results
+  });
+};
+
+// Data Retrieval Routes (getAttendanceLogs)
+exports.getAttendanceLogs = async (req, res) => {
+  const limit = parseInt(req.query.limit) || 100;
+  const offset = parseInt(req.query.offset) || 0;
+  const sn = req.query.sn || null;
+  const pin = req.query.pin || null;
+  const year = req.query.year || null;
+  const month = req.query.month || null;
+  const startDate = req.query.startDate || null;
+  const endDate = req.query.endDate || null;
+  const search = req.query.search || null;
+
+  const result = await queries.getAttendanceLogs(limit, offset, sn, pin, year, month, startDate, endDate, search);
+  res.json({
+    success: true,
+    data: result.data,
+    total: result.total,
+    limit,
+    offset
+  });
+};
+
+// Dashboard statistics
+exports.getDashboardStats = async (req, res) => {
+  const stats = await queries.getDashboardStats();
+  res.json({
+    success: true,
+    stats
   });
 };
 
