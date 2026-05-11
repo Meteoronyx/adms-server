@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { getHealth, listDevices, getCommandQueue, getStats } from '../lib/api';
 import StatusBadge from '../components/StatusBadge';
 import {
@@ -8,16 +8,27 @@ import {
 } from 'lucide-react';
 import { useSocket } from '../hooks/useSocket';
 
-function StatCard({ label, value, sub, icon: Icon, accent }) {
+function StatCard({ label, value, sub, icon: Icon, accent, highlight }) {
   return (
-    <div className="group bg-white rounded-xl border border-slate-200/60 p-5 shadow-sm hover:shadow-md hover:border-slate-200 transition-all duration-200">
+    <div className={`
+      group bg-white rounded-xl border p-5 shadow-sm hover:shadow-md transition-all duration-200 relative overflow-hidden
+      ${highlight
+        ? 'border-emerald-300 shadow-emerald-100/50 highlight-pulse'
+        : 'border-slate-200/60 hover:border-slate-200'
+      }
+    `}>
+      {/* Shimmer Effect */}
+      {highlight && <div className="shimmer-sweep" />}
+
       <div className="flex items-start justify-between mb-3">
         <span className="text-xs font-semibold text-slate-400 uppercase tracking-widest">{label}</span>
         <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${accent} group-hover:scale-105 transition-transform`}>
           <Icon size={16} strokeWidth={2} />
         </div>
       </div>
-      <p className="text-2xl font-bold text-slate-900 tracking-tight">{value ?? '—'}</p>
+      <p className="text-2xl font-bold text-slate-900 tracking-tight">
+        {value ?? '—'}
+      </p>
       {sub && <p className="text-xs text-slate-400 mt-1">{sub}</p>}
     </div>
   );
@@ -33,7 +44,30 @@ export default function Dashboard() {
   const [logsWeekly, setLogsWeekly] = useState(0);
   const [logsMonth, setLogsMonth] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [highlightedCards, setHighlightedCards] = useState({});
+  const prevStats = useRef(null);
+  const highlightTimers = useRef({});
   const { socket } = useSocket();
+
+  const triggerHighlight = useCallback((card) => {
+    // Clear previous timers
+    if (highlightTimers.current[card]) clearTimeout(highlightTimers.current[card]);
+
+    // Set highlight ON
+    setHighlightedCards(prev => ({ ...prev, [card]: true }));
+
+    // Auto-off highlight after 2s
+    highlightTimers.current[card] = setTimeout(() => {
+      setHighlightedCards(prev => ({ ...prev, [card]: false }));
+    }, 2000);
+  }, []);
+
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      Object.values(highlightTimers.current).forEach(clearTimeout);
+    };
+  }, []);
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -44,6 +78,28 @@ export default function Dashboard() {
           getCommandQueue(),
           getStats(),
         ]);
+
+        // Comparison for Highlight
+        if (prevStats.current) {
+          const old = prevStats.current;
+          const curr = s.stats || {};
+          const oldDevs = old.devices || [];
+          const currDevs = d.devices || [];
+
+          if (curr.total_pegawai !== old.stats?.total_pegawai) triggerHighlight('pegawai');
+          if (curr.total_fingerprints !== old.stats?.total_fingerprints) triggerHighlight('fingerprint');
+          if (curr.total_admins !== old.stats?.total_admins) triggerHighlight('admin');
+          if (c.commands?.length !== old.commands?.length) triggerHighlight('commands');
+
+          if (currDevs.length !== oldDevs.length) triggerHighlight('total_device');
+          const oldOnline = oldDevs.filter(x => x.status === 'online').length;
+          const currOnline = currDevs.filter(x => x.status === 'online').length;
+          if (currOnline !== oldOnline) triggerHighlight('online_device');
+          if (d.offlineDevices?.length !== old.offlineDevices?.length) triggerHighlight('offline_device');
+        }
+
+        prevStats.current = { stats: s.stats, devices: d.devices, commands: c.commands, offlineDevices: d.offlineDevices };
+
         setHealth(h);
         setDevices(d.devices || []);
         setOfflineDevices(d.offlineDevices || []);
@@ -69,17 +125,25 @@ export default function Dashboard() {
     if (!socket) return;
 
     const handleAttendanceUpdate = (data) => {
-      // Real-time increment: data.logCount = jumlah log yg baru masuk
-      setLogsToday(prev => prev + (data.logCount || 0));
-      setLogsWeekly(prev => prev + (data.logCount || 0));
-      setLogsMonth(prev => prev + (data.logCount || 0));
+      const count = data.logCount || 0;
+      if (count === 0) return;
+
+      // Real-time increment
+      setLogsToday(prev => prev + count);
+      setLogsWeekly(prev => prev + count);
+      setLogsMonth(prev => prev + count);
+
+      // Trigger highlight animation on all 3 cards
+      triggerHighlight('today');
+      triggerHighlight('weekly');
+      triggerHighlight('monthly');
     };
 
     socket.on('attendance_update', handleAttendanceUpdate);
     return () => {
       socket.off('attendance_update', handleAttendanceUpdate);
     };
-  }, [socket]);
+  }, [socket, triggerHighlight]);
 
   const online = devices.filter(d => d.status === 'online').length;
   const offline = offlineDevices.length;
@@ -121,10 +185,10 @@ export default function Dashboard() {
               <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Data Induk</h2>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <StatCard label="Total Pegawai" value={fmt(stats?.total_pegawai)} icon={Users} accent="bg-blue-50 text-blue-600" />
-              <StatCard label="Total Fingerprint" value={fmt(stats?.total_fingerprints)} icon={Fingerprint} accent="bg-violet-50 text-violet-600" />
-              <StatCard label="Admin Mesin" value={fmt(stats?.total_admins)} icon={ShieldCheck} accent="bg-amber-50 text-amber-600" />
-              <StatCard label="Pending Commands" value={fmt(commands.length)} icon={ListOrdered} accent="bg-orange-50 text-orange-600" />
+              <StatCard label="Total Pegawai" value={fmt(stats?.total_pegawai)} icon={Users} accent="bg-blue-50 text-blue-600" highlight={highlightedCards.pegawai} />
+              <StatCard label="Total Fingerprint" value={fmt(stats?.total_fingerprints)} icon={Fingerprint} accent="bg-violet-50 text-violet-600" highlight={highlightedCards.fingerprint} />
+              <StatCard label="Admin Mesin" value={fmt(stats?.total_admins)} icon={ShieldCheck} accent="bg-amber-50 text-amber-600" highlight={highlightedCards.admin} />
+              <StatCard label="Pending Commands" value={fmt(commands.length)} icon={ListOrdered} accent="bg-orange-50 text-orange-600" highlight={highlightedCards.commands} />
             </div>
           </section>
 
@@ -135,9 +199,27 @@ export default function Dashboard() {
               <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Log Absen</h2>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <StatCard label="Hari Ini" value={fmt(logsToday)} icon={CalendarDays} accent="bg-emerald-50 text-emerald-600" />
-              <StatCard label="7 Hari Terakhir" value={fmt(logsWeekly)} icon={CalendarRange} accent="bg-teal-50 text-teal-600" />
-              <StatCard label="Bulan Ini" value={fmt(logsMonth)} icon={Calendar} accent="bg-cyan-50 text-cyan-600" />
+              <StatCard
+                label="Hari Ini"
+                value={fmt(logsToday)}
+                icon={CalendarDays}
+                accent="bg-emerald-50 text-emerald-600"
+                highlight={highlightedCards.today}
+              />
+              <StatCard
+                label="7 Hari Terakhir"
+                value={fmt(logsWeekly)}
+                icon={CalendarRange}
+                accent="bg-teal-50 text-teal-600"
+                highlight={highlightedCards.weekly}
+              />
+              <StatCard
+                label="Bulan Ini"
+                value={fmt(logsMonth)}
+                icon={Calendar}
+                accent="bg-cyan-50 text-cyan-600"
+                highlight={highlightedCards.monthly}
+              />
             </div>
           </section>
 
@@ -148,9 +230,9 @@ export default function Dashboard() {
               <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Perangkat</h2>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <StatCard label="Total Device" value={devices.length} icon={HardDrive} accent="bg-slate-100 text-slate-600" />
-              <StatCard label="Online" value={online} icon={RefreshCw} accent="bg-emerald-50 text-emerald-600" />
-              <StatCard label="Offline" value={offline} icon={Clock} accent="bg-slate-100 text-slate-500" />
+              <StatCard label="Total Device" value={devices.length} icon={HardDrive} accent="bg-slate-100 text-slate-600" highlight={highlightedCards.total_device} />
+              <StatCard label="Online" value={online} icon={RefreshCw} accent="bg-emerald-50 text-emerald-600" highlight={highlightedCards.online_device} />
+              <StatCard label="Offline" value={offline} icon={Clock} accent="bg-slate-100 text-slate-500" highlight={highlightedCards.offline_device} />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
