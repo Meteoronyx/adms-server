@@ -90,7 +90,7 @@ app.get('/health', async (req, res) => {
 });
 
 app.get('*', (req, res, next) => {
-  if (req.url.startsWith('/iclock') || req.url.startsWith('/admin') || req.url.startsWith('/api') || !req.accepts('html')) {
+  if (req.url.startsWith('/iclock') || req.url.startsWith('/admin') || req.url.startsWith('/api') || req.url.startsWith('/socket.io') || !req.accepts('html')) {
     return next();
   }
   res.sendFile(path.join(frontendPath, 'index.html'));

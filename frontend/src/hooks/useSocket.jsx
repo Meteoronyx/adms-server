@@ -8,8 +8,22 @@ export function SocketProvider({ children }) {
 
   useEffect(() => {
     const newSocket = io({
-      path: '/socket.io/',
-      transports: ['websocket', 'polling']
+      path: '/socket.io',
+      transports: ['websocket', 'polling'],
+      reconnectionAttempts: 5,
+      reconnectionDelay: 2000,
+    });
+
+    newSocket.on('connect', () => {
+      console.log('[WS] Connected');
+    });
+
+    newSocket.on('connect_error', (err) => {
+      console.warn('[WS] Connect error:', err.message);
+    });
+
+    newSocket.on('disconnect', (reason) => {
+      console.log('[WS] Disconnected:', reason);
     });
 
     setSocket(newSocket);
