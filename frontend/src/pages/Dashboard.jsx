@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { getHealth, listDevices, getCommandQueue, getStats } from '../lib/api';
 import StatusBadge from '../components/StatusBadge';
+import AnimatedNumber from '../components/AnimatedNumber';
 import {
   HardDrive, ListOrdered, RefreshCw, Clock, MemoryStick,
   Users, Fingerprint, ShieldCheck, CalendarDays, CalendarRange, Calendar,
@@ -11,25 +12,28 @@ import { useSocket } from '../hooks/useSocket';
 function StatCard({ label, value, sub, icon: Icon, accent, highlight }) {
   return (
     <div className={`
-      group bg-white rounded-xl border p-5 shadow-sm hover:shadow-md transition-all duration-200 relative overflow-hidden
+      group bg-white rounded-xl border p-5 shadow-sm hover:shadow-md transition-all duration-300 relative overflow-hidden
       ${highlight
-        ? 'border-emerald-300 shadow-emerald-100/50 highlight-pulse'
+        ? 'border-emerald-400 shadow-[0_0_20px_rgba(52,211,153,0.3)] dark:shadow-[0_0_15px_rgba(52,211,153,0.15)] highlight-pulse -translate-y-1'
         : 'border-slate-200/60 hover:border-slate-200'
       }
     `}>
+      {/* Glow Background Effect */}
+      <div className={`absolute inset-0 bg-emerald-50/50 dark:bg-emerald-500/10 transition-opacity duration-300 ${highlight ? 'opacity-100' : 'opacity-0'} pointer-events-none`} />
+
       {/* Shimmer Effect */}
       {highlight && <div className="shimmer-sweep" />}
 
-      <div className="flex items-start justify-between mb-3">
-        <span className="text-xs font-semibold text-slate-400 uppercase tracking-widest">{label}</span>
-        <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${accent} group-hover:scale-105 transition-transform`}>
-          <Icon size={16} strokeWidth={2} />
+      <div className="flex items-start justify-between mb-3 relative z-10">
+        <span className={`text-xs font-semibold uppercase tracking-widest transition-colors duration-300 ${highlight ? 'text-emerald-600' : 'text-slate-400'}`}>{label}</span>
+        <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${accent} group-hover:scale-110 transition-transform duration-300 ${highlight ? 'scale-110' : ''}`}>
+          <Icon size={16} strokeWidth={2} className={highlight ? 'animate-pulse' : ''} />
         </div>
       </div>
-      <p className="text-2xl font-bold text-slate-900 tracking-tight">
-        {value ?? '—'}
+      <p className={`text-2xl font-bold tracking-tight relative z-10 transition-colors duration-300 ${highlight ? 'text-emerald-600' : 'text-slate-900'}`}>
+        <AnimatedNumber value={value} />
       </p>
-      {sub && <p className="text-xs text-slate-400 mt-1">{sub}</p>}
+      {sub && <p className="text-xs text-slate-400 mt-1 relative z-10">{sub}</p>}
     </div>
   );
 }
@@ -150,8 +154,6 @@ export default function Dashboard() {
   const verified = devices.filter(d => d.verified).length;
   const unverifiedDevices = devices.filter(d => !d.verified);
 
-  const fmt = (n) => n !== undefined && n !== null ? Number(n).toLocaleString('id-ID') : '—';
-
   return (
     <div className="space-y-10 pb-8">
       {/* Page Header */}
@@ -185,10 +187,10 @@ export default function Dashboard() {
               <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Data Induk</h2>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <StatCard label="Total Pegawai" value={fmt(stats?.total_pegawai)} icon={Users} accent="bg-blue-50 text-blue-600" highlight={highlightedCards.pegawai} />
-              <StatCard label="Total Fingerprint" value={fmt(stats?.total_fingerprints)} icon={Fingerprint} accent="bg-violet-50 text-violet-600" highlight={highlightedCards.fingerprint} />
-              <StatCard label="Admin Mesin" value={fmt(stats?.total_admins)} icon={ShieldCheck} accent="bg-amber-50 text-amber-600" highlight={highlightedCards.admin} />
-              <StatCard label="Pending Commands" value={fmt(commands.length)} icon={ListOrdered} accent="bg-orange-50 text-orange-600" highlight={highlightedCards.commands} />
+              <StatCard label="Total Pegawai" value={stats?.total_pegawai} icon={Users} accent="bg-blue-50 text-blue-600" highlight={highlightedCards.pegawai} />
+              <StatCard label="Total Fingerprint" value={stats?.total_fingerprints} icon={Fingerprint} accent="bg-violet-50 text-violet-600" highlight={highlightedCards.fingerprint} />
+              <StatCard label="Admin Mesin" value={stats?.total_admins} icon={ShieldCheck} accent="bg-amber-50 text-amber-600" highlight={highlightedCards.admin} />
+              <StatCard label="Pending Commands" value={commands.length} icon={ListOrdered} accent="bg-orange-50 text-orange-600" highlight={highlightedCards.commands} />
             </div>
           </section>
 
@@ -201,21 +203,21 @@ export default function Dashboard() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <StatCard
                 label="Hari Ini"
-                value={fmt(logsToday)}
+                value={logsToday}
                 icon={CalendarDays}
                 accent="bg-emerald-50 text-emerald-600"
                 highlight={highlightedCards.today}
               />
               <StatCard
                 label="7 Hari Terakhir"
-                value={fmt(logsWeekly)}
+                value={logsWeekly}
                 icon={CalendarRange}
                 accent="bg-teal-50 text-teal-600"
                 highlight={highlightedCards.weekly}
               />
               <StatCard
                 label="Bulan Ini"
-                value={fmt(logsMonth)}
+                value={logsMonth}
                 icon={Calendar}
                 accent="bg-cyan-50 text-cyan-600"
                 highlight={highlightedCards.monthly}

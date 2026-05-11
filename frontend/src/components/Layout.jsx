@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
+import { useTheme } from '../hooks/useTheme';
 import {
   LayoutDashboard,
   HardDrive,
@@ -12,6 +13,8 @@ import {
   LogOut,
   ChevronRight,
   ChevronLeft,
+  Moon,
+  Sun,
 } from 'lucide-react';
 
 const navItems = [
@@ -27,6 +30,7 @@ export default function Layout({ children }) {
   const [collapsed, setCollapsed] = useState(false);
   const { logout } = useAuth();
   const { addToast } = useToast();
+  const { dark, toggle } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -95,8 +99,20 @@ export default function Layout({ children }) {
           })}
         </nav>
 
-        {/* Logout */}
-        <div className="p-3 mt-auto border-t border-slate-100">
+        {/* Theme Toggle + Logout */}
+        <div className="p-3 space-y-1 border-t border-slate-100">
+          <button
+            onClick={toggle}
+            className="flex items-center gap-3 w-full px-3 py-2.5 text-sm font-medium text-slate-500 hover:text-slate-900 hover:bg-slate-50 rounded-lg transition-colors group"
+            title={collapsed ? (dark ? 'Light Mode' : 'Dark Mode') : ''}
+          >
+            {dark ? (
+              <Sun size={18} strokeWidth={1.8} className="text-slate-400 group-hover:text-amber-500 flex-shrink-0" />
+            ) : (
+              <Moon size={18} strokeWidth={1.8} className="text-slate-400 group-hover:text-indigo-500 flex-shrink-0" />
+            )}
+            {!collapsed && <span>{dark ? 'Light Mode' : 'Dark Mode'}</span>}
+          </button>
           <button
             onClick={handleLogout}
             className="flex items-center gap-3 w-full px-3 py-2.5 text-sm font-medium text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors group"

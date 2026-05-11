@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
+import { useTheme } from '../hooks/useTheme';
 import { login as apiLogin } from '../lib/api';
+import { Moon, Sun } from 'lucide-react';
 
 export default function Login() {
   const [username, setUsername] = useState('');
@@ -10,6 +12,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const { addToast } = useToast();
+  const { dark, toggle } = useTheme();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -36,11 +39,18 @@ export default function Login() {
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-accent-500/5 rounded-full blur-3xl" />
       </div>
 
-      <div className="w-full max-w-sm scale-in">
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">DBSpot</h1>
-          <p className="text-sm text-slate-500 mt-1.5">Diskominfo Kabupaten Tangerang 2026</p>
-        </div>
+        <div className="w-full max-w-sm scale-in">
+          <div className="text-center mb-8 relative">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">DBSpot</h1>
+            <p className="text-sm text-slate-500 mt-1.5">Diskominfo Kabupaten Tangerang 2026</p>
+            <button
+              onClick={toggle}
+              className="absolute -right-2 top-0 p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+              title={dark ? 'Light Mode' : 'Dark Mode'}
+            >
+              {dark ? <Sun size={16} /> : <Moon size={16} />}
+            </button>
+          </div>
 
         <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-slate-200/60 p-7 shadow-sm">
           <div className="space-y-5">
