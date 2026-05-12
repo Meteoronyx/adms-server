@@ -42,6 +42,13 @@ app.use(authRoutes);
 app.use(iclockRoutes);
 app.use(adminRoutes);
 
+const formatUptime = (seconds) => {
+  const h = Math.floor(seconds / 3600).toString().padStart(2, '0');
+  const m = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
+  const s = Math.floor(seconds % 60).toString().padStart(2, '0');
+  return `${h}:${m}:${s}`;
+};
+
 // Health check endpoint
 app.get('/health', async (req, res) => {
   const startTime = Date.now();
@@ -54,7 +61,7 @@ app.get('/health', async (req, res) => {
     const healthData = {
       status: 'healthy',
       timestamp: new Date().toISOString(),
-      uptime: `${Math.floor(uptime / 60)}m ${Math.floor(uptime % 60)}s`,
+      uptime: formatUptime(uptime),
       database: dbStatus,
       memory: {
         used: `${Math.round(memory.heapUsed / 1024 / 1024)}MB`,
@@ -126,7 +133,7 @@ const gracefulShutdown = (signal) => {
 
     logger.info('Server closed successfully');
     logger.info('Shutdown complete', {
-      uptime: `${Math.floor(process.uptime() / 60)}m ${Math.floor(process.uptime() % 60)}s`
+      uptime: formatUptime(process.uptime())
     });
 
     // Close database connections

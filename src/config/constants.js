@@ -87,6 +87,13 @@ module.exports = {
     OPERLOG: 'OPERLOG'
   },
 
+  // Privilege levels
+  PRIVILEGES_LEVELS: {
+    0: 'User',
+    2: 'Log',
+    14: 'Super Admin'
+  },
+
   // Time constants
   TIME: {
     UNVERIFIED_OFFSET_HOURS: parseInt(process.env.UNVERIFIED_OFFSET_HOURS) || 1,

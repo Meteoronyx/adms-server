@@ -2,6 +2,7 @@
 
 const db = require('./connection');
 const config = require('../config');
+const constants = require('../config/constants');
 const logger = require('../utils/logger');
 
 // Device operations
@@ -127,7 +128,7 @@ const insertAttendanceLogs = async (sn, logs) => {
     return result;
   } catch (err) {
     const duration = Date.now() - startTime;
-    
+
     // Log detailed error information
     logger.error('Failed to insert attendance logs', {
       sn: sn,
@@ -140,7 +141,7 @@ const insertAttendanceLogs = async (sn, logs) => {
       detail: err.detail,
       stack: err.stack
     });
-    
+
     throw err;
   }
 };
@@ -275,7 +276,7 @@ const markCommandExecuted = async (id) => {
 // Get all pending commands (for admin view)
 const getAllPendingCommands = async () => {
   const query = `
-    SELECT dc.id, dc.device_sn, dc.command_type, dc.command_params, dc.created_at, d.name as device_name
+    SELECT dc.id, dc.device_sn, dc.command_type, dc.command_params, dc.created_at, d.device_name as device_name
     FROM device_commands dc
     LEFT JOIN devices d ON dc.device_sn = d.sn
     WHERE dc.status = 'pending'
@@ -402,7 +403,10 @@ const getPegawaiWithFingerprints = async (pin) => {
 
   return {
     ...pegawai,
-    devices: mappingResult.rows
+    devices: mappingResult.rows.map(row => ({
+      ...row,
+      privilege_label: constants.PRIVILEGES_LEVELS[row.privilege] || 'Unknown'
+    }))
   };
 };
 
@@ -418,7 +422,10 @@ const getPegawaiByDevice = async (deviceSN) => {
     ORDER BY e.name ASC
   `;
   const result = await db.query(query, [deviceSN]);
-  return result.rows;
+  return result.rows.map(row => ({
+    ...row,
+    privilege_label: constants.PRIVILEGES_LEVELS[row.privilege] || 'Unknown'
+  }));
 };
 
 // Get fingerprints for transfer
@@ -475,24 +482,24 @@ const getAttendanceLogs = async (limit = 100, offset = 0, sn = null, pin = null,
     params.push(pin);
     query += ` AND a.user_pin = $${params.length}`;
   }
-  
+
   if (startDate) {
     params.push(startDate);
     query += ` AND a.check_time >= $${params.length}`;
   }
-  
+
   if (endDate) {
     params.push(endDate);
     // Add 1 day to include the whole end date, or use <= with time 23:59:59
     query += ` AND a.check_time <= $${params.length}::timestamp + interval '1 day' - interval '1 second'`;
   }
-  
+
   if (!startDate && !endDate) {
     if (year) {
       params.push(year);
       query += ` AND EXTRACT(YEAR FROM a.check_time) = $${params.length}`;
     }
-    
+
     if (month) {
       params.push(month);
       query += ` AND EXTRACT(MONTH FROM a.check_time) = $${params.length}`;
@@ -508,7 +515,7 @@ const getAttendanceLogs = async (limit = 100, offset = 0, sn = null, pin = null,
   params.push(limit, offset);
 
   const { rows } = await db.query(query, params);
-  
+
   let countQuery = `
     SELECT COUNT(*) 
     FROM attendance_logs a
@@ -516,10 +523,10 @@ const getAttendanceLogs = async (limit = 100, offset = 0, sn = null, pin = null,
     WHERE 1=1
   `;
   const countParams = [];
-  
+
   if (sn) { countParams.push(sn); countQuery += ` AND a.device_sn = $${countParams.length}`; }
   if (pin) { countParams.push(pin); countQuery += ` AND a.user_pin = $${countParams.length}`; }
-  
+
   if (startDate) {
     countParams.push(startDate);
     countQuery += ` AND a.check_time >= $${countParams.length}`;
@@ -528,7 +535,7 @@ const getAttendanceLogs = async (limit = 100, offset = 0, sn = null, pin = null,
     countParams.push(endDate);
     countQuery += ` AND a.check_time <= $${countParams.length}::timestamp + interval '1 day' - interval '1 second'`;
   }
-  
+
   if (!startDate && !endDate) {
     if (year) { countParams.push(year); countQuery += ` AND EXTRACT(YEAR FROM a.check_time) = $${countParams.length}`; }
     if (month) { countParams.push(month); countQuery += ` AND EXTRACT(MONTH FROM a.check_time) = $${countParams.length}`; }
@@ -540,7 +547,7 @@ const getAttendanceLogs = async (limit = 100, offset = 0, sn = null, pin = null,
   }
 
   const countRes = await db.query(countQuery, countParams);
-  
+
   return {
     data: rows,
     total: parseInt(countRes.rows[0].count)
@@ -573,7 +580,12 @@ const getPegawaiBasicInfo = async (pin, deviceSN = null) => {
       WHERE e.pin = $1
     `;
     const result = await db.query(query, [pin, deviceSN]);
-    return result.rows[0] || null;
+    const row = result.rows[0];
+    if (!row) return null;
+    return {
+      ...row,
+      privilege_label: constants.PRIVILEGES_LEVELS[row.privilege] || 'Unknown'
+    };
   }
   // Fallback: get basic info without device-specific privilege
   const query = `
@@ -582,7 +594,12 @@ const getPegawaiBasicInfo = async (pin, deviceSN = null) => {
     WHERE pin = $1
   `;
   const result = await db.query(query, [pin]);
-  return result.rows[0] || null;
+  const row = result.rows[0];
+  if (!row) return null;
+  return {
+    ...row,
+    privilege_label: constants.PRIVILEGES_LEVELS[row.privilege] || 'Unknown'
+  };
 };
 
 module.exports = {
