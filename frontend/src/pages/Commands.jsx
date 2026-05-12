@@ -64,7 +64,7 @@ export default function Commands() {
                 <tr className="bg-slate-50/50 border-b border-slate-100">
                   <th className="text-left px-6 py-2.5 font-semibold text-slate-500 text-xs tracking-wider uppercase">ID</th>
                   <th className="text-left px-6 py-2.5 font-semibold text-slate-500 text-xs tracking-wider uppercase">Device SN</th>
-                  <th className="text-left px-6 py-2.5 font-semibold text-slate-500 text-xs tracking-wider uppercase">Device Name</th>
+                  <th className="text-left px-6 py-2.5 font-semibold text-slate-500 text-xs tracking-wider uppercase">Lokasi</th>
                   <th className="text-left px-6 py-2.5 font-semibold text-slate-500 text-xs tracking-wider uppercase">Type</th>
                   <th className="text-left px-6 py-2.5 font-semibold text-slate-500 text-xs tracking-wider uppercase">Params</th>
                   <th className="text-left px-6 py-2.5 font-semibold text-slate-500 text-xs tracking-wider uppercase">Status</th>
@@ -76,7 +76,7 @@ export default function Commands() {
                   <tr key={c.id} className="hover:bg-slate-50/80 transition-colors">
                     <td className="px-6 py-3.5 font-mono text-slate-700">{c.id}</td>
                     <td className="px-6 py-3.5 font-mono text-sm text-slate-700">{c.device_sn}</td>
-                    <td className="px-6 py-3.5 text-slate-700 font-medium">{c.device_name || '-'}</td>
+                    <td className="px-6 py-3.5 text-slate-700 font-medium">{c.device_name || c.device_sn}</td>
                     <td className="px-6 py-3.5">
                       <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-md bg-slate-100 text-slate-700">{c.command_type}</span>
                     </td>

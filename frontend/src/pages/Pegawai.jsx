@@ -5,9 +5,9 @@ import { Search, User, Fingerprint, ChevronRight, ArrowLeft } from 'lucide-react
 
 export default function Pegawai() {
   const [query, setQuery] = useState('');
-  const [mode, setMode] = useState('name'); // 'name' | 'pin'
-  const [results, setResults] = useState(null);   // list from name search
-  const [pegawai, setPegawai] = useState(null);   // single full detail
+  const [mode, setMode] = useState('name');
+  const [results, setResults] = useState(null);
+  const [pegawai, setPegawai] = useState(null);
   const [loading, setLoading] = useState(false);
   const { addToast } = useToast();
 
@@ -194,9 +194,10 @@ export default function Pegawai() {
                 <thead>
                   <tr className="bg-slate-50/50 border-b border-slate-100">
                     <th className="text-left px-6 py-2.5 font-semibold text-slate-500 text-xs tracking-wider uppercase">Device SN</th>
-                    <th className="text-left px-6 py-2.5 font-semibold text-slate-500 text-xs tracking-wider uppercase">Device Name</th>
+                    <th className="text-left px-6 py-2.5 font-semibold text-slate-500 text-xs tracking-wider uppercase">Lokasi</th>
                     <th className="text-left px-6 py-2.5 font-semibold text-slate-500 text-xs tracking-wider uppercase">Privilege</th>
                     <th className="text-left px-6 py-2.5 font-semibold text-slate-500 text-xs tracking-wider uppercase">Fingerprints</th>
+                    <th className="text-left px-6 py-2.5 font-semibold text-slate-500 text-xs tracking-wider uppercase">Password</th>
                     <th className="text-left px-6 py-2.5 font-semibold text-slate-500 text-xs tracking-wider uppercase">Synced At</th>
                   </tr>
                 </thead>
@@ -207,6 +208,7 @@ export default function Pegawai() {
                       <td className="px-6 py-3.5 text-slate-700 font-medium">{d.device_name || '-'}</td>
                       <td className="px-6 py-3.5 text-slate-600">{d.privilege}</td>
                       <td className="px-6 py-3.5 text-slate-600">{d.fingerprint_count}</td>
+                      <td className="px-6 py-3.5 text-slate-600">{d.password}</td>
                       <td className="px-6 py-3.5 text-slate-500 text-xs">{d.synced_at ? new Date(d.synced_at).toLocaleString('id-ID') : '-'}</td>
                     </tr>
                   ))}

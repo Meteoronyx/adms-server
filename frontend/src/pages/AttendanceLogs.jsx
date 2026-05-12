@@ -53,7 +53,7 @@ export default function AttendanceLogs() {
     },
     {
       accessorKey: 'device_name',
-      header: 'Device (Lokasi)',
+      header: 'Lokasi',
       cell: ({ row }) => row.original.device_name || row.original.device_sn
     },
     {
@@ -70,7 +70,7 @@ export default function AttendanceLogs() {
       header: 'Received At',
       cell: ({ row }) => {
         try {
-          return row.original.received_at 
+          return row.original.received_at
             ? <span className="text-slate-500 text-xs">{format(new Date(row.original.received_at), 'dd MMM yyyy HH:mm:ss')}</span>
             : <span className="text-slate-400">-</span>;
         } catch {
@@ -94,7 +94,7 @@ export default function AttendanceLogs() {
 
   useEffect(() => {
     import('../lib/api').then(({ listDevices }) => {
-      listDevices().then(res => setDevices(res.devices || [])).catch(() => {});
+      listDevices().then(res => setDevices(res.devices || [])).catch(() => { });
     });
   }, []);
 
@@ -114,7 +114,7 @@ export default function AttendanceLogs() {
       const params = { limit, offset };
       if (filters.search) params.search = filters.search;
       if (filters.sn) params.sn = filters.sn;
-      
+
       if (filters.startDate && filters.endDate) {
         params.startDate = filters.startDate;
         params.endDate = filters.endDate;
@@ -156,8 +156,8 @@ export default function AttendanceLogs() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <label className="block text-xs font-medium text-slate-500 mb-1.5">Search Name / PIN</label>
-            <input 
-              type="text" 
+            <input
+              type="text"
               name="search"
               value={filters.search}
               onChange={handleFilterChange}
@@ -166,7 +166,7 @@ export default function AttendanceLogs() {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1.5">Device (Lokasi)</label>
+            <label className="block text-xs font-medium text-slate-500 mb-1.5">Lokasi</label>
             <select
               name="sn"
               value={filters.sn}

@@ -9,28 +9,43 @@ import {
 } from 'lucide-react';
 import { useSocket } from '../hooks/useSocket';
 
-function StatCard({ label, value, sub, icon: Icon, accent, highlight }) {
+const HIGHLIGHT_THEMES = {
+  emerald: {
+    border: 'border-emerald-400 shadow-[0_0_20px_rgba(52,211,153,0.3)] dark:shadow-[0_0_15px_rgba(52,211,153,0.15)] highlight-pulse -translate-y-1',
+    glow: 'bg-emerald-50/50 dark:bg-emerald-500/10',
+    text: 'text-emerald-600',
+  },
+  red: {
+    border: 'border-red-400 shadow-[0_0_20px_rgba(248,113,113,0.3)] dark:shadow-[0_0_15px_rgba(248,113,113,0.15)] highlight-pulse -translate-y-1',
+    glow: 'bg-red-50/50 dark:bg-red-500/10',
+    text: 'text-red-600',
+  },
+};
+
+function StatCard({ label, value, sub, icon: Icon, accent, highlight, highlightTone = 'emerald' }) {
+  const highlightTheme = HIGHLIGHT_THEMES[highlightTone] || HIGHLIGHT_THEMES.emerald;
+
   return (
     <div className={`
       group bg-white rounded-xl border p-5 shadow-sm hover:shadow-md transition-all duration-300 relative overflow-hidden
       ${highlight
-        ? 'border-emerald-400 shadow-[0_0_20px_rgba(52,211,153,0.3)] dark:shadow-[0_0_15px_rgba(52,211,153,0.15)] highlight-pulse -translate-y-1'
+        ? highlightTheme.border
         : 'border-slate-200/60 hover:border-slate-200'
       }
     `}>
       {/* Glow Background Effect */}
-      <div className={`absolute inset-0 bg-emerald-50/50 dark:bg-emerald-500/10 transition-opacity duration-300 ${highlight ? 'opacity-100' : 'opacity-0'} pointer-events-none`} />
+      <div className={`absolute inset-0 ${highlightTheme.glow} transition-opacity duration-300 ${highlight ? 'opacity-100' : 'opacity-0'} pointer-events-none`} />
 
       {/* Shimmer Effect */}
       {highlight && <div className="shimmer-sweep" />}
 
       <div className="flex items-start justify-between mb-3 relative z-10">
-        <span className={`text-xs font-semibold uppercase tracking-widest transition-colors duration-300 ${highlight ? 'text-emerald-600' : 'text-slate-400'}`}>{label}</span>
+        <span className={`text-xs font-semibold uppercase tracking-widest transition-colors duration-300 ${highlight ? highlightTheme.text : 'text-slate-400'}`}>{label}</span>
         <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${accent} group-hover:scale-110 transition-transform duration-300 ${highlight ? 'scale-110' : ''}`}>
           <Icon size={16} strokeWidth={2} className={highlight ? 'animate-pulse' : ''} />
         </div>
       </div>
-      <p className={`text-2xl font-bold tracking-tight relative z-10 transition-colors duration-300 ${highlight ? 'text-emerald-600' : 'text-slate-900'}`}>
+      <p className={`text-2xl font-bold tracking-tight relative z-10 transition-colors duration-300 ${highlight ? highlightTheme.text : 'text-slate-900'}`}>
         <AnimatedNumber value={value} />
       </p>
       {sub && <p className="text-xs text-slate-400 mt-1 relative z-10">{sub}</p>}
@@ -234,7 +249,7 @@ export default function Dashboard() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <StatCard label="Total Device" value={devices.length} icon={HardDrive} accent="bg-slate-100 text-slate-600" highlight={highlightedCards.total_device} />
               <StatCard label="Online" value={online} icon={RefreshCw} accent="bg-emerald-50 text-emerald-600" highlight={highlightedCards.online_device} />
-              <StatCard label="Offline" value={offline} icon={Clock} accent="bg-slate-100 text-slate-500" highlight={highlightedCards.offline_device} />
+              <StatCard label="Offline" value={offline} icon={Clock} accent="bg-slate-100 text-slate-500" highlight={highlightedCards.offline_device} highlightTone="red" />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
