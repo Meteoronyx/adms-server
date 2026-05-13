@@ -374,10 +374,32 @@ export default function Dashboard() {
                         <span className="text-slate-500">Version</span>
                         <span className="font-mono text-xs font-medium text-slate-700 bg-slate-100 px-2 py-0.5 rounded">{health.app_version}</span>
                       </div>
-                      <div className="flex justify-between items-center py-1.5">
-                        <span className="text-slate-500">Memory</span>
+                      <div className="flex justify-between items-center py-1.5 border-b border-slate-100">
+                        <span className="text-slate-500">DB Status</span>
+                        <span className={`font-medium text-xs px-2 py-0.5 rounded ${
+                          health.database?.status === 'connected' 
+                            ? 'text-emerald-700 bg-emerald-50' 
+                            : 'text-red-700 bg-red-50'
+                        }`}>
+                          {health.database?.status || 'disconnected'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center py-1.5 border-b border-slate-100">
+                        <span className="text-slate-500">DB Pool</span>
+                        <span className="font-medium text-slate-700 text-xs bg-slate-100 px-2 py-0.5 rounded">
+                          {health.database?.pool?.active || 0}/{health.database?.pool?.max || 0} (Wait: {health.database?.pool?.waiting || 0})
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center py-1.5 border-b border-slate-100">
+                        <span className="text-slate-500">Memory Heap</span>
                         <span className="font-medium text-slate-700 text-xs bg-slate-100 px-2 py-0.5 rounded">
                           {health.memory?.used} / {health.memory?.total}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center py-1.5">
+                        <span className="text-slate-500">Memory RSS</span>
+                        <span className="font-medium text-slate-700 text-xs bg-slate-100 px-2 py-0.5 rounded">
+                          {health.memory?.rss}
                         </span>
                       </div>
                     </div>

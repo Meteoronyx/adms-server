@@ -495,12 +495,29 @@ const getAttendanceLogs = async (limit = 100, offset = 0, sn = null, pin = null,
   }
 
   if (!startDate && !endDate) {
-    if (year) {
-      params.push(year);
-      query += ` AND EXTRACT(YEAR FROM a.check_time) = $${params.length}`;
-    }
-
-    if (month) {
+    if (year && month) {
+      const y = parseInt(year);
+      const m = parseInt(month);
+      const start = `${y}-${String(m).padStart(2, '0')}-01`;
+      
+      let nextY = y;
+      let nextM = m + 1;
+      if (nextM > 12) {
+        nextM = 1;
+        nextY += 1;
+      }
+      const end = `${nextY}-${String(nextM).padStart(2, '0')}-01`;
+      
+      params.push(start, end);
+      query += ` AND a.check_time >= $${params.length - 1} AND a.check_time < $${params.length}`;
+    } else if (year) {
+      const y = parseInt(year);
+      const start = `${y}-01-01`;
+      const end = `${y + 1}-01-01`;
+      
+      params.push(start, end);
+      query += ` AND a.check_time >= $${params.length - 1} AND a.check_time < $${params.length}`;
+    } else if (month) {
       params.push(month);
       query += ` AND EXTRACT(MONTH FROM a.check_time) = $${params.length}`;
     }
@@ -537,8 +554,32 @@ const getAttendanceLogs = async (limit = 100, offset = 0, sn = null, pin = null,
   }
 
   if (!startDate && !endDate) {
-    if (year) { countParams.push(year); countQuery += ` AND EXTRACT(YEAR FROM a.check_time) = $${countParams.length}`; }
-    if (month) { countParams.push(month); countQuery += ` AND EXTRACT(MONTH FROM a.check_time) = $${countParams.length}`; }
+    if (year && month) {
+      const y = parseInt(year);
+      const m = parseInt(month);
+      const start = `${y}-${String(m).padStart(2, '0')}-01`;
+      
+      let nextY = y;
+      let nextM = m + 1;
+      if (nextM > 12) {
+        nextM = 1;
+        nextY += 1;
+      }
+      const end = `${nextY}-${String(nextM).padStart(2, '0')}-01`;
+      
+      countParams.push(start, end);
+      countQuery += ` AND a.check_time >= $${countParams.length - 1} AND a.check_time < $${countParams.length}`;
+    } else if (year) {
+      const y = parseInt(year);
+      const start = `${y}-01-01`;
+      const end = `${y + 1}-01-01`;
+      
+      countParams.push(start, end);
+      countQuery += ` AND a.check_time >= $${countParams.length - 1} AND a.check_time < $${countParams.length}`;
+    } else if (month) {
+      countParams.push(month);
+      countQuery += ` AND EXTRACT(MONTH FROM a.check_time) = $${countParams.length}`;
+    }
   }
 
   if (search) {

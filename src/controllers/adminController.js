@@ -75,7 +75,7 @@ exports.unverifyDevice = async (req, res) => {
 exports.listDevices = async (req, res) => {
   const devices = await queries.getAllDevices();
   const offlineDevices = await queries.getOfflineDevices();
-  
+
   res.json({
     success: true,
     devices,
@@ -212,22 +212,22 @@ exports.enrollFingerprint = async (req, res) => {
     retry: retry !== undefined ? parseInt(retry) : 1,
     overwrite: overwrite !== undefined ? parseInt(overwrite) : 0
   });
-  
-  logger.info('Enroll fingerprint command queued', { 
-    sn, 
-    pin, 
-    fid, 
+
+  logger.info('Enroll fingerprint command queued', {
+    sn,
+    pin,
+    fid,
     retry: retry !== undefined ? parseInt(retry) : 1,
     overwrite: overwrite !== undefined ? parseInt(overwrite) : 0,
-    ip: req.ip 
+    ip: req.ip
   });
 
   res.json({
     success: true,
     message: `${config.RESPONSE.ADMIN.COMMAND_QUEUED}: ENROLL_FP`,
     device: { sn: device.sn, name: device.name },
-    params: { 
-      pin: parseInt(pin), 
+    params: {
+      pin: parseInt(pin),
       fid: parseInt(fid),
       retry: retry !== undefined ? parseInt(retry) : 1,
       overwrite: overwrite !== undefined ? parseInt(overwrite) : 0
@@ -324,7 +324,11 @@ exports.getPegawaiByDevice = async (req, res) => {
     device: {
       sn: device.sn,
       name: device.name,
-      device_name: device.device_name
+      device_name: device.device_name,
+      status: device.status,
+      last_activity: device.last_activity,
+      ip_address: device.ip_address,
+      verified: device.verified
     },
     count: pegawai.length,
     pegawai
@@ -345,10 +349,10 @@ exports.checkFingerprintOnDevice = async (req, res) => {
   // Manually check if device exists since 'sn' is in query, not params
   const device = await queries.getDeviceInfo(sn);
   if (!device) {
-     return res.status(404).json({
-        success: false,
-        message: `${config.RESPONSE.ADMIN.DEVICE_NOT_FOUND}: ${sn}`
-      });
+    return res.status(404).json({
+      success: false,
+      message: `${config.RESPONSE.ADMIN.DEVICE_NOT_FOUND}: ${sn}`
+    });
   }
 
   const fingerprints = await userService.checkFingerprintOnDevice(pin, sn);
@@ -424,12 +428,12 @@ exports.transferFingerprint = async (req, res) => {
     queuedCommands.push(fp.finger_id);
   }
 
-  logger.info('Fingerprint transfer commands queued', { 
-    target_sn: sn, 
+  logger.info('Fingerprint transfer commands queued', {
+    target_sn: sn,
     source_sn: source_sn,
     pin: pin,
     finger_ids: queuedCommands,
-    ip: req.ip 
+    ip: req.ip
   });
 
   res.json({

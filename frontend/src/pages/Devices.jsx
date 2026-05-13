@@ -50,8 +50,22 @@ export default function Devices() {
   useEffect(() => {
     if (!socket) return;
 
-    const handleDeviceUpdate = () => {
-      fetchDevices();
+    const handleDeviceUpdate = (data) => {
+      if (!data || !data.sn) return;
+
+      setDevices(prevDevices => {
+        const deviceExists = prevDevices.some(d => d.sn === data.sn);
+
+        if (deviceExists) {
+          return prevDevices.map(device =>
+            device.sn === data.sn
+              ? { ...device, last_activity: new Date().toISOString(), status: 'online' }
+              : device
+          );
+        }
+        setTimeout(fetchDevices, 0);
+        return prevDevices;
+      });
     };
 
     socket.on('device_update', handleDeviceUpdate);
