@@ -83,6 +83,38 @@ exports.listDevices = async (req, res) => {
   });
 };
 
+exports.updateDeviceName = async (req, res) => {
+  const { sn } = req.params;
+  const { device_name } = req.body;
+
+  if (!device_name || !device_name.trim()) {
+    return res.status(400).json({
+      success: false,
+      message: 'device_name is required and cannot be empty'
+    });
+  }
+
+  // Check device exists
+  const device = await queries.getDeviceInfo(sn);
+  if (!device) {
+    return res.status(404).json({
+      success: false,
+      message: `Device not found: ${sn}`
+    });
+  }
+
+  await queries.updateDeviceName(sn, device_name.trim());
+  logger.info('Device name updated via API', { sn, device_name: device_name.trim(), ip: req.ip });
+
+  res.json({
+    success: true,
+    message: `Device name updated for ${sn}`,
+    sn,
+    device_name: device_name.trim()
+  });
+};
+
+
 // Device Commands (clearlog)
 exports.clearLog = async (req, res) => {
   const { sn } = req.params;

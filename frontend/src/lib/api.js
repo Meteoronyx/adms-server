@@ -99,3 +99,7 @@ export const updateUser = (sn, { pin, privilege, passwd }) =>
 
 export const deleteUser = (sn, pin) =>
   fetchJSON(`/admin/user/${sn}/${pin}`, { method: 'DELETE' });
+
+export const updateDeviceName = (sn, device_name) =>
+  fetchJSON(`/admin/devices/${sn}`, { method: 'PATCH', body: JSON.stringify({ device_name }) });
+

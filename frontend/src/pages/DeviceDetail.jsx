@@ -10,12 +10,13 @@ import {
   infoDevice,
   updateUser,
   deleteUser,
-  enrollFingerprint
+  enrollFingerprint,
+  updateDeviceName,
 } from '../lib/api';
 import { useToast } from '../hooks/useToast';
 import StatusBadge from '../components/StatusBadge';
 import {
-  ArrowLeft, CheckCircle2, XCircle, RefreshCw, Power, Trash2, Info, Users, Edit, Fingerprint, X, HardDrive
+  ArrowLeft, CheckCircle2, XCircle, RefreshCw, Power, Trash2, Info, Users, Edit, Fingerprint, X, HardDrive, Pencil
 } from 'lucide-react';
 
 export default function DeviceDetail() {
@@ -28,6 +29,7 @@ export default function DeviceDetail() {
   // Modal states
   const [updateModal, setUpdateModal] = useState({ open: false, data: null });
   const [enrollModal, setEnrollModal] = useState({ open: false, data: null });
+  const [editNameModal, setEditNameModal] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -97,6 +99,21 @@ export default function DeviceDetail() {
     }
   };
 
+  const handleEditNameSubmit = async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const newName = (fd.get('device_name') || '').trim();
+    if (!newName) return;
+    try {
+      await updateDeviceName(sn, newName);
+      addToast('Device name updated');
+      setEditNameModal(false);
+      fetchData();
+    } catch (err) {
+      addToast(err.message || 'Failed to update name', 'error');
+    }
+  };
+
   const pegawai = data?.pegawai || [];
 
   return (
@@ -126,7 +143,16 @@ export default function DeviceDetail() {
                   <HardDrive size={24} className="text-slate-500" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-slate-900 tracking-tight">{data.device?.device_name || data.device?.name || sn}</h2>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-lg font-bold text-slate-900 tracking-tight">{data.device?.device_name || data.device?.name || sn}</h2>
+                    <button
+                      title="Edit device name"
+                      onClick={() => setEditNameModal(true)}
+                      className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                    >
+                      <Pencil size={13} />
+                    </button>
+                  </div>
                   <p className="text-sm text-slate-500 mt-0.5">SN: <span className="font-mono text-slate-700">{sn}</span></p>
                 </div>
               </div>
@@ -287,6 +313,39 @@ export default function DeviceDetail() {
                   <div className="flex justify-end gap-2 pt-2">
                     <button type="button" onClick={() => setEnrollModal({ open: false, data: null })} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">Cancel</button>
                     <button type="submit" className="px-4 py-2 text-sm font-medium bg-violet-600 text-white hover:bg-violet-700 rounded-lg transition-colors">Enroll</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* Edit Device Name Modal */}
+          {editNameModal && (
+            <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+              <div className="bg-white rounded-xl shadow-xl w-full max-w-sm">
+                <div className="flex justify-between items-center px-5 py-4 border-b border-slate-100">
+                  <div>
+                    <h3 className="font-semibold text-slate-900">Edit Device Name</h3>
+                    <p className="text-xs text-slate-400 mt-0.5 font-mono">{sn}</p>
+                  </div>
+                  <button onClick={() => setEditNameModal(false)} className="p-1 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"><X size={16} /></button>
+                </div>
+                <form onSubmit={handleEditNameSubmit} className="p-5 space-y-4">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600 mb-1.5">Device Name / Lokasi</label>
+                    <input
+                      type="text"
+                      name="device_name"
+                      defaultValue={data?.device?.device_name || ''}
+                      placeholder="Contoh: Kantor Pusat Lt.2"
+                      autoFocus
+                      required
+                      className="w-full text-sm rounded-lg border border-slate-200 px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 placeholder:text-slate-400"
+                    />
+                  </div>
+                  <div className="flex justify-end gap-2 pt-1">
+                    <button type="button" onClick={() => setEditNameModal(false)} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">Cancel</button>
+                    <button type="submit" className="px-4 py-2 text-sm font-medium bg-slate-900 text-white hover:bg-slate-800 rounded-lg transition-colors">Simpan</button>
                   </div>
                 </form>
               </div>

@@ -20,6 +20,8 @@ router.delete('/admin/verify/:sn', validateDevice, asyncHandler(adminController.
 
 // Device Management
 router.get('/admin/devices', asyncHandler(adminController.listDevices));
+router.patch('/admin/devices/:sn', asyncHandler(adminController.updateDeviceName));
+
 
 // Device Commands
 router.post(config.PATHS.ADMIN.CLEAR_LOG, validateDevice, asyncHandler(adminController.clearLog));

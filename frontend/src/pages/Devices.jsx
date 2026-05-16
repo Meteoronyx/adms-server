@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
   listDevices,
@@ -8,6 +8,7 @@ import {
   rebootDevice,
   clearLog,
   infoDevice,
+  updateDeviceName,
 } from '../lib/api';
 import { useToast } from '../hooks/useToast';
 import { useSocket } from '../hooks/useSocket';
@@ -23,12 +24,15 @@ import {
   Info,
   Search,
   HardDrive,
+  Pencil,
+  X,
 } from 'lucide-react';
 
 export default function Devices() {
   const [devices, setDevices] = useState([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [editModal, setEditModal] = useState({ open: false, sn: '', currentName: '' });
   const { addToast } = useToast();
   const { socket } = useSocket();
 
@@ -72,7 +76,7 @@ export default function Devices() {
     return () => socket.off('device_update', handleDeviceUpdate);
   }, [socket]);
 
-  const doAction = async (fn, sn, successMsg) => {
+  const doAction = useCallback(async (fn, sn, successMsg) => {
     try {
       await fn(sn);
       addToast(successMsg);
@@ -80,17 +84,34 @@ export default function Devices() {
     } catch (err) {
       addToast(err.message || 'Action failed', 'error');
     }
-  };
+  }, [addToast]); // fetchDevices is not memoized but stable enough here
 
-  const filtered = devices.filter(
-    d =>
-      d.sn.toLowerCase().includes(search.toLowerCase()) ||
-      (d.name || '').toLowerCase().includes(search.toLowerCase()) ||
-      (d.device_name || '').toLowerCase().includes(search.toLowerCase()) ||
-      (d.ip_address || '').includes(search)
-  );
+  const handleEditName = useCallback(async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const newName = (fd.get('device_name') || '').trim();
+    if (!newName) return;
+    try {
+      await updateDeviceName(editModal.sn, newName);
+      addToast(`Device name updated`);
+      setEditModal({ open: false, sn: '', currentName: '' });
+      await fetchDevices();
+    } catch (err) {
+      addToast(err.message || 'Failed to update name', 'error');
+    }
+  }, [editModal, addToast]);
 
-  const columns = [
+  const filtered = useMemo(() => {
+    return devices.filter(
+      d =>
+        d.sn.toLowerCase().includes(search.toLowerCase()) ||
+        (d.name || '').toLowerCase().includes(search.toLowerCase()) ||
+        (d.device_name || '').toLowerCase().includes(search.toLowerCase()) ||
+        (d.ip_address || '').includes(search)
+    );
+  }, [devices, search]);
+
+  const columns = useMemo(() => [
     {
       accessorKey: 'sn',
       header: 'SN',
@@ -101,7 +122,22 @@ export default function Devices() {
       )
     },
     { accessorKey: 'name', header: 'Name', cell: ({ row }) => <span className="text-slate-600">{row.original.name || '-'}</span> },
-    { accessorKey: 'device_name', header: 'Device Name', cell: ({ row }) => <span className="font-medium text-slate-700">{row.original.device_name || '-'}</span> },
+    {
+      accessorKey: 'device_name',
+      header: 'Device Name',
+      cell: ({ row }) => (
+        <div className="flex items-center gap-1.5 group">
+          <span className="font-medium text-slate-700">{row.original.device_name || <span className="text-slate-400 italic">Belum diisi</span>}</span>
+          <button
+            title="Edit device name"
+            onClick={() => setEditModal({ open: true, sn: row.original.sn, currentName: row.original.device_name || '' })}
+            className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all"
+          >
+            <Pencil size={12} />
+          </button>
+        </div>
+      )
+    },
     { accessorKey: 'ip_address', header: 'IP Address', cell: ({ row }) => <span className="font-mono text-xs text-slate-400">{row.original.ip_address || '-'}</span> },
     {
       accessorKey: 'last_activity',
@@ -184,7 +220,7 @@ export default function Devices() {
         );
       }
     }
-  ];
+  ], [doAction]);
 
   return (
     <div className="space-y-6 fade-in">
@@ -212,7 +248,45 @@ export default function Devices() {
           <Skeleton className="h-64 w-full" />
         </div>
       ) : (
-        <DataTable columns={columns} data={filtered} pagination={true} />
+        <DataTable 
+          columns={columns} 
+          data={filtered} 
+          pagination={true} 
+          getRowId={row => row.sn}
+        />
+      )}
+
+      {/* Edit Device Name Modal */}
+      {editModal.open && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm">
+            <div className="flex justify-between items-center px-5 py-4 border-b border-slate-100">
+              <div>
+                <h3 className="font-semibold text-slate-900">Edit Device Name</h3>
+                <p className="text-xs text-slate-400 mt-0.5 font-mono">{editModal.sn}</p>
+              </div>
+              <button onClick={() => setEditModal({ open: false, sn: '', currentName: '' })} className="p-1 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"><X size={16} /></button>
+            </div>
+            <form onSubmit={handleEditName} className="p-5 space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1.5">Device Name / Lokasi</label>
+                <input
+                  type="text"
+                  name="device_name"
+                  defaultValue={editModal.currentName}
+                  placeholder="Contoh: Kantor Pusat Lt.2"
+                  autoFocus
+                  required
+                  className="w-full text-sm rounded-lg border border-slate-200 px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 placeholder:text-slate-400"
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-1">
+                <button type="button" onClick={() => setEditModal({ open: false, sn: '', currentName: '' })} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">Cancel</button>
+                <button type="submit" className="px-4 py-2 text-sm font-medium bg-slate-900 text-white hover:bg-slate-800 rounded-lg transition-colors">Simpan</button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );

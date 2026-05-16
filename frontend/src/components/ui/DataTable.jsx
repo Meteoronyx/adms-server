@@ -10,10 +10,12 @@ export function DataTable({
   columns,
   data,
   pagination = true,
+  getRowId,
 }) {
   const table = useReactTable({
     data,
     columns,
+    getRowId,
     getCoreRowModel: getCoreRowModel(),
     ...(pagination && { getPaginationRowModel: getPaginationRowModel() }),
     defaultColumn: {

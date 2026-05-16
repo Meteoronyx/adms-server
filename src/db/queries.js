@@ -216,6 +216,14 @@ const unverifyDevice = async (sn) => {
   return db.query(query, [sn]);
 };
 
+// Update device name (admin-set label, works for unverified devices too)
+const updateDeviceName = async (sn, deviceName) => {
+  const query = `
+    UPDATE devices SET device_name = $1 WHERE sn = $2
+  `;
+  return db.query(query, [deviceName, sn]);
+};
+
 // Get all devices
 const getAllDevices = async () => {
   const query = `
@@ -654,6 +662,7 @@ module.exports = {
   resetInitialSync,
   verifyDevice,
   unverifyDevice,
+  updateDeviceName,
   getAllDevices,
   getOfflineDevices,
   insertCommand,
