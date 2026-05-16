@@ -1,29 +1,39 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { me } from '../lib/api';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [token, setToken] = useState(() => localStorage.getItem('token'));
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    setLoading(false);
+  const verifySession = useCallback(async () => {
+    try {
+      await me();
+      setIsAuthenticated(true);
+    } catch {
+      setIsAuthenticated(false);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const login = useCallback((newToken) => {
-    localStorage.setItem('token', newToken);
-    setToken(newToken);
+  useEffect(() => {
+    verifySession();
+  }, [verifySession]);
+
+  const login = useCallback(() => {
+    // Cookie is already set by the server during /admin/login
+    setIsAuthenticated(true);
   }, []);
 
   const logout = useCallback(() => {
-    localStorage.removeItem('token');
-    setToken(null);
+    setIsAuthenticated(false);
+    // The caller should also call api.logout() to clear the server-side cookie
   }, []);
 
-  const isAuthenticated = !!token;
-
   return (
-    <AuthContext.Provider value={{ token, isAuthenticated, login, logout, loading }}>
+    <AuthContext.Provider value={{ isAuthenticated, login, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );

@@ -5,6 +5,7 @@ require('dotenv/config');
 const express = require('express');
 const path = require('path');
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
 const { Server } = require('socket.io');
 const morgan = require('morgan');
 const logger = require('./utils/logger');
@@ -22,7 +23,8 @@ const port = config.PORT;
 
 // Middleware
 app.use(cors({
-  origin: config.SERVER.CORS_ORIGIN
+  origin: true,
+  credentials: true
 }));
 
 // Morgan HTTP logger
@@ -33,6 +35,7 @@ app.use(morgan('combined', {
 
 // JSON body parser for admin routes
 app.use(express.json());
+app.use(cookieParser());
 
 // Serve frontend static files
 const frontendPath = path.join(__dirname, '../frontend/dist');
@@ -192,9 +195,15 @@ const server = app.listen(port, config.SERVER.HOST, () => {
 // Setup Socket.IO
 const io = new Server(server, {
   cors: {
-    origin: config.SERVER.CORS_ORIGIN,
-    methods: ["GET", "POST"]
+    origin: true,
+    methods: ["GET", "POST"],
+    credentials: true
   }
+});
+
+// Attach cookieParser to Socket.IO handshake
+io.use((socket, next) => {
+  cookieParser()(socket.request, {}, next);
 });
 
 io.on('connection', (socket) => {

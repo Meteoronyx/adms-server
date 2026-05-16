@@ -19,9 +19,8 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
     try {
-
-      const data = await apiLogin(username, password);
-      login(data.token);
+      await apiLogin(username, password);
+      login();
       addToast('Login successful');
       navigate('/');
     } catch (err) {

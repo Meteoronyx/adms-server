@@ -4,10 +4,18 @@ const jwt = require('jsonwebtoken');
 const config = require('../config');
 
 const JWT_SECRET = config.JWT_SECRET;
+const COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: config.NODE_ENV === 'production',
+  sameSite: 'strict',
+  maxAge: 8 * 60 * 60 * 1000 // 8 hours
+};
+
+function clearAuthCookie(res) {
+  res.clearCookie('token', { httpOnly: true, secure: config.NODE_ENV === 'production', sameSite: 'strict' });
+}
 
 const apiKeyAuth = (req, res, next) => {
-  const apiKey = req.headers['x-api-key'];
-
   if (!JWT_SECRET) {
     res.status(500).json({
       success: false,
@@ -16,6 +24,23 @@ const apiKeyAuth = (req, res, next) => {
     return;
   }
 
+  const cookieToken = req.cookies?.token;
+  if (cookieToken) {
+    try {
+      const decoded = jwt.verify(cookieToken, JWT_SECRET);
+      req.user = decoded;
+      return next();
+    } catch {
+      clearAuthCookie(res);
+      res.status(401).json({
+        success: false,
+        message: config.RESPONSE.ADMIN.UNAUTHORIZED
+      });
+      return;
+    }
+  }
+
+  const apiKey = req.headers['x-api-key'];
   if (!apiKey) {
     res.status(401).json({
       success: false,
@@ -24,16 +49,15 @@ const apiKeyAuth = (req, res, next) => {
     return;
   }
 
-  // 1. Try verify as JWT (issued by /admin/login)
   try {
-    jwt.verify(apiKey, JWT_SECRET);
+    const decoded = jwt.verify(apiKey, JWT_SECRET);
+    req.user = decoded;
     return next();
   } catch {
     // not a valid JWT, continue to fallback
   }
-
-  // 2. Fallback: compare as plain API key (for curl/Postman compatibility)
   if (apiKey === JWT_SECRET) {
+    req.user = { username: 'admin' };
     return next();
   }
 
@@ -44,3 +68,5 @@ const apiKeyAuth = (req, res, next) => {
 };
 
 module.exports = apiKeyAuth;
+module.exports.COOKIE_OPTIONS = COOKIE_OPTIONS;
+module.exports.clearAuthCookie = clearAuthCookie;

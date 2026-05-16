@@ -3,6 +3,7 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
 import { useTheme } from '../hooks/useTheme';
+import { logout as apiLogout } from '../lib/api';
 import {
   LayoutDashboard,
   HardDrive,
@@ -34,7 +35,11 @@ export default function Layout({ children }) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await apiLogout();
+    } catch {
+    }
     logout();
     addToast('Logged out');
     navigate('/login');

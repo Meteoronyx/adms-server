@@ -15,7 +15,16 @@ import AttendanceLogs from './pages/AttendanceLogs';
 
 function PrivateRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
-  if (loading) return <div className="p-6 text-sm text-slate-500">Loading...</div>;
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="flex items-center gap-3 text-slate-500">
+          <div className="animate-spin rounded-full h-5 w-5 border-2 border-slate-300 border-t-slate-900" />
+          <span className="text-sm">Checking session…</span>
+        </div>
+      </div>
+    );
+  }
   return isAuthenticated ? <Layout>{children}</Layout> : <Navigate to="/login" replace />;
 }
 

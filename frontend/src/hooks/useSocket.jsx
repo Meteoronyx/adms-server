@@ -12,6 +12,7 @@ export function SocketProvider({ children }) {
       transports: ['websocket', 'polling'],
       reconnectionAttempts: 5,
       reconnectionDelay: 2000,
+      withCredentials: true,
     });
 
     newSocket.on('connect', () => {

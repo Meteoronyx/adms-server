@@ -1,15 +1,11 @@
 const API_BASE = '';
 
-function getToken() {
-  return localStorage.getItem('token');
-}
-
 async function fetchJSON(path, options = {}) {
   const res = await fetch(`${API_BASE}${path}`, {
     ...options,
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
-      'x-api-key': getToken() || '',
       ...options.headers,
     },
   });
@@ -28,6 +24,9 @@ export const login = (username, password) =>
 
 export const logout = () =>
   fetchJSON('/admin/logout', { method: 'POST' });
+
+export const me = () =>
+  fetchJSON('/admin/me');
 
 export const getHealth = () =>
   fetchJSON('/health');
@@ -102,4 +101,3 @@ export const deleteUser = (sn, pin) =>
 
 export const updateDeviceName = (sn, device_name) =>
   fetchJSON(`/admin/devices/${sn}`, { method: 'PATCH', body: JSON.stringify({ device_name }) });
-
