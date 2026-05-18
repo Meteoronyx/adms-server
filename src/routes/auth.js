@@ -5,13 +5,30 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 const config = require('../config');
 const { COOKIE_OPTIONS, clearAuthCookie } = require('../middleware/apiKeyAuth');
+const rateLimit = require('express-rate-limit');
+const logger = require('../utils/logger');
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5,
+  handler: (req, res) => {
+    const clientIp = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    logger.warn(`Percobaan login dibatasi untuk IP: ${clientIp}`, { ip: clientIp });
+
+    res.status(429).json({
+      success: false,
+      message: 'Terlalu banyak percobaan login, silakan coba lagi setelah 15 menit.'
+    });
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 const JWT_SECRET = config.JWT_SECRET;
 const ADMIN_USERNAME = config.ADMIN_USERNAME;
 const ADMIN_PASSWORD = config.ADMIN_PASSWORD;
 
-// POST /admin/login
-router.post('/admin/login', (req, res) => {
+router.post('/admin/login', loginLimiter, (req, res) => {
   if (!JWT_SECRET) {
     return res.status(500).json({ success: false, message: 'Server configuration error: JWT_SECRET (ADMIN_API_KEY) is not configured' });
   }

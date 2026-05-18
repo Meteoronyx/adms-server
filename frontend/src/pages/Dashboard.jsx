@@ -11,12 +11,12 @@ import { useSocket } from '../hooks/useSocket';
 
 const HIGHLIGHT_THEMES = {
   emerald: {
-    border: 'border-emerald-400 shadow-[0_0_20px_rgba(52,211,153,0.3)] dark:shadow-[0_0_15px_rgba(52,211,153,0.15)] highlight-pulse -translate-y-1',
+    border: 'border-emerald-400 shadow-[0_0_20px_rgba(52,211,153,0.3)] dark:shadow-[0_0_15px_rgba(52,211,153,0.15)] highlight-pulse-emerald -translate-y-1',
     glow: 'bg-emerald-50/50 dark:bg-emerald-500/10',
     text: 'text-emerald-600',
   },
   red: {
-    border: 'border-red-400 shadow-[0_0_20px_rgba(248,113,113,0.3)] dark:shadow-[0_0_15px_rgba(248,113,113,0.15)] highlight-pulse -translate-y-1',
+    border: 'border-red-400 shadow-[0_0_20px_rgba(248,113,113,0.3)] dark:shadow-[0_0_15px_rgba(248,113,113,0.15)] highlight-pulse-red -translate-y-1',
     glow: 'bg-red-50/50 dark:bg-red-500/10',
     text: 'text-red-600',
   },

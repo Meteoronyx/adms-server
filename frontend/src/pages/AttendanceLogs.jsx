@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { getAttendanceLogs } from '../lib/api';
 import { DataTable } from '../components/ui/DataTable';
 import { Skeleton } from '../components/ui/Skeleton';
+import { SearchableSelect } from '../components/ui/SearchableSelect';
 import { format } from 'date-fns';
 import { useToast } from '../hooks/useToast';
 import { useSocket } from '../hooks/useSocket';
@@ -167,17 +168,16 @@ export default function AttendanceLogs() {
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-500 mb-1.5">Lokasi</label>
-            <select
-              name="sn"
+            <SearchableSelect
               value={filters.sn}
-              onChange={handleFilterChange}
-              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 transition-shadow"
-            >
-              <option value="">All Devices</option>
-              {devices.map(d => (
-                <option key={d.sn} value={d.sn}>{d.device_name || d.sn}</option>
-              ))}
-            </select>
+              onChange={(val) => handleFilterChange({ target: { name: 'sn', value: val } })}
+              options={devices.map(d => ({
+                value: d.sn,
+                label: d.device_name || d.sn
+              }))}
+              placeholder="All Devices"
+              defaultOptionLabel="All Devices"
+            />
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-500 mb-1.5">Periode</label>

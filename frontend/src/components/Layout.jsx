@@ -49,22 +49,21 @@ export default function Layout({ children }) {
     <div className="flex h-screen bg-[#f8f9fb]">
       {/* Sidebar */}
       <aside
-        className={`relative flex flex-col bg-white border-r border-slate-200/60 transition-all duration-300 ease-in-out z-20 ${
-          collapsed ? 'w-20' : 'w-64'
-        }`}
+        className={`relative flex flex-col bg-white border-r border-slate-200/60 transition-all duration-300 ease-in-out z-20 ${collapsed ? 'w-20' : 'w-64'
+          }`}
       >
         {/* Brand section */}
         <div className="flex items-center h-16 px-5 mt-2 mb-4">
           <div className={`flex items-center gap-3 overflow-hidden transition-all duration-300 ${collapsed ? 'w-0 opacity-0' : 'w-full opacity-100'}`}>
-            <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm">
-              <HardDrive size={16} className="text-white" strokeWidth={2.5} />
+            <div className="w-10 h-10 bg-white dark:!bg-white border border-slate-200/80 dark:!border-slate-200/80 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm p-1.5 transition-all duration-300">
+              <img src="/favicon.svg" alt="DBSpot" className="w-full h-full object-contain" />
             </div>
             <div className="leading-tight">
               <span className="font-semibold text-slate-900 tracking-tight text-lg">DBSpot</span>
               <p className="text-[10px] text-slate-400 tracking-wide font-medium">Diskominfo Kab. Tangerang</p>
             </div>
           </div>
-          
+
           <button
             onClick={() => setCollapsed(!collapsed)}
             className={`absolute -right-3 top-5 bg-white border border-slate-200 text-slate-400 rounded-full p-1 hover:text-slate-900 hover:border-slate-300 transition-colors z-30 shadow-sm`}
@@ -82,21 +81,20 @@ export default function Layout({ children }) {
               <NavLink
                 key={item.path}
                 to={item.path}
-                className={`relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 group ${
-                  active
-                    ? 'text-slate-900 bg-slate-100'
-                    : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
-                }`}
+                className={`relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 group ${active
+                  ? 'text-slate-900 bg-slate-100'
+                  : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+                  }`}
                 title={collapsed ? item.label : ''}
               >
                 {/* Active indicator bar */}
                 {active && (
                   <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-slate-900 rounded-full" />
                 )}
-                <Icon 
-                  size={18} 
-                  strokeWidth={active ? 2.2 : 1.8} 
-                  className={`flex-shrink-0 transition-colors ${active ? 'text-slate-900' : 'text-slate-400 group-hover:text-slate-600'}`} 
+                <Icon
+                  size={18}
+                  strokeWidth={active ? 2.2 : 1.8}
+                  className={`flex-shrink-0 transition-colors ${active ? 'text-slate-900' : 'text-slate-400 group-hover:text-slate-600'}`}
                 />
                 {!collapsed && <span className="truncate">{item.label}</span>}
               </NavLink>

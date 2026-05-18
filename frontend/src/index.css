@@ -218,17 +218,28 @@
     ) !important;
   }
 
-  /* Highlight pulse */
-  .dark .highlight-pulse {
+  /* Highlight pulse — Emerald */
+  .dark .highlight-pulse-emerald {
     border-color: #4ade8080 !important;
   }
-  .dark .highlight-pulse {
-    animation: darkHighlightPulse 2s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
+  .dark .highlight-pulse-emerald {
+    animation: darkHighlightPulseEmerald 2s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
   }
-  @keyframes darkHighlightPulse {
+  @keyframes darkHighlightPulseEmerald {
     0%   { border-color: #34d399; box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.3); }
     20%  { border-color: #6ee7b7; box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.1); }
     100% { border-color: #064e3b; box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); }
+  }
+  .dark .highlight-pulse-red {
+    border-color: #f8717180 !important;
+  }
+  .dark .highlight-pulse-red {
+    animation: darkHighlightPulseRed 2s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
+  }
+  @keyframes darkHighlightPulseRed {
+    0%   { border-color: #f87171; box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.3); }
+    20%  { border-color: #fca5a5; box-shadow: 0 0 0 4px rgba(248, 113, 113, 0.1); }
+    100% { border-color: #7f1d1d; box-shadow: 0 0 0 0 rgba(248, 113, 113, 0); }
   }
 
   /* Server Health version/memory badges */
@@ -250,8 +261,7 @@
   }
 
   /* Toggle button in sidebar */
-  .dark .absolute.-right-3 button,
-  .dark .absolute.-right-3 button.bg-white {
+  .dark .absolute.-right-3 {
     background-color: var(--card-bg) !important;
     border-color: var(--border) !important;
     color: var(--text-muted) !important;
@@ -317,13 +327,22 @@
   }
 
   /* ── Dashboard highlight & shimmer ── */
-  .highlight-pulse {
-    animation: highlightPulse 2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  .highlight-pulse-emerald {
+    animation: highlightPulseEmerald 2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
   }
-  @keyframes highlightPulse {
+  @keyframes highlightPulseEmerald {
     0%   { border-color: rgb(110 231 183); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
     20%  { border-color: rgb(52 211 153); box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1); }
     100% { border-color: rgb(209 250 229); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+  }
+
+  .highlight-pulse-red {
+    animation: highlightPulseRed 2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+  @keyframes highlightPulseRed {
+    0%   { border-color: rgb(252 165 165); box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.4); }
+    20%  { border-color: rgb(248 113 113); box-shadow: 0 0 0 4px rgba(248, 113, 113, 0.1); }
+    100% { border-color: rgb(254 202 202); box-shadow: 0 0 0 0 rgba(248, 113, 113, 0); }
   }
 
   .shimmer-sweep {
