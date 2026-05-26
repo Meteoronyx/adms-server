@@ -297,21 +297,23 @@ const getAllPendingCommands = async () => {
 // Upsert pegawai (master data only - privilege/password moved to device mapping)
 const upsertPegawai = async (userData) => {
   const query = `
-    INSERT INTO pegawai (pin, name, card, group_no, timezone, verify_mode, updated_at)
-    VALUES ($1, $2, $3, $4, $5, $6, NOW())
+    INSERT INTO pegawai (pin, name, card, group_no, timezone, verify_mode, updated_at, deleted_at)
+    VALUES ($1, $2, $3, $4, $5, $6, NOW(), NULL)
     ON CONFLICT (pin) DO UPDATE SET
       name = EXCLUDED.name,
       card = EXCLUDED.card,
       group_no = EXCLUDED.group_no,
       timezone = EXCLUDED.timezone,
       verify_mode = EXCLUDED.verify_mode,
-      updated_at = NOW()
+      updated_at = NOW(),
+      deleted_at = NULL
     WHERE
       pegawai.name IS DISTINCT FROM EXCLUDED.name OR
       pegawai.card IS DISTINCT FROM EXCLUDED.card OR
       pegawai.group_no IS DISTINCT FROM EXCLUDED.group_no OR
       pegawai.timezone IS DISTINCT FROM EXCLUDED.timezone OR
-      pegawai.verify_mode IS DISTINCT FROM EXCLUDED.verify_mode
+      pegawai.verify_mode IS DISTINCT FROM EXCLUDED.verify_mode OR
+      pegawai.deleted_at IS NOT NULL
     RETURNING pin
   `;
   return db.query(query, [
@@ -327,8 +329,8 @@ const upsertPegawai = async (userData) => {
 // Upsert pegawai-device mapping
 const upsertPegawaiDeviceMapping = async (pin, deviceSN, deviceName, privilege = 0, password = null) => {
   const query = `
-    INSERT INTO pegawai_device_mapping (pegawai_pin, device_sn, device_name, privilege, password, synced_at)
-    VALUES ($1, $2, $3, $4, $5, NOW())
+    INSERT INTO pegawai_device_mapping (pegawai_pin, device_sn, device_name, privilege, password, synced_at, updated_at, deleted_at)
+    VALUES ($1, $2, $3, $4, $5, NOW(), NOW(), NULL)
     ON CONFLICT (pegawai_pin, device_sn) DO UPDATE SET
       device_name = EXCLUDED.device_name,
       privilege = CASE 
@@ -339,7 +341,9 @@ const upsertPegawaiDeviceMapping = async (pin, deviceSN, deviceName, privilege =
         WHEN EXCLUDED.password IS NOT NULL AND EXCLUDED.password != '' THEN EXCLUDED.password
         ELSE pegawai_device_mapping.password
       END,
-      synced_at = NOW()
+      synced_at = NOW(),
+      updated_at = NOW(),
+      deleted_at = NULL
     RETURNING id
   `;
   return db.query(query, [pin, deviceSN, deviceName, privilege, password]);
@@ -352,17 +356,25 @@ const ensurePegawaiDeviceMapping = async (pin, deviceSN) => {
   if (checkPegawai.rows.length === 0) {
     // Create placeholder pegawai
     await db.query(`
-      INSERT INTO pegawai (pin, name, updated_at)
-      VALUES ($1, $1, NOW())
+      INSERT INTO pegawai (pin, name, updated_at, deleted_at)
+      VALUES ($1, $1, NOW(), NULL)
       ON CONFLICT (pin) DO NOTHING
+    `, [pin]);
+  } else {
+    // If pegawai exists, we should make sure deleted_at is null if it was soft-deleted
+    await db.query(`
+      UPDATE pegawai SET deleted_at = NULL, updated_at = NOW() WHERE pin = $1 AND deleted_at IS NOT NULL
     `, [pin]);
   }
 
   // Then ensure mapping exists
   const query = `
-    INSERT INTO pegawai_device_mapping (pegawai_pin, device_sn, synced_at)
-    VALUES ($1, $2, NOW())
-    ON CONFLICT (pegawai_pin, device_sn) DO NOTHING
+    INSERT INTO pegawai_device_mapping (pegawai_pin, device_sn, synced_at, updated_at, deleted_at)
+    VALUES ($1, $2, NOW(), NOW(), NULL)
+    ON CONFLICT (pegawai_pin, device_sn) DO UPDATE SET
+      deleted_at = NULL,
+      updated_at = NOW(),
+      synced_at = NOW()
     RETURNING id
   `;
   return db.query(query, [pin, deviceSN]);
@@ -389,7 +401,7 @@ const getPegawaiWithFingerprints = async (pin) => {
     SELECT e.*, 
            (SELECT COUNT(*) FROM pegawai_fingerprints ef WHERE ef.pegawai_pin = e.pin) as total_fingerprints
     FROM pegawai e
-    WHERE e.pin = $1
+    WHERE e.pin = $1 AND e.deleted_at IS NULL
   `;
   const pegawaiResult = await db.query(pegawaiQuery, [pin]);
   if (pegawaiResult.rows.length === 0) {
@@ -404,7 +416,7 @@ const getPegawaiWithFingerprints = async (pin) => {
            (SELECT COUNT(*) FROM pegawai_fingerprints ef 
             WHERE ef.pegawai_pin = edm.pegawai_pin AND ef.device_sn = edm.device_sn) as fingerprint_count
     FROM pegawai_device_mapping edm
-    WHERE edm.pegawai_pin = $1
+    WHERE edm.pegawai_pin = $1 AND edm.deleted_at IS NULL
     ORDER BY edm.synced_at DESC
   `;
   const mappingResult = await db.query(mappingQuery, [pin]);
@@ -426,7 +438,7 @@ const getPegawaiByDevice = async (deviceSN) => {
             WHERE ef.pegawai_pin = e.pin AND ef.device_sn = $1) as fingerprint_count
     FROM pegawai e
     JOIN pegawai_device_mapping edm ON e.pin = edm.pegawai_pin
-    WHERE edm.device_sn = $1
+    WHERE edm.device_sn = $1 AND edm.deleted_at IS NULL AND e.deleted_at IS NULL
     ORDER BY e.name ASC
   `;
   const result = await db.query(query, [deviceSN]);
@@ -454,7 +466,7 @@ const searchPegawaiByName = async (name, limit = 10) => {
     SELECT p.pin, p.name, p.card, p.group_no, p.timezone,
            (SELECT COUNT(*) FROM pegawai_fingerprints ef WHERE ef.pegawai_pin = p.pin) as total_fingerprints
     FROM pegawai p
-    WHERE p.name ILIKE $1
+    WHERE p.name ILIKE $1 AND p.deleted_at IS NULL
     ORDER BY p.name ASC
     LIMIT $2
   `;
@@ -607,9 +619,9 @@ const getAttendanceLogs = async (limit = 100, offset = 0, sn = null, pin = null,
 const getDashboardStats = async () => {
   const query = `
     SELECT
-      (SELECT COUNT(*) FROM pegawai) AS total_pegawai,
+      (SELECT COUNT(*) FROM pegawai WHERE deleted_at IS NULL) AS total_pegawai,
       (SELECT COUNT(*) FROM pegawai_fingerprints) AS total_fingerprints,
-      (SELECT COUNT(*) FROM pegawai_device_mapping WHERE privilege > 0) AS total_admins,
+      (SELECT COUNT(*) FROM pegawai_device_mapping WHERE privilege > 0 AND deleted_at IS NULL) AS total_admins,
       (SELECT COUNT(*) FROM attendance_logs WHERE check_time >= CURRENT_DATE) AS logs_today,
       (SELECT COUNT(*) FROM attendance_logs WHERE check_time >= CURRENT_DATE - INTERVAL '7 days') AS logs_weekly,
       (SELECT COUNT(*) FROM attendance_logs WHERE check_time >= DATE_TRUNC('month', CURRENT_DATE)) AS logs_monthly
@@ -651,6 +663,67 @@ const getPegawaiBasicInfo = async (pin, deviceSN = null) => {
   };
 };
 
+// Get a command by ID
+const getCommandById = async (id) => {
+  const query = `
+    SELECT id, device_sn, command_type, command_params, status
+    FROM device_commands
+    WHERE id = $1
+  `;
+  const result = await db.query(query, [id]);
+  return result.rows[0] || null;
+};
+
+// Update command status
+const updateCommandStatus = async (id, status) => {
+  const query = `
+    UPDATE device_commands
+    SET status = $2, executed_at = NOW()
+    WHERE id = $1
+  `;
+  return db.query(query, [id, status]);
+};
+
+// Soft delete pegawai device mapping
+const softDeletePegawaiDeviceMapping = async (pin, deviceSN) => {
+  const query = `
+    UPDATE pegawai_device_mapping
+    SET deleted_at = NOW(), updated_at = NOW()
+    WHERE pegawai_pin = $1 AND device_sn = $2
+  `;
+  return db.query(query, [pin, deviceSN]);
+};
+
+// Hard delete fingerprints from specific device
+const deletePegawaiFingerprints = async (pin, deviceSN) => {
+  const query = `
+    DELETE FROM pegawai_fingerprints
+    WHERE pegawai_pin = $1 AND device_sn = $2
+  `;
+  return db.query(query, [pin, deviceSN]);
+};
+
+// Count active mappings for a pegawai
+const countActiveDeviceMappings = async (pin) => {
+  const query = `
+    SELECT COUNT(*)::integer as count
+    FROM pegawai_device_mapping
+    WHERE pegawai_pin = $1 AND deleted_at IS NULL
+  `;
+  const result = await db.query(query, [pin]);
+  return result.rows[0].count;
+};
+
+// Soft delete pegawai master record
+const softDeletePegawai = async (pin) => {
+  const query = `
+    UPDATE pegawai
+    SET deleted_at = NOW(), updated_at = NOW()
+    WHERE pin = $1
+  `;
+  return db.query(query, [pin]);
+};
+
 module.exports = {
   upsertDevice,
   updateDeviceInfo,
@@ -680,4 +753,10 @@ module.exports = {
   searchPegawaiByName,
   getAttendanceLogs,
   getDashboardStats,
+  getCommandById,
+  updateCommandStatus,
+  softDeletePegawaiDeviceMapping,
+  deletePegawaiFingerprints,
+  countActiveDeviceMappings,
+  softDeletePegawai,
 };

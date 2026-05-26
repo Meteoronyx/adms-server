@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useSocket } from '../hooks/useSocket';
 import {
   getDevicePegawai,
   verifyDevice,
@@ -23,6 +24,7 @@ export default function DeviceDetail() {
   const { sn } = useParams();
   const navigate = useNavigate();
   const { addToast } = useToast();
+  const { socket } = useSocket();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -45,6 +47,17 @@ export default function DeviceDetail() {
   useEffect(() => {
     fetchData();
   }, [sn]);
+
+  useEffect(() => {
+    if (!socket) return;
+    const handleDeviceUpdate = (eventData) => {
+      if (eventData.sn === sn) {
+        fetchData();
+      }
+    };
+    socket.on('device_update', handleDeviceUpdate);
+    return () => socket.off('device_update', handleDeviceUpdate);
+  }, [socket, sn]);
 
   const doAction = async (fn, successMsg) => {
     try {

@@ -171,9 +171,50 @@ const parseFingerprintData = (rawBody) => {
   return fingerprints;
 };
 
+// Parse command execution feedback from POST /devicecmd
+// Body format is typically key=value pairs, possibly multiple lines like ID=12&Return=0
+const parseCommandResults = (rawBody) => {
+  if (!rawBody) {
+    return [];
+  }
+  
+  const rawBodyStr = rawBody.toString ? rawBody.toString() : String(rawBody);
+  const lines = rawBodyStr.trim().split(/\r?\n/);
+  const results = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    
+    const info = {};
+    const pairs = trimmed.split('&');
+    for (const pair of pairs) {
+      const eqIdx = pair.indexOf('=');
+      if (eqIdx > 0) {
+        let key = pair.slice(0, eqIdx);
+        const val = pair.slice(eqIdx + 1);
+        if (key.startsWith('~')) {
+          key = key.slice(1);
+        }
+        info[key] = val;
+      }
+    }
+
+    if (info.ID) {
+      results.push({
+        id: parseInt(info.ID, 10),
+        returnValue: info.Return !== undefined ? parseInt(info.Return, 10) : null
+      });
+    }
+  }
+
+  return results;
+};
+
 module.exports = {
   parseAttendanceLogs,
   parseDeviceInfo,
   parseUserData,
   parseFingerprintData,
+  parseCommandResults,
 };

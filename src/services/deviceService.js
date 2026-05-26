@@ -2,6 +2,7 @@
 
 const queries = require('../db/queries');
 const config = require('../config');
+const commandService = require('./commandService');
 
 // Device service functions
 const upsertDevice = async (sn, ip, timezone = config.DEVICE.DEFAULT_TIMEZONE) => {
@@ -49,12 +50,20 @@ const resetInitialSync = async (sn) => {
   return queries.resetInitialSync(sn);
 };
 
+const handleDeviceCommandResults = async (sn, ip, commandResults) => {
+  await upsertDevice(sn, ip);
+  for (const res of commandResults) {
+    await commandService.processCommandResult(sn, res.id, res.returnValue);
+  }
+};
+
 module.exports = {
   upsertDevice,
   updateDeviceInfo,
   getDeviceVerificationStatus,
   handleDeviceHeartbeat,
   handleDeviceCommand,
+  handleDeviceCommandResults,
   getInitialSyncStatus,
   markInitialSyncCompleted,
   resetInitialSync,

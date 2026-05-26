@@ -229,8 +229,19 @@ router.post(config.PATHS.ICLOCK.DEVICECMD, rawBodyParser, async (req, res) => {
   }
 
   try {
-    const deviceInfo = parsers.parseDeviceInfo(req.rawBody);
-    await deviceService.handleDeviceCommand(SN, ip, deviceInfo);
+    const commandResults = parsers.parseCommandResults(req.rawBody);
+    if (commandResults && commandResults.length > 0) {
+      await deviceService.handleDeviceCommandResults(SN, ip, commandResults);
+    } else {
+      const deviceInfo = parsers.parseDeviceInfo(req.rawBody);
+      await deviceService.handleDeviceCommand(SN, ip, deviceInfo);
+    }
+    
+    // Broadcast device update via Socket.io to trigger frontend real-time updates
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('device_update', { sn: SN });
+    }
     
     res.set('Content-Type', 'text/plain');
     res.send(config.RESPONSE.OK);
