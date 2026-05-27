@@ -300,16 +300,22 @@ const upsertPegawai = async (userData) => {
     INSERT INTO pegawai (pin, name, card, group_no, timezone, verify_mode, updated_at, deleted_at)
     VALUES ($1, $2, $3, $4, $5, $6, NOW(), NULL)
     ON CONFLICT (pin) DO UPDATE SET
-      name = EXCLUDED.name,
-      card = EXCLUDED.card,
+      name = CASE 
+        WHEN EXCLUDED.name IS NOT NULL AND EXCLUDED.name != '' THEN EXCLUDED.name
+        ELSE pegawai.name
+      END,
+      card = CASE 
+        WHEN EXCLUDED.card IS NOT NULL AND EXCLUDED.card != '' THEN EXCLUDED.card
+        ELSE pegawai.card
+      END,
       group_no = EXCLUDED.group_no,
       timezone = EXCLUDED.timezone,
       verify_mode = EXCLUDED.verify_mode,
       updated_at = NOW(),
       deleted_at = NULL
     WHERE
-      pegawai.name IS DISTINCT FROM EXCLUDED.name OR
-      pegawai.card IS DISTINCT FROM EXCLUDED.card OR
+      (EXCLUDED.name IS NOT NULL AND EXCLUDED.name != '' AND pegawai.name IS DISTINCT FROM EXCLUDED.name) OR
+      (EXCLUDED.card IS NOT NULL AND EXCLUDED.card != '' AND pegawai.card IS DISTINCT FROM EXCLUDED.card) OR
       pegawai.group_no IS DISTINCT FROM EXCLUDED.group_no OR
       pegawai.timezone IS DISTINCT FROM EXCLUDED.timezone OR
       pegawai.verify_mode IS DISTINCT FROM EXCLUDED.verify_mode OR
@@ -332,11 +338,11 @@ const upsertPegawaiDeviceMapping = async (pin, deviceSN, deviceName, privilege =
     INSERT INTO pegawai_device_mapping (pegawai_pin, device_sn, device_name, privilege, password, synced_at, updated_at, deleted_at)
     VALUES ($1, $2, $3, $4, $5, NOW(), NOW(), NULL)
     ON CONFLICT (pegawai_pin, device_sn) DO UPDATE SET
-      device_name = EXCLUDED.device_name,
-      privilege = CASE 
-        WHEN EXCLUDED.privilege > 0 THEN EXCLUDED.privilege
-        ELSE pegawai_device_mapping.privilege
+      device_name = CASE 
+        WHEN EXCLUDED.device_name IS NOT NULL AND EXCLUDED.device_name != '' THEN EXCLUDED.device_name
+        ELSE pegawai_device_mapping.device_name
       END,
+      privilege = EXCLUDED.privilege,
       password = CASE 
         WHEN EXCLUDED.password IS NOT NULL AND EXCLUDED.password != '' THEN EXCLUDED.password
         ELSE pegawai_device_mapping.password

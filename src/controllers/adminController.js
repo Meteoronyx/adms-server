@@ -192,6 +192,21 @@ exports.updateUser = async (req, res) => {
   await commandService.queueCommand(sn, config.COMMAND_TYPES.DATA_USER, params);
   logger.info('Update user command queued', { sn, pin, privilege, passwd, ip: req.ip });
 
+  // Optimistic DB update: update privilege and password immediately
+  try {
+    const deviceName = device?.device_name || device?.name || null;
+    await queries.upsertPegawaiDeviceMapping(
+      String(pin),
+      sn,
+      deviceName,
+      parseInt(privilege),
+      passwd !== undefined && passwd !== null && passwd !== '' ? String(passwd) : null
+    );
+    logger.info('Optimistic update applied for pegawai device mapping', { pin, sn, privilege });
+  } catch (err) {
+    logger.error('Failed to apply optimistic update for pegawai device mapping', { pin, sn, error: err.message });
+  }
+
   res.json({
     success: true,
     message: `${config.RESPONSE.ADMIN.COMMAND_QUEUED}: UPDATE USER`,
@@ -209,6 +224,21 @@ exports.deleteUser = async (req, res) => {
     pin: parseInt(pin)
   });
   logger.info('Delete user command queued', { sn, pin, ip: req.ip });
+
+  // Optimistic DB update: soft-delete mapping & fingerprints immediately
+  // Queue command__ → kirim perintah hapus ke device (biar user di mesin kehapus)\
+  // Update DB langsung__ (biar status di database sesuai)\
+  // Kalau device sync balik__ → otomatis restore jika user ternyata masih ada
+  await queries.softDeletePegawaiDeviceMapping(pin, sn);
+  await queries.deletePegawaiFingerprints(pin, sn);
+  logger.info('Optimistic soft-delete applied for pegawai device mapping', { pin, sn });
+
+  // If pegawai has no remaining active mappings, soft-delete globally
+  const activeCount = await queries.countActiveDeviceMappings(pin);
+  if (activeCount === 0) {
+    await queries.softDeletePegawai(pin);
+    logger.info('Pegawai has no remaining active mappings. Soft-deleted globally.', { pin });
+  }
 
   res.json({
     success: true,

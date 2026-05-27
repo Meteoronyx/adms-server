@@ -63,6 +63,7 @@ export default function DeviceDetail() {
     try {
       await fn(sn);
       addToast(successMsg);
+      fetchData();
     } catch (err) {
       addToast(err.message || 'Action failed', 'error');
     }
@@ -90,6 +91,7 @@ export default function DeviceDetail() {
       });
       addToast('Update queued');
       setUpdateModal({ open: false, data: null });
+      fetchData();
     } catch (err) {
       addToast(err.message || 'Update failed', 'error');
     }
