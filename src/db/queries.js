@@ -437,21 +437,72 @@ const getPegawaiWithFingerprints = async (pin) => {
 };
 
 // Get all pegawai at a specific device (privilege/password from device mapping)
-const getPegawaiByDevice = async (deviceSN) => {
-  const query = `
+const getPegawaiByDevice = async (deviceSN, limit = null, offset = null, search = null) => {
+  let selectQuery = `
     SELECT e.pin, e.name, edm.privilege, edm.password, edm.synced_at,
            (SELECT COUNT(*) FROM pegawai_fingerprints ef 
             WHERE ef.pegawai_pin = e.pin AND ef.device_sn = $1) as fingerprint_count
     FROM pegawai e
     JOIN pegawai_device_mapping edm ON e.pin = edm.pegawai_pin
     WHERE edm.device_sn = $1 AND edm.deleted_at IS NULL AND e.deleted_at IS NULL
-    ORDER BY e.name ASC
   `;
-  const result = await db.query(query, [deviceSN]);
-  return result.rows.map(row => ({
+  const params = [deviceSN];
+
+  if (search) {
+    params.push(`%${search}%`);
+    selectQuery += ` AND (e.name ILIKE $${params.length} OR e.pin ILIKE $${params.length})`;
+  }
+
+  selectQuery += ` ORDER BY e.name ASC`;
+
+  if (limit !== null) {
+    params.push(limit);
+    selectQuery += ` LIMIT $${params.length}`;
+  }
+
+  if (offset !== null) {
+    params.push(offset);
+    selectQuery += ` OFFSET $${params.length}`;
+  }
+
+  const result = await db.query(selectQuery, params);
+
+  // Get total count matching current search filter
+  let countQuery = `
+    SELECT COUNT(*) 
+    FROM pegawai e
+    JOIN pegawai_device_mapping edm ON e.pin = edm.pegawai_pin
+    WHERE edm.device_sn = $1 AND edm.deleted_at IS NULL AND e.deleted_at IS NULL
+  `;
+  const countParams = [deviceSN];
+
+  if (search) {
+    countParams.push(`%${search}%`);
+    countQuery += ` AND (e.name ILIKE $${countParams.length} OR e.pin ILIKE $${countParams.length})`;
+  }
+  const countResult = await db.query(countQuery, countParams);
+  const total = parseInt(countResult.rows[0].count, 10);
+
+  // Get overall count mapping (without search filter) for "Pegawai Count" card
+  const overallCountQuery = `
+    SELECT COUNT(*) 
+    FROM pegawai e
+    JOIN pegawai_device_mapping edm ON e.pin = edm.pegawai_pin
+    WHERE edm.device_sn = $1 AND edm.deleted_at IS NULL AND e.deleted_at IS NULL
+  `;
+  const overallCountResult = await db.query(overallCountQuery, [deviceSN]);
+  const count = parseInt(overallCountResult.rows[0].count, 10);
+
+  const rows = result.rows.map(row => ({
     ...row,
     privilege_label: constants.PRIVILEGES_LEVELS[row.privilege] || 'Unknown'
   }));
+
+  return {
+    rows,
+    total,
+    count
+  };
 };
 
 // Get fingerprints for transfer

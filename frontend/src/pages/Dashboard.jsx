@@ -182,7 +182,7 @@ export default function Dashboard() {
             <span className={socket ? "animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" : ""}></span>
             <span className={`relative inline-flex rounded-full h-2 w-2 ${socket ? "bg-emerald-500" : "bg-slate-400"}`}></span>
           </span>
-          <span>{socket ? "Real-time aktif" : "Auto-refresh every 30s"}</span>
+          <span>{socket ? "Real-time" : "Auto-refresh every 30s"}</span>
         </div>
       </div>
 
@@ -376,11 +376,10 @@ export default function Dashboard() {
                       </div>
                       <div className="flex justify-between items-center py-1.5 border-b border-slate-100">
                         <span className="text-slate-500">DB Status</span>
-                        <span className={`font-medium text-xs px-2 py-0.5 rounded ${
-                          health.database?.status === 'connected' 
-                            ? 'text-emerald-700 bg-emerald-50' 
+                        <span className={`font-medium text-xs px-2 py-0.5 rounded ${health.database?.status === 'connected'
+                            ? 'text-emerald-700 bg-emerald-50'
                             : 'text-red-700 bg-red-50'
-                        }`}>
+                          }`}>
                           {health.database?.status || 'disconnected'}
                         </span>
                       </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { getAttendanceLogs } from '../lib/api';
 import { DataTable } from '../components/ui/DataTable';
 import { Skeleton } from '../components/ui/Skeleton';
@@ -16,19 +16,6 @@ export default function AttendanceLogs() {
   const [offset, setOffset] = useState(0);
   const { addToast } = useToast();
   const { socket } = useSocket();
-
-  useEffect(() => {
-    fetchLogs();
-  }, [offset, limit]);
-
-  useEffect(() => {
-    if (!socket) return;
-    const handleAttendanceUpdate = (data) => {
-      if (offset === 0) fetchLogs();
-    };
-    socket.on('attendance_update', handleAttendanceUpdate);
-    return () => socket.off('attendance_update', handleAttendanceUpdate);
-  }, [socket, offset, limit]);
 
   const columns = [
     {
@@ -91,6 +78,47 @@ export default function AttendanceLogs() {
     sn: '' // device sn
   });
 
+  // Applied Filters State (used for querying and background updates)
+  const [appliedFilters, setAppliedFilters] = useState(filters);
+
+  const fetchLogs = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = { limit, offset };
+      if (appliedFilters.search) params.search = appliedFilters.search;
+      if (appliedFilters.sn) params.sn = appliedFilters.sn;
+
+      if (appliedFilters.startDate && appliedFilters.endDate) {
+        params.startDate = appliedFilters.startDate;
+        params.endDate = appliedFilters.endDate;
+      } else {
+        if (appliedFilters.year) params.year = appliedFilters.year;
+        if (appliedFilters.month) params.month = appliedFilters.month;
+      }
+
+      const result = await getAttendanceLogs(params);
+      setLogs(result.data);
+      setTotal(result.total);
+    } catch (err) {
+      addToast(err.message || 'Failed to fetch attendance logs', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [limit, offset, appliedFilters, addToast]);
+
+  useEffect(() => {
+    fetchLogs();
+  }, [fetchLogs]);
+
+  useEffect(() => {
+    if (!socket) return;
+    const handleAttendanceUpdate = (data) => {
+      if (offset === 0) fetchLogs();
+    };
+    socket.on('attendance_update', handleAttendanceUpdate);
+    return () => socket.off('attendance_update', handleAttendanceUpdate);
+  }, [socket, offset, fetchLogs]);
+
   const [devices, setDevices] = useState([]);
 
   useEffect(() => {
@@ -106,32 +134,7 @@ export default function AttendanceLogs() {
 
   const handleApplyFilters = () => {
     setOffset(0);
-    fetchLogs();
-  };
-
-  const fetchLogs = async () => {
-    setLoading(true);
-    try {
-      const params = { limit, offset };
-      if (filters.search) params.search = filters.search;
-      if (filters.sn) params.sn = filters.sn;
-
-      if (filters.startDate && filters.endDate) {
-        params.startDate = filters.startDate;
-        params.endDate = filters.endDate;
-      } else {
-        if (filters.year) params.year = filters.year;
-        if (filters.month) params.month = filters.month;
-      }
-
-      const result = await getAttendanceLogs(params);
-      setLogs(result.data);
-      setTotal(result.total);
-    } catch (err) {
-      addToast(err.message || 'Failed to fetch attendance logs', 'error');
-    } finally {
-      setLoading(false);
-    }
+    setAppliedFilters({ ...filters });
   };
 
   return (

@@ -52,8 +52,14 @@ export const clearLog = (sn) =>
 export const infoDevice = (sn) =>
   fetchJSON(`/admin/info/${sn}`, { method: 'POST' });
 
-export const getDevicePegawai = (sn) =>
-  fetchJSON(`/admin/devices/${sn}/pegawai`);
+export const getDevicePegawai = (sn, { limit, offset, search } = {}) => {
+  const p = new URLSearchParams();
+  if (limit !== undefined && limit !== null) p.append('limit', limit);
+  if (offset !== undefined && offset !== null) p.append('offset', offset);
+  if (search) p.append('search', search);
+  const qs = p.toString();
+  return fetchJSON(`/admin/devices/${sn}/pegawai${qs ? `?${qs}` : ''}`);
+};
 
 export const getPegawai = (pin) =>
   fetchJSON(`/admin/pegawai/${pin}`);

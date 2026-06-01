@@ -80,8 +80,8 @@ const getPegawaiWithFingerprints = async (pin) => {
 /**
  * Get all pegawai at a specific device
  */
-const getPegawaiByDevice = async (deviceSN) => {
-  return queries.getPegawaiByDevice(deviceSN);
+const getPegawaiByDevice = async (deviceSN, limit = null, offset = null, search = null) => {
+  return queries.getPegawaiByDevice(deviceSN, limit, offset, search);
 };
 
 

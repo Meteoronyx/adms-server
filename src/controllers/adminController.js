@@ -375,12 +375,29 @@ exports.getDashboardStats = async (req, res) => {
   });
 };
 
-// Data Retrieval Routes (getpegawaibydevice)
 exports.getPegawaiByDevice = async (req, res) => {
   const { sn } = req.params;
   const device = req.device;
 
-  const pegawai = await userService.getPegawaiByDevice(sn);
+  let limit = null;
+  if (req.query.limit !== undefined) {
+    const parsed = parseInt(req.query.limit, 10);
+    if (!isNaN(parsed) && parsed >= 0) {
+      limit = parsed;
+    }
+  }
+
+  let offset = null;
+  if (req.query.offset !== undefined) {
+    const parsed = parseInt(req.query.offset, 10);
+    if (!isNaN(parsed) && parsed >= 0) {
+      offset = parsed;
+    }
+  }
+
+  const search = req.query.search || null;
+
+  const result = await userService.getPegawaiByDevice(sn, limit, offset, search);
   res.json({
     success: true,
     device: {
@@ -392,8 +409,9 @@ exports.getPegawaiByDevice = async (req, res) => {
       ip_address: device.ip_address,
       verified: device.verified
     },
-    count: pegawai.length,
-    pegawai
+    count: result.count,
+    total: result.total,
+    pegawai: result.rows
   });
 };
 

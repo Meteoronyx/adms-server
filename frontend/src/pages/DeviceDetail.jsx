@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSocket } from '../hooks/useSocket';
 import {
@@ -17,7 +17,8 @@ import {
 import { useToast } from '../hooks/useToast';
 import StatusBadge from '../components/StatusBadge';
 import {
-  ArrowLeft, CheckCircle2, XCircle, RefreshCw, Power, Trash2, Info, Users, Edit, Fingerprint, X, HardDrive, Pencil
+  ArrowLeft, CheckCircle2, XCircle, RefreshCw, Power, Trash2, Info, Users, Edit, Fingerprint, X, HardDrive, Pencil,
+  Search, ChevronLeft, ChevronRight
 } from 'lucide-react';
 
 export default function DeviceDetail() {
@@ -28,24 +29,47 @@ export default function DeviceDetail() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Pagination & Search States
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const limit = 10;
+
   // Modal states
   const [updateModal, setUpdateModal] = useState({ open: false, data: null });
   const [enrollModal, setEnrollModal] = useState({ open: false, data: null });
   const [editNameModal, setEditNameModal] = useState(false);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
-      const res = await getDevicePegawai(sn);
+      const offset = (page - 1) * limit;
+      const res = await getDevicePegawai(sn, { limit, offset, search: debouncedSearch });
       setData(res);
     } catch (err) {
       addToast(err.message || 'Failed to load device data', 'error');
     } finally {
       setLoading(false);
     }
-  };
+  }, [sn, page, debouncedSearch, addToast]);
 
   useEffect(() => {
     fetchData();
+  }, [fetchData]);
+
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // Reset search and page when device SN changes
+  useEffect(() => {
+    setSearch('');
+    setDebouncedSearch('');
+    setPage(1);
   }, [sn]);
 
   useEffect(() => {
@@ -57,7 +81,7 @@ export default function DeviceDetail() {
     };
     socket.on('device_update', handleDeviceUpdate);
     return () => socket.off('device_update', handleDeviceUpdate);
-  }, [socket, sn]);
+  }, [socket, sn, fetchData]);
 
   const doAction = async (fn, successMsg) => {
     try {
@@ -130,6 +154,7 @@ export default function DeviceDetail() {
   };
 
   const pegawai = data?.pegawai || [];
+  const totalPages = Math.ceil((data?.total || 0) / limit);
 
   return (
     <div className="space-y-6 fade-in pb-8">
@@ -219,11 +244,33 @@ export default function DeviceDetail() {
           </div>
 
           {/* Registered Pegawai Table */}
-          <div className="bg-white rounded-xl border border-slate-200/60 shadow-sm overflow-hidden">
-            <div className="px-6 py-4 flex items-center gap-2 border-b border-slate-100">
-              <Users size={16} className="text-slate-400" />
-              <h2 className="text-sm font-semibold text-slate-900">Registered Pegawai</h2>
-              <span className="ml-auto text-xs text-slate-400">{pegawai.length} total</span>
+          <div className="bg-white rounded-xl border border-slate-200/60 shadow-sm overflow-hidden animate-fadeIn">
+            <div className="px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 bg-white">
+              <div className="flex items-center gap-2">
+                <Users size={16} className="text-slate-400" />
+                <h2 className="text-sm font-semibold text-slate-900">Registered Pegawai</h2>
+                <span className="text-xs text-slate-400 font-normal">
+                  ({data?.total || 0} matching, {data?.count || 0} total)
+                </span>
+              </div>
+              <div className="relative w-full sm:w-64">
+                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Search by name or PIN..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full pl-9 pr-8 py-1.5 text-xs rounded-lg border border-slate-200 bg-slate-50/50 hover:bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 transition-all placeholder:text-slate-400 text-slate-700"
+                />
+                {search && (
+                  <button
+                    onClick={() => setSearch('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                  >
+                    <X size={12} />
+                  </button>
+                )}
+              </div>
             </div>
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
@@ -255,11 +302,65 @@ export default function DeviceDetail() {
                     </tr>
                   ))}
                   {pegawai.length === 0 && (
-                    <tr><td colSpan={6} className="px-6 py-10 text-center text-slate-400 text-sm">Belum ada pegawai terdaftar di perangkat ini.</td></tr>
+                    <tr>
+                      <td colSpan={6} className="px-6 py-10 text-center text-slate-400 text-sm">
+                        {debouncedSearch ? 'Tidak ada pegawai yang cocok dengan pencarian.' : 'Belum ada pegawai terdaftar di perangkat ini.'}
+                      </td>
+                    </tr>
                   )}
                 </tbody>
               </table>
             </div>
+            
+            {totalPages > 1 && (
+              <div className="px-6 py-4 flex flex-col sm:flex-row items-center justify-between border-t border-slate-100 bg-slate-50/50 gap-4">
+                <p className="text-xs text-slate-500">
+                  Showing <span className="font-medium text-slate-700">{Math.min((page - 1) * limit + 1, data?.total || 0)}</span> to{' '}
+                  <span className="font-medium text-slate-700">{Math.min(page * limit, data?.total || 0)}</span> of{' '}
+                  <span className="font-medium text-slate-700">{data?.total || 0}</span> results
+                </p>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setPage(p => Math.max(p - 1, 1))}
+                    disabled={page === 1}
+                    className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-white transition-colors"
+                  >
+                    <ChevronLeft size={14} />
+                  </button>
+                  
+                  {Array.from({ length: totalPages }, (_, idx) => idx + 1)
+                    .filter(p => {
+                      return p === 1 || p === totalPages || Math.abs(p - page) <= 1;
+                    })
+                    .map((p, idx, arr) => {
+                      const showEllipsis = idx > 0 && p - arr[idx - 1] > 1;
+                      return (
+                        <div key={p} className="flex items-center gap-1.5">
+                          {showEllipsis && <span className="text-slate-400 text-xs px-1">...</span>}
+                          <button
+                            onClick={() => setPage(p)}
+                            className={`px-2.5 py-1 text-xs font-medium rounded-lg transition-colors ${
+                              page === p
+                                ? 'bg-slate-900 text-white shadow-sm font-semibold'
+                                : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                            }`}
+                          >
+                            {p}
+                          </button>
+                        </div>
+                      );
+                    })}
+
+                  <button
+                    onClick={() => setPage(p => Math.min(p + 1, totalPages))}
+                    disabled={page === totalPages}
+                    className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-white transition-colors"
+                  >
+                    <ChevronRight size={14} />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Update Modal */}
