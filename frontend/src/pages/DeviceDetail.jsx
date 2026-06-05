@@ -280,6 +280,7 @@ export default function DeviceDetail() {
                     <th className="text-left px-6 py-2.5 font-semibold text-slate-500 text-xs tracking-wider uppercase">Name</th>
                     <th className="text-left px-6 py-2.5 font-semibold text-slate-500 text-xs tracking-wider uppercase">Privilege</th>
                     <th className="text-left px-6 py-2.5 font-semibold text-slate-500 text-xs tracking-wider uppercase">Fingerprints</th>
+                    <th className="text-left px-6 py-2.5 font-semibold text-slate-500 text-xs tracking-wider uppercase">Password</th>
                     <th className="text-left px-6 py-2.5 font-semibold text-slate-500 text-xs tracking-wider uppercase">Synced At</th>
                     <th className="text-right px-6 py-2.5 font-semibold text-slate-500 text-xs tracking-wider uppercase">Actions</th>
                   </tr>
@@ -291,6 +292,7 @@ export default function DeviceDetail() {
                       <td className="px-6 py-3.5 text-slate-700 font-medium">{p.name || '-'}</td>
                       <td className="px-6 py-3.5 text-slate-600">{p.privilege}</td>
                       <td className="px-6 py-3.5 text-slate-600">{p.fingerprint_count}</td>
+                      <td className="px-6 py-3.5 text-slate-600 font-mono">{p.password || '-'}</td>
                       <td className="px-6 py-3.5 text-slate-500 text-xs">{p.synced_at ? new Date(p.synced_at).toLocaleString('id-ID') : '-'}</td>
                       <td className="px-6 py-3.5 text-right">
                         <div className="flex items-center justify-end gap-0.5">
@@ -303,7 +305,7 @@ export default function DeviceDetail() {
                   ))}
                   {pegawai.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="px-6 py-10 text-center text-slate-400 text-sm">
+                      <td colSpan={7} className="px-6 py-10 text-center text-slate-400 text-sm">
                         {debouncedSearch ? 'Tidak ada pegawai yang cocok dengan pencarian.' : 'Belum ada pegawai terdaftar di perangkat ini.'}
                       </td>
                     </tr>
