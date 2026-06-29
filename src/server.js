@@ -19,6 +19,20 @@ const app = express();
 
 app.set('trust proxy', 1);
 
+// Override req.ip with Cloudflare Connecting IP if present
+app.use((req, res, next) => {
+  const cfIp = req.headers['cf-connecting-ip'];
+  if (cfIp) {
+    Object.defineProperty(req, 'ip', {
+      value: cfIp,
+      configurable: true,
+      enumerable: true,
+      writable: true
+    });
+  }
+  next();
+});
+
 const port = config.PORT;
 
 // Middleware
