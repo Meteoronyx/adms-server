@@ -111,7 +111,8 @@ export default function DeviceDetail() {
       await updateUser(sn, {
         pin: updateModal.data.pin,
         privilege: fd.get('privilege'),
-        passwd: fd.get('passwd')
+        passwd: fd.get('passwd'),
+        name: fd.get('name')
       });
       addToast('Update queued');
       setUpdateModal({ open: false, data: null });
@@ -377,6 +378,10 @@ export default function DeviceDetail() {
                   <div className="flex items-center gap-2 pb-1">
                     <span className="text-xs text-slate-400">PIN:</span>
                     <span className="text-sm font-mono font-medium text-slate-700">{updateModal.data.pin}</span>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600 mb-1.5">Nama Pegawai</label>
+                    <input type="text" name="name" defaultValue={updateModal.data.name || ''} placeholder="Optional" className="w-full text-sm rounded-lg border border-slate-200 px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 placeholder:text-slate-400" />
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-slate-600 mb-1.5">Privilege</label>

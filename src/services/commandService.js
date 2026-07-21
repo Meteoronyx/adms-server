@@ -18,9 +18,13 @@ const buildCommandString = (command) => {
       return config.COMMANDS.REBOOT;
 
     case config.COMMAND_TYPES.DATA_USER:
-      // Format: C:10:DATA USER PIN=1\tPri=0 (passwd: 0 → hapus password, passwd: 123 → set password)
-      const { pin, privilege, passwd } = command_params;
-      let cmd = `${config.COMMANDS.DATA_USER} PIN=${pin}\tPri=${privilege}`;
+      // Format: C:10:DATA USER PIN=1\tName=John\tPri=0 (passwd: 0 → hapus password, passwd: 123 → set password)
+      const { pin, privilege, passwd, name } = command_params;
+      let cmd = `${config.COMMANDS.DATA_USER} PIN=${pin}`;
+      if (name !== undefined && name !== null && name !== '') {
+        cmd += `\tName=${name}`;
+      }
+      cmd += `\tPri=${privilege}`;
       if (passwd !== undefined && passwd !== null) {
         if (passwd === 0) {
           cmd += `\tPasswd=`;

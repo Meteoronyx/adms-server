@@ -163,7 +163,7 @@ exports.reboot = async (req, res) => {
 // Device Commands (updateuser)
 exports.updateUser = async (req, res) => {
   const { sn } = req.params;
-  const { pin, privilege, passwd } = req.body;
+  const { pin, privilege, passwd, name } = req.body;
   const device = req.device;
 
   if (pin === undefined || pin === null) {
@@ -189,8 +189,12 @@ exports.updateUser = async (req, res) => {
     params.passwd = parseInt(passwd);
   }
 
+  if (name !== undefined && name !== null && name !== '') {
+    params.name = String(name).trim();
+  }
+
   await commandService.queueCommand(sn, config.COMMAND_TYPES.DATA_USER, params);
-  logger.info('Update user command queued', { sn, pin, privilege, passwd, ip: req.ip });
+  logger.info('Update user command queued', { sn, pin, privilege, passwd, name: params.name, ip: req.ip });
 
   // Optimistic DB update: update privilege and password immediately
   try {
@@ -207,11 +211,28 @@ exports.updateUser = async (req, res) => {
     logger.error('Failed to apply optimistic update for pegawai device mapping', { pin, sn, error: err.message });
   }
 
+  // Optimistic DB update: update pegawai name if provided
+  if (params.name) {
+    try {
+      await queries.upsertPegawai({
+        pin: String(pin),
+        name: params.name,
+        card: null,
+        groupNo: null,
+        timezone: null,
+        verifyMode: null
+      });
+      logger.info('Optimistic update applied for pegawai name', { pin, name: params.name });
+    } catch (err) {
+      logger.error('Failed to apply optimistic update for pegawai name', { pin, error: err.message });
+    }
+  }
+
   res.json({
     success: true,
     message: `${config.RESPONSE.ADMIN.COMMAND_QUEUED}: UPDATE USER`,
     device: { sn: device.sn, name: device.name },
-    params: { pin, privilege, ...(passwd !== undefined && passwd !== null && passwd !== '' ? { passwd: parseInt(passwd) } : {}) }
+    params: { pin, privilege, ...(params.name ? { name: params.name } : {}), ...(passwd !== undefined && passwd !== null && passwd !== '' ? { passwd: parseInt(passwd) } : {}) }
   });
 };
 
