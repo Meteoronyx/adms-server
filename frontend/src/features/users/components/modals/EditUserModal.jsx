@@ -43,7 +43,7 @@ export function EditUserModal({
       open={open}
       onOpenChange={(val) => !val && onClose()}
       title="Edit Pengguna"
-      description={`Perbarui profil dan wewenang pengguna "${user?.username || ''}"`}
+      description={`Perbarui profil dan akses pengguna "${user?.username || ''}"`}
       size="md"
       footer={
         <>
@@ -61,7 +61,6 @@ export function EditUserModal({
             disabled={submitting}
             className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 rounded-xl shadow-sm transition-all disabled:opacity-50"
           >
-            <Pencil size={14} />
             {submitting ? 'Menyimpan…' : 'Simpan Perubahan'}
           </button>
         </>
@@ -111,7 +110,7 @@ export function EditUserModal({
               className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
             />
             <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
-              Akun Aktif (Pengguna dapat login)
+              Akun Aktif
             </span>
           </label>
         </div>

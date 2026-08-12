@@ -22,7 +22,7 @@ export function RolesTab({
               Pengaturan Role & Hak Akses
             </h2>
             <p className="text-[11px] text-slate-400 dark:text-slate-400">
-              Kelola kelompok wewenang pengguna dalam sistem
+              Kelola kelompok akses pengguna dalam sistem
             </p>
           </div>
         </div>

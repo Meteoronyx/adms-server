@@ -66,7 +66,7 @@ function requireRole(allowedRoles = []) {
 
     return res.status(403).json({
       success: false,
-      message: 'Akses ditolak: Anda tidak memiliki wewenang untuk tindakan ini'
+      message: 'Akses ditolak: Anda tidak memiliki akses untuk tindakan ini'
     });
   };
 }
