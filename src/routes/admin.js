@@ -4,53 +4,49 @@ const express = require('express');
 const router = express.Router();
 const config = require('../config');
 const apiKeyAuth = require('../middleware/apiKeyAuth');
+const { requirePermission } = require('../middleware/requireRole');
 const validateDevice = require('../middleware/deviceCheck');
 const asyncHandler = require('../middleware/asyncHandler');
 const adminController = require('../controllers/adminController');
 
-router.use(apiKeyAuth);
+router.use('/admin', apiKeyAuth);
 
-// Device Reupload
-router.post(config.PATHS.ADMIN.REUPLOAD, validateDevice, asyncHandler(adminController.reuploadDevice));
-router.get('/admin/reupload/queue', asyncHandler(adminController.getReuploadQueue));
+// Device Reupload & Commands Queue
+router.post(config.PATHS.ADMIN.REUPLOAD, requirePermission('devices:command'), validateDevice, asyncHandler(adminController.reuploadDevice));
+router.get('/admin/reupload/queue', requirePermission('devices:command'), asyncHandler(adminController.getReuploadQueue));
+router.get(config.PATHS.ADMIN.COMMAND_QUEUE, requirePermission('devices:command'), asyncHandler(adminController.getCommandQueue));
 
 // Device Verification
-router.post('/admin/verify/:sn', validateDevice, asyncHandler(adminController.verifyDevice));
-router.delete('/admin/verify/:sn', validateDevice, asyncHandler(adminController.unverifyDevice));
+router.post('/admin/verify/:sn', requirePermission('devices:write'), validateDevice, asyncHandler(adminController.verifyDevice));
+router.delete('/admin/verify/:sn', requirePermission('devices:write'), validateDevice, asyncHandler(adminController.unverifyDevice));
 
 // Device Management
-router.get('/admin/devices', asyncHandler(adminController.listDevices));
-router.patch('/admin/devices/:sn', asyncHandler(adminController.updateDeviceName));
+router.get('/admin/devices', requirePermission('devices:read'), asyncHandler(adminController.listDevices));
+router.patch('/admin/devices/:sn', requirePermission('devices:write'), asyncHandler(adminController.updateDeviceName));
 
+// Device Direct Commands
+router.post(config.PATHS.ADMIN.CLEAR_LOG, requirePermission('devices:command'), validateDevice, asyncHandler(adminController.clearLog));
+router.post(config.PATHS.ADMIN.INFO, requirePermission('devices:command'), validateDevice, asyncHandler(adminController.info));
+router.post(config.PATHS.ADMIN.REBOOT, requirePermission('devices:command'), validateDevice, asyncHandler(adminController.reboot));
 
-// Device Commands
-router.post(config.PATHS.ADMIN.CLEAR_LOG, validateDevice, asyncHandler(adminController.clearLog));
-router.post(config.PATHS.ADMIN.INFO, validateDevice, asyncHandler(adminController.info));
-router.post(config.PATHS.ADMIN.REBOOT, validateDevice, asyncHandler(adminController.reboot));
-
-// User Management Commands
-router.post(config.PATHS.ADMIN.USER, validateDevice, asyncHandler(adminController.updateUser));
-router.delete(config.PATHS.ADMIN.USER_DELETE, validateDevice, asyncHandler(adminController.deleteUser));
+// Pegawai / Device User Management Commands
+router.post(config.PATHS.ADMIN.USER, requirePermission('devices:write'), validateDevice, asyncHandler(adminController.updateUser));
+router.delete(config.PATHS.ADMIN.USER_DELETE, requirePermission('devices:write'), validateDevice, asyncHandler(adminController.deleteUser));
 
 // Fingerprint Management Commands
-router.post(config.PATHS.ADMIN.ENROLL_FP, validateDevice, asyncHandler(adminController.enrollFingerprint));
+router.post(config.PATHS.ADMIN.ENROLL_FP, requirePermission('fingerprint:manage'), validateDevice, asyncHandler(adminController.enrollFingerprint));
+router.get('/admin/fingerprint-check', requirePermission('fingerprint:manage'), asyncHandler(adminController.checkFingerprintOnDevice));
+router.post(config.PATHS.ADMIN.TRANSFER_FP, requirePermission('fingerprint:manage'), validateDevice, asyncHandler(adminController.transferFingerprint));
 
-// Command Queue Status
-router.get(config.PATHS.ADMIN.COMMAND_QUEUE, asyncHandler(adminController.getCommandQueue));
-
-// Data Retrieval Routes
-router.get('/admin/pegawai/search', asyncHandler(adminController.searchPegawai));
-router.get('/admin/pegawai/:pin', asyncHandler(adminController.getPegawai));
-router.get('/admin/devices/:sn/pegawai', validateDevice, asyncHandler(adminController.getPegawaiByDevice));
-router.get('/admin/fingerprint-check', asyncHandler(adminController.checkFingerprintOnDevice));
+// Data Retrieval Routes (Pegawai)
+router.get('/admin/pegawai/search', requirePermission('devices:read'), asyncHandler(adminController.searchPegawai));
+router.get('/admin/pegawai/:pin', requirePermission('devices:read'), asyncHandler(adminController.getPegawai));
+router.get('/admin/devices/:sn/pegawai', requirePermission('devices:read'), validateDevice, asyncHandler(adminController.getPegawaiByDevice));
 
 // Attendance Logs
-router.get('/admin/attendance', asyncHandler(adminController.getAttendanceLogs));
+router.get('/admin/attendance', requirePermission('attendance:read'), asyncHandler(adminController.getAttendanceLogs));
 
 // Dashboard Stats
-router.get('/admin/stats', asyncHandler(adminController.getDashboardStats));
-
-// Fingerprint Transfer
-router.post(config.PATHS.ADMIN.TRANSFER_FP, validateDevice, asyncHandler(adminController.transferFingerprint));
+router.get('/admin/stats', requirePermission('devices:read'), asyncHandler(adminController.getDashboardStats));
 
 module.exports = router;

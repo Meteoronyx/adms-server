@@ -49,10 +49,108 @@ GET /iclock/cdata?SN={DeviceSN}&type=time
 ---
 
 ## 2. API Admin
-Digunakan untuk mengelola perangkat dan data.
+Digunakan untuk mengelola perangkat, data, dan pengguna server.
 
-**Base URL**: `/admin`
-**Autentikasi**: Header `x-api-key: {YOUR_API_KEY}`
+**Base URL**: `/admin`  
+**Autentikasi**: Cookie HTTP-Only (`token`) atau Header `x-api-key: {TOKEN_OR_API_KEY}` / `Authorization: Bearer {TOKEN}`
+
+### Autentikasi Server
+
+#### Login Pengguna
+```
+POST /admin/login
+Content-Type: application/json
+```
+**Body**:
+```json
+{
+  "username": "admin",
+  "password": "yourpassword"
+}
+```
+**Respon (200 OK)**:
+```json
+{
+  "success": true,
+  "token": "eyJhbGciOi...",
+  "user": {
+    "id": "uuid-v4",
+    "username": "admin",
+    "name": "System Administrator",
+    "role": "admin"
+  }
+}
+```
+
+#### Logout Pengguna
+```
+POST /admin/logout
+```
+Menghapus cookie autentikasi `token`.
+
+#### Profil Pengguna (Me)
+```
+GET /admin/me
+```
+Mengambil profil akun yang sedang login.
+
+---
+
+### Manajemen Pengguna Server (RBAC - Khusus Admin)
+
+#### Daftar Pengguna Server
+```
+GET /admin/users
+```
+
+#### Tambah Pengguna Baru
+```
+POST /admin/users
+Content-Type: application/json
+```
+**Body**:
+```json
+{
+  "username": "operator1",
+  "password": "secretpassword",
+  "name": "Operator Utama",
+  "role": "operator" // "admin" | "operator" | "viewer"
+}
+```
+
+#### Edit Pengguna Server
+```
+PUT /admin/users/:id
+Content-Type: application/json
+```
+**Body**:
+```json
+{
+  "name": "Operator Baru",
+  "role": "admin",
+  "is_active": true
+}
+```
+
+#### Ubah / Reset Password Pengguna
+```
+PUT /admin/users/:id/password
+Content-Type: application/json
+```
+**Body**:
+```json
+{
+  "oldPassword": "oldpass", // Diperlukan jika user non-admin mengubah password sendiri
+  "newPassword": "newsecretpassword"
+}
+```
+
+#### Menonaktifkan Pengguna
+```
+DELETE /admin/users/:id
+```
+
+---
 
 ### Manajemen Perangkat
 

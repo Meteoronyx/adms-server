@@ -5,7 +5,7 @@ services:
       dockerfile: Dockerfile
     container_name: dbspot_app
     ports:
-      - "3000:3000"
+      - "${PORT:-3008}:${PORT:-3008}"
     env_file:
       - .env
     environment:
@@ -28,7 +28,7 @@ services:
       - TZ=Asia/Jakarta
       - PGTZ=Asia/Jakarta
     ports:
-      - "5432:5432"
+      - "5435:5432"
     volumes:
       - dbspot_pgdata:/var/lib/postgresql/data
     healthcheck:

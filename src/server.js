@@ -13,7 +13,9 @@ const config = require('./config');
 const iclockRoutes = require('./routes/iclock');
 const adminRoutes = require('./routes/admin');
 const authRoutes = require('./routes/auth');
+const roleRoutes = require('./routes/roles');
 const { getDatabaseStatus } = require('./db/connection');
+const { seedAdminFromEnv } = require('./db/seedAdmin');
 
 const app = express();
 
@@ -54,11 +56,6 @@ app.use(cookieParser());
 // Serve frontend static files
 const frontendPath = path.join(__dirname, '../frontend/dist');
 app.use(express.static(frontendPath));
-
-app.use(authRoutes);
-app.use(iclockRoutes);
-app.use(adminRoutes);
-
 const formatUptime = (seconds) => {
   const h = Math.floor(seconds / 3600).toString().padStart(2, '0');
   const m = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
@@ -112,6 +109,11 @@ app.get('/health', async (req, res) => {
     });
   }
 });
+
+app.use(authRoutes);
+app.use(roleRoutes);
+app.use(iclockRoutes);
+app.use(adminRoutes);
 
 app.get('*', (req, res, next) => {
   if (req.url.startsWith('/iclock') || req.url.startsWith('/admin') || req.url.startsWith('/api') || req.url.startsWith('/socket.io') || !req.accepts('html')) {
@@ -189,7 +191,7 @@ process.on('unhandledRejection', (reason, promise) => {
   });
 });
 
-const server = app.listen(port, config.SERVER.HOST, () => {
+const server = app.listen(port, config.SERVER.HOST, async () => {
   const memInfo = process.memoryUsage();
   logger.info(`${config.APP.NAME} v${config.APP.VERSION} started successfully`, {
     url: `http://${config.SERVER.HOST}:${port}`,
@@ -202,6 +204,9 @@ const server = app.listen(port, config.SERVER.HOST, () => {
     },
     database: config.DATABASE_URL ? 'configured' : 'not configured'
   });
+
+  // Run auto-seed check for initial admin user
+  await seedAdminFromEnv();
 
   logger.info('Ready to accept attendance data from devices');
 });
