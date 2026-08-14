@@ -2,3 +2,8 @@ node_modules
 .env
 logs
 .agents
+docs/
+
+# Data & CSV files
+src/db/data/*.csv
+*.csv
