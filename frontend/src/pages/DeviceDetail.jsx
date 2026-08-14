@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useDeviceDetail } from '../features/devices/hooks/useDeviceDetail';
 import { DeviceDetailHeader } from '../features/devices/components/DeviceDetailHeader';
 import { DevicePegawaiTable } from '../features/devices/components/DevicePegawaiTable';
+import { ExportPegawaiModal } from '../features/attendance/components/ExportPegawaiModal';
 import {
   UpdateUserModal,
   EnrollFingerprintModal,
@@ -14,6 +16,10 @@ export default function DeviceDetail() {
   const { hasPermission } = useAuth();
   const canWrite = hasPermission('devices:write');
   const canManageFingerprint = hasPermission('fingerprint:manage');
+  const canExport = hasPermission('attendance:export');
+
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [selectedExportPegawai, setSelectedExportPegawai] = useState(null);
 
   const dev = useDeviceDetail(sn);
 
@@ -40,8 +46,13 @@ export default function DeviceDetail() {
         onOpenUpdateUser={(user) => dev.setUpdateUserModal({ open: true, data: user })}
         onOpenEnroll={(user) => dev.setEnrollModal({ open: true, data: user })}
         onDeleteUser={dev.removeUserFromDevice}
+        onExportPdf={(p) => {
+          setSelectedExportPegawai(p);
+          setExportModalOpen(true);
+        }}
         canWrite={canWrite}
         canManageFingerprint={canManageFingerprint}
+        canExport={canExport}
       />
 
       {/* Modals */}
@@ -57,6 +68,13 @@ export default function DeviceDetail() {
         onClose={() => dev.setEnrollModal({ open: false, data: null })}
         onSubmit={dev.submitEnrollFingerprint}
         targetUser={dev.enrollModal.data}
+      />
+
+      {/* Modal Ekspor Presensi Pegawai */}
+      <ExportPegawaiModal
+        open={exportModalOpen}
+        onOpenChange={setExportModalOpen}
+        initialPegawai={selectedExportPegawai}
       />
     </div>
   );

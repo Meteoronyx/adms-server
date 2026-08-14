@@ -8,6 +8,7 @@ import {
   Edit,
   Fingerprint,
   Trash2,
+  FileDown,
 } from 'lucide-react';
 import { DropdownMenu } from '../../../components/ui/DropdownMenu';
 
@@ -23,11 +24,13 @@ export function DevicePegawaiTable({
   onOpenUpdateUser,
   onOpenEnroll,
   onDeleteUser,
+  onExportPdf,
   canWrite = false,
   canManageFingerprint = false,
+  canExport = false,
 }) {
   const totalPages = Math.ceil(totalCount / limit) || 1;
-  const canManage = canWrite || canManageFingerprint;
+  const canManage = canWrite || canManageFingerprint || canExport;
 
   return (
     <div className="bg-white dark:bg-[#18192d] border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-5 shadow-sm space-y-4">
@@ -122,6 +125,13 @@ export function DevicePegawaiTable({
                                 label: 'Enroll Sidik Jari',
                                 icon: Fingerprint,
                                 onClick: () => onOpenEnroll(p),
+                              },
+                            ] : []),
+                            ...(canExport ? [
+                              {
+                                label: 'Cetak Rekap Presensi',
+                                icon: FileDown,
+                                onClick: () => onExportPdf?.(p),
                               },
                             ] : []),
                             ...(canWrite ? [

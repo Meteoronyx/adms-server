@@ -162,4 +162,48 @@ export const deleteOpd = (id) =>
 export const triggerAutoMap = () =>
   fetchJSON('/admin/opds/auto-map', { method: 'POST' });
 
+export const exportAttendancePdf = async ({ pin, year, month, signatoryName, signatoryNip, signatoryTitle, location, preview = false }) => {
+  const p = new URLSearchParams();
+  if (pin) p.append('pin', pin);
+  if (year) p.append('year', year);
+  if (month) p.append('month', month);
+  if (preview) p.append('preview', 'true');
+  if (signatoryName) p.append('signatoryName', signatoryName);
+  if (signatoryNip) p.append('signatoryNip', signatoryNip);
+  if (signatoryTitle) p.append('signatoryTitle', signatoryTitle);
+  if (location) p.append('location', location);
+
+  const res = await fetch(`/admin/attendance/export/pdf?${p.toString()}`, {
+    credentials: 'include'
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || `Gagal mengekspor PDF (HTTP ${res.status})`);
+  }
+
+  const blob = await res.blob();
+  const fileUrl = window.URL.createObjectURL(blob);
+
+  if (preview) {
+    window.open(fileUrl, '_blank');
+  } else {
+    const disposition = res.headers.get('Content-Disposition');
+    let filename = `Rekap_Presensi_${pin}_${year}-${String(month).padStart(2, '0')}.pdf`;
+    if (disposition && disposition.includes('filename=')) {
+      const match = disposition.match(/filename="?([^";]+)"?/);
+      if (match && match[1]) filename = match[1];
+    }
+    const a = document.createElement('a');
+    a.href = fileUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+
+  setTimeout(() => window.URL.revokeObjectURL(fileUrl), 60000);
+  return { success: true };
+};
+
 

@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Laporan Rekapitulasi Presensi Pegawai</title>
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 10mm 12mm 10mm 12mm;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #1e293b;
+      background: #ffffff;
+      margin: 0;
+      padding: 0;
+      font-size: 10px;
+      line-height: 1.25;
+    }
+
+    /* Kop Dokumen */
+    .kop-container {
+      text-align: center;
+      margin-bottom: 8px;
+      position: relative;
+    }
+
+    .kop-instansi {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #0f172a;
+      margin: 0;
+    }
+
+    .kop-opd {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: #334155;
+      margin: 1px 0 0 0;
+    }
+
+    .kop-divider {
+      margin-top: 5px;
+      border: 0;
+      border-top: 2px solid #0f172a;
+      border-bottom: 1px solid #0f172a;
+      height: 3px;
+    }
+
+    /* Judul Laporan */
+    .report-title {
+      text-align: center;
+      margin: 6px 0 8px 0;
+    }
+
+    .report-title h1 {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin: 0;
+      color: #0f172a;
+    }
+
+    .report-title p {
+      font-size: 10px;
+      color: #475569;
+      margin: 2px 0 0 0;
+    }
+
+    /* Info Identitas Pegawai */
+    .identity-table {
+      width: 100%;
+      margin-bottom: 8px;
+      border-collapse: collapse;
+    }
+
+    .identity-table td {
+      padding: 1.5px 4px;
+      vertical-align: top;
+      font-size: 9.5px;
+    }
+
+    .identity-table .label {
+      width: 15%;
+      color: #475569;
+      font-weight: 500;
+    }
+
+    .identity-table .separator {
+      width: 2%;
+      text-align: center;
+      color: #64748b;
+    }
+
+    .identity-table .value {
+      width: 33%;
+      font-weight: 600;
+      color: #0f172a;
+    }
+
+    /* Tabel Presensi Harian */
+    .attendance-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 8px;
+      font-size: 8.5px;
+    }
+
+    .attendance-table th,
+    .attendance-table td {
+      border: 1px solid #cbd5e1;
+      padding: 2px 4px;
+      text-align: center;
+    }
+
+    .attendance-table th {
+      background-color: #f1f5f9;
+      color: #1e293b;
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 8px;
+      letter-spacing: 0.3px;
+    }
+
+    .attendance-table tr {
+      page-break-inside: avoid;
+    }
+
+    .attendance-table tr.weekend {
+      background-color: #f8fafc;
+      color: #64748b;
+    }
+
+    .attendance-table td.text-left {
+      text-align: left;
+    }
+
+    .attendance-table td.text-right {
+      text-align: right;
+    }
+
+    .attendance-table .font-mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 8.5px;
+    }
+
+    /* Badges */
+    .badge {
+      display: inline-block;
+      padding: 1px 4px;
+      border-radius: 3px;
+      font-size: 7.5px;
+      font-weight: 600;
+    }
+
+    .badge-hadir {
+      background-color: #dcfce7;
+      color: #15803d;
+    }
+
+    .badge-tanpa-rekaman {
+      background-color: #fee2e2;
+      color: #b91c1c;
+    }
+
+    .badge-weekend {
+      background-color: #f1f5f9;
+      color: #64748b;
+    }
+
+    /* Summary Box */
+    .summary-container {
+      margin-bottom: 8px;
+      page-break-inside: avoid;
+    }
+
+    .summary-title {
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: #334155;
+      margin-bottom: 3px;
+      letter-spacing: 0.3px;
+    }
+
+    .summary-grid {
+      display: table;
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .summary-cell {
+      display: table-cell;
+      width: 20%;
+      border: 1px solid #cbd5e1;
+      padding: 4px 6px;
+      background-color: #f8fafc;
+      text-align: center;
+    }
+
+    .summary-cell .label {
+      font-size: 7.5px;
+      color: #64748b;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .summary-cell .value {
+      font-size: 11px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-top: 1px;
+    }
+
+    /* Signature Section */
+    .signature-container {
+      margin-top: 8px;
+      width: 100%;
+      page-break-inside: avoid;
+    }
+
+    .signature-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .signature-table td {
+      width: 50%;
+      vertical-align: top;
+      padding: 0 8px;
+    }
+
+    .sig-block {
+      text-align: center;
+    }
+
+    .sig-title {
+      font-size: 9.5px;
+      font-weight: 600;
+      color: #1e293b;
+      margin-bottom: 1px;
+    }
+
+    .sig-subtitle {
+      font-size: 9px;
+      color: #475569;
+      margin-bottom: 40px;
+      /* Space for physical signature/stamp */
+    }
+
+    .sig-name {
+      font-size: 9.5px;
+      font-weight: 700;
+      text-decoration: underline;
+      color: #0f172a;
+    }
+
+    .sig-nip {
+      font-size: 8.5px;
+      color: #475569;
+      margin-top: 1px;
+    }
+
+    /* Print Footer Note */
+    .print-note {
+      margin-top: 6px;
+      font-size: 7.5px;
+      color: #94a3b8;
+      text-align: right;
+      font-style: italic;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Kop Dokumen -->
+  <div class="kop-container">
+    <div class="kop-instansi">{{KOP_INSTANSI}}</div>
+    <div class="kop-opd">{{KOP_OPD}}</div>
+    <hr class="kop-divider">
+  </div>
+
+  <!-- Judul Laporan -->
+  <div class="report-title">
+    <h2>LAPORAN REKAPITULASI PRESENSI PEGAWAI</h2>
+    <p>Periode: <strong>{{PERIODE_BULAN_TAHUN}}</strong></p>
+  </div>
+
+  <!-- Identitas Pegawai -->
+  <table class="identity-table">
+    <tr>
+      <td class="label">Nama Lengkap</td>
+      <td class="separator">:</td>
+      <td class="value">{{NAMA_PEGAWAI}}</td>
+      <td class="label">Unit Kerja (OPD)</td>
+      <td class="separator">:</td>
+      <td class="value">{{NAMA_OPD}}</td>
+    </tr>
+    <tr>
+      <td class="label">PIN / NIP</td>
+      <td class="separator">:</td>
+      <td class="value font-mono">{{PIN_PEGAWAI}}</td>
+      <td class="label">Tanggal Cetak</td>
+      <td class="separator">:</td>
+      <td class="value">{{TANGGAL_CETAK}}</td>
+    </tr>
+  </table>
+
+  <!-- Tabel Presensi Harian -->
+  <table class="attendance-table">
+    <thead>
+      <tr>
+        <th style="width: 4%;">No</th>
+        <th style="width: 10%;">Tanggal</th>
+        <th style="width: 10%;">Hari</th>
+        <th style="width: 13%;">Presensi Datang</th>
+        <th style="width: 13%;">Presensi Pulang</th>
+        <th style="width: 13%;">Total Durasi</th>
+        <th style="width: 21%;">Lokasi Perangkat</th>
+        <th style="width: 16%;">Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{TABLE_ROWS}}
+    </tbody>
+  </table>
+
+  <!-- Summary Kehadiran -->
+  <div class="summary-container">
+    <div class="summary-title">Ringkasan Kehadiran Bulanan</div>
+    <div class="summary-grid">
+      <div class="summary-cell">
+        <div class="label">Total Hari</div>
+        <div class="value">{{SUMMARY_TOTAL_DAYS}}</div>
+      </div>
+      <div class="summary-cell">
+        <div class="label">Hari Hadir</div>
+        <div class="value" style="color: #16a34a;">{{SUMMARY_DAYS_PRESENT}}</div>
+      </div>
+      <div class="summary-cell">
+        <div class="label">Tanpa Presensi</div>
+        <div class="value" style="color: #dc2626;">{{SUMMARY_DAYS_ABSENT}}</div>
+      </div>
+      <div class="summary-cell">
+        <div class="label">Total Log</div>
+        <div class="value">{{SUMMARY_TOTAL_LOGS}}</div>
+      </div>
+      <div class="summary-cell">
+        <div class="label">Akumulasi Durasi</div>
+        <div class="value">{{SUMMARY_TOTAL_DURATION}}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Kolom Tanda Tangan -->
+  <div class="signature-container">
+    <table class="signature-table">
+      <tr>
+        <!-- Kolom Kiri: Atasan Langsung -->
+        <td>
+          <div class="sig-block">
+            <div class="sig-title">Mengetahui,</div>
+            <div class="sig-subtitle">{{SIGNATORY_TITLE}}</div>
+            <div class="sig-name">{{SIGNATORY_NAME}}</div>
+            <div class="sig-nip">{{SIGNATORY_NIP}}</div>
+          </div>
+        </td>
+
+        <!-- Kolom Kanan: Pegawai Ybs -->
+        <td>
+          <div class="sig-block">
+            <div class="sig-title">{{PRINT_LOCATION}}, {{TANGGAL_CETAK}}</div>
+            <div class="sig-subtitle">Pegawai Yang Bersangkutan,</div>
+            <div class="sig-name">{{NAMA_PEGAWAI}}</div>
+            <div class="sig-nip">PIN: {{PIN_PEGAWAI}}</div>
+          </div>
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="print-note">
+    Laporan ini dicetak otomatis melalui DBSpot pada {{TANGGAL_CETAK_LENGKAP}}.
+  </div>
+
+</body>
+
+</html>

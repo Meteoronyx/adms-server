@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { getPegawai, searchPegawai } from '../lib/api';
 import { useToast } from '../hooks/useToast';
-import { Search, User, Fingerprint, ChevronRight, ArrowLeft } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
+import { ExportPegawaiModal } from '../features/attendance/components/ExportPegawaiModal';
+import { Search, User, Fingerprint, ChevronRight, ArrowLeft, FileDown } from 'lucide-react';
 
 export default function Pegawai() {
   const [query, setQuery] = useState('');
@@ -9,7 +11,9 @@ export default function Pegawai() {
   const [results, setResults] = useState(null);
   const [pegawai, setPegawai] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
   const { addToast } = useToast();
+  const { hasPermission } = useAuth();
 
   const handleSearch = async (e) => {
     e.preventDefault();
@@ -153,14 +157,26 @@ export default function Pegawai() {
 
           {/* Profile Card */}
           <div className="bg-white rounded-xl border border-slate-200/60 shadow-sm p-6">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center text-slate-600">
-                <User size={28} />
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center text-slate-600">
+                  <User size={28} />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900 tracking-tight">{pegawai.name || `Pegawai ${pegawai.pin}`}</h2>
+                  <p className="text-sm text-slate-500 mt-0.5">PIN: <span className="font-mono text-slate-700">{pegawai.pin}</span></p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-lg font-bold text-slate-900 tracking-tight">{pegawai.name || `Pegawai ${pegawai.pin}`}</h2>
-                <p className="text-sm text-slate-500 mt-0.5">PIN: <span className="font-mono text-slate-700">{pegawai.pin}</span></p>
-              </div>
+              {hasPermission('attendance:export') && (
+                <button
+                  type="button"
+                  onClick={() => setExportModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-slate-900 dark:bg-indigo-600 hover:bg-slate-800 dark:hover:bg-indigo-700 text-white rounded-xl shadow-sm transition-all active:scale-[0.98] w-fit"
+                >
+                  <FileDown size={14} />
+                  <span>Cetak Rekap Presensi</span>
+                </button>
+              )}
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 pt-5 border-t border-slate-100">
               <div>
@@ -221,6 +237,13 @@ export default function Pegawai() {
           </div>
         </div>
       )}
+
+      {/* Modal Ekspor Presensi Pegawai */}
+      <ExportPegawaiModal
+        open={exportModalOpen}
+        onOpenChange={setExportModalOpen}
+        initialPegawai={pegawai}
+      />
     </div>
   );
 }
