@@ -5,6 +5,7 @@ const reuploadService = require('../services/reuploadService');
 const commandService = require('../services/commandService');
 const userService = require('../services/userService');
 const queries = require('../db/queries');
+const pdfService = require('../services/pdfService');
 const logger = require('../utils/logger');
 
 // Reupload Logic
@@ -58,6 +59,14 @@ exports.verifyDevice = async (req, res) => {
   const { sn } = req.params;
   const device = req.device;
 
+  // Validasi: pastikan device_name sudah diisi sebelum verifikasi
+  if (!device.device_name || !device.device_name.trim()) {
+    return res.status(400).json({
+      success: false,
+      message: 'Nama perangkat wajib diisi terlebih dahulu sebelum melakukan verifikasi'
+    });
+  }
+
   await queries.verifyDevice(sn);
   logger.info('Device verified via API', { sn, ip: req.ip });
 
@@ -67,6 +76,7 @@ exports.verifyDevice = async (req, res) => {
     device: {
       sn: device.sn,
       name: device.name,
+      device_name: device.device_name,
       verified: true
     }
   });
@@ -675,3 +685,85 @@ exports.transferFingerprint = async (req, res) => {
     finger_ids: queuedCommands
   });
 };
+
+// Export Attendance PDF Report
+exports.exportAttendancePdf = async (req, res) => {
+  const pin = req.query.pin;
+  const year = parseInt(req.query.year);
+  const month = parseInt(req.query.month);
+  const preview = req.query.preview === 'true' || req.query.preview === '1';
+  const signatoryName = req.query.signatoryName || '';
+  const signatoryNip = req.query.signatoryNip || '';
+  const signatoryTitle = req.query.signatoryTitle || '';
+  const location = req.query.location || '';
+
+  if (!pin) {
+    return res.status(400).json({
+      success: false,
+      message: 'Parameter "pin" diperlukan'
+    });
+  }
+
+  if (!year || isNaN(year) || !month || isNaN(month) || month < 1 || month > 12) {
+    return res.status(400).json({
+      success: false,
+      message: 'Parameter "year" dan "month" (1-12) yang valid diperlukan'
+    });
+  }
+
+  const isSystemAdmin = req.user.role === 'admin';
+  const opdId = !isSystemAdmin ? req.user.opd_id : null;
+
+  // Non-admin without OPD cannot export
+  if (!isSystemAdmin && !opdId) {
+    return res.status(403).json({
+      success: false,
+      message: 'Akun Anda tidak terikat dengan OPD mana pun'
+    });
+  }
+
+  // Get Pegawai info with OPD scoping check
+  const pegawai = await queries.getPegawaiProfileForExport(pin, opdId);
+  if (!pegawai) {
+    return res.status(404).json({
+      success: false,
+      message: 'Data pegawai tidak ditemukan atau berada di luar unit kerja (OPD) Anda'
+    });
+  }
+
+  // Calculate month date range: [YYYY-MM-01, nextMonth-01)
+  const startStr = `${year}-${String(month).padStart(2, '0')}-01 00:00:00`;
+  let nextY = year;
+  let nextM = month + 1;
+  if (nextM > 12) {
+    nextM = 1;
+    nextY += 1;
+  }
+  const endStr = `${nextY}-${String(nextM).padStart(2, '0')}-01 00:00:00`;
+
+  // Fetch monthly attendance logs
+  const logs = await queries.getMonthlyLogsForPegawai(pin, startStr, endStr, opdId);
+
+  // Generate PDF buffer
+  const pdfBuffer = await pdfService.generateAttendancePdf({
+    pegawai,
+    logs,
+    year,
+    month,
+    signatory: {
+      name: signatoryName,
+      nip: signatoryNip,
+      title: signatoryTitle
+    },
+    location
+  });
+
+  const filename = `Rekap_Presensi_${pin}_${year}-${String(month).padStart(2, '0')}.pdf`;
+  const disposition = preview ? `inline; filename="${filename}"` : `attachment; filename="${filename}"`;
+
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', disposition);
+  res.setHeader('Content-Length', pdfBuffer.length);
+  res.send(pdfBuffer);
+};
+

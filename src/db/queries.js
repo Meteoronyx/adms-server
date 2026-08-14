@@ -845,6 +845,63 @@ const softDeletePegawai = async (pin) => {
   return db.query(query, [pin]);
 };
 
+// Get pegawai profile for PDF export with OPD details and scoping
+const getPegawaiProfileForExport = async (pin, opdId = null) => {
+  let query = `
+    SELECT 
+      p.pin, 
+      p.name, 
+      p.card, 
+      p.group_no, 
+      p.timezone, 
+      p.verify_mode, 
+      p.opd_id,
+      o.nama_opd, 
+      o.kdunker
+    FROM pegawai p
+    LEFT JOIN opds o ON p.opd_id = o.id
+    WHERE p.pin = $1 AND p.deleted_at IS NULL
+  `;
+  const params = [pin];
+  if (opdId) {
+    params.push(opdId);
+    query += ` AND (p.opd_id = $2 OR EXISTS (
+      SELECT 1 FROM pegawai_device_mapping pdm
+      JOIN devices dv ON pdm.device_sn = dv.sn
+      WHERE pdm.pegawai_pin = p.pin AND pdm.deleted_at IS NULL AND dv.opd_id = $2
+    ))`;
+  }
+  const result = await db.query(query, params);
+  return result.rows[0] || null;
+};
+
+// Get monthly logs for pegawai for PDF export
+const getMonthlyLogsForPegawai = async (pin, startDate, endDate, opdId = null) => {
+  let query = `
+    SELECT 
+      a.device_sn, 
+      a.user_pin, 
+      a.check_time, 
+      a.status, 
+      a.verify_mode, 
+      d.device_name,
+      d.opd_id as device_opd_id
+    FROM attendance_logs a
+    LEFT JOIN devices d ON a.device_sn = d.sn
+    WHERE a.user_pin = $1 
+      AND a.check_time >= $2 
+      AND a.check_time < $3
+  `;
+  const params = [pin, startDate, endDate];
+  if (opdId) {
+    params.push(opdId);
+    query += ` AND d.opd_id = $4`;
+  }
+  query += ` ORDER BY a.check_time ASC`;
+  const result = await db.query(query, params);
+  return result.rows;
+};
+
 module.exports = {
   upsertDevice,
   updateDeviceInfo,
@@ -881,4 +938,7 @@ module.exports = {
   deletePegawaiFingerprints,
   countActiveDeviceMappings,
   softDeletePegawai,
+  getPegawaiProfileForExport,
+  getMonthlyLogsForPegawai,
 };
+

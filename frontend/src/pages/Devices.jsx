@@ -196,7 +196,14 @@ export default function Devices() {
               : {
                   label: 'Verify Device',
                   icon: CheckCircle2,
-                  onClick: () => doAction(verifyDevice, d.sn, `Verified ${d.sn}`)
+                  onClick: () => {
+                    if (!d.device_name || !d.device_name.trim()) {
+                      addToast('Harap isi Nama Perangkat terlebih dahulu sebelum melakukan verifikasi', 'error');
+                      setEditModal({ open: true, sn: d.sn, currentName: '' });
+                      return;
+                    }
+                    doAction(verifyDevice, d.sn, `Verified ${d.sn}`);
+                  }
                 }
           );
         }

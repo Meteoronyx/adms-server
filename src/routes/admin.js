@@ -52,8 +52,9 @@ router.get('/admin/pegawai/search', requirePermission('devices:read'), asyncHand
 router.get('/admin/pegawai/:pin', requirePermission('devices:read'), asyncHandler(adminController.getPegawai));
 router.get('/admin/devices/:sn/pegawai', requirePermission('devices:read'), validateDevice, asyncHandler(adminController.getPegawaiByDevice));
 
-// Attendance Logs
+// Attendance Logs & Export
 router.get('/admin/attendance', requirePermission('attendance:read'), asyncHandler(adminController.getAttendanceLogs));
+router.get('/admin/attendance/export/pdf', requirePermission('attendance:export'), asyncHandler(adminController.exportAttendancePdf));
 
 // Dashboard Stats
 router.get('/admin/stats', requirePermission('devices:read'), asyncHandler(adminController.getDashboardStats));
