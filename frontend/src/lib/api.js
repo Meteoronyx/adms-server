@@ -20,13 +20,13 @@ async function fetchJSON(path, options = {}) {
 }
 
 export const login = (username, password) =>
-  fetchJSON('/admin/login', { method: 'POST', body: JSON.stringify({ username, password }) });
+  fetchJSON('/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) });
 
 export const logout = () =>
-  fetchJSON('/admin/logout', { method: 'POST' });
+  fetchJSON('/auth/logout', { method: 'POST' });
 
 export const me = () =>
-  fetchJSON('/admin/me');
+  fetchJSON('/auth/me');
 
 export const getHealth = () =>
   fetchJSON('/health');

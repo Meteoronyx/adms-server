@@ -12,7 +12,7 @@ const requireRole = require('../middleware/requireRole');
 const asyncHandler = require('../middleware/asyncHandler');
 const userController = require('../controllers/userController');
 const logger = require('../utils/logger');
-const { COOKIE_OPTIONS, clearAuthCookie } = apiKeyAuth;
+const { COOKIE_OPTIONS, clearAuthCookie, getUserProfile } = apiKeyAuth;
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -32,8 +32,8 @@ const loginLimiter = rateLimit({
 
 const JWT_SECRET = config.JWT_SECRET;
 
-// POST /admin/login — Database-backed authentication
-router.post('/admin/login', loginLimiter, asyncHandler(async (req, res) => {
+// Login handler
+const handleLogin = asyncHandler(async (req, res) => {
   if (!JWT_SECRET) {
     return res.status(500).json({
       success: false,
@@ -78,11 +78,14 @@ router.post('/admin/login', loginLimiter, asyncHandler(async (req, res) => {
   // Update last_login_at timestamp
   await query('UPDATE users SET last_login_at = NOW() WHERE id = $1', [user.id]);
 
+  // Fetch full user profile with permissions & OPD scoping
+  const userProfile = await getUserProfile(user.id);
+
   // Sign JWT with user info
   const tokenPayload = {
     id: user.id,
     username: user.username,
-    role: user.role
+    role: userProfile?.role || user.role
   };
 
   const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '8h' });
@@ -90,30 +93,41 @@ router.post('/admin/login', loginLimiter, asyncHandler(async (req, res) => {
   // Set HTTP-only cookie
   res.cookie('token', token, COOKIE_OPTIONS);
 
-  logger.info(`Pengguna '${user.username}' (${user.role}) berhasil login`);
+  logger.info(`Pengguna '${user.username}' (${userProfile?.role || user.role}) berhasil login`);
 
   res.json({
     success: true,
     token,
-    user: {
+    user: userProfile || {
       id: user.id,
       username: user.username,
       name: user.name,
-      role: user.role
+      role: user.role,
+      permissions: []
     }
   });
-}));
+});
 
-// POST /admin/logout
-router.post('/admin/logout', (req, res) => {
+// Logout handler
+const handleLogout = (req, res) => {
   clearAuthCookie(res);
   res.json({ success: true, message: 'Logged out' });
-});
+};
 
-// GET /admin/me — Current user profile
-router.get('/admin/me', apiKeyAuth, (req, res) => {
+// Me handler
+const handleMe = (req, res) => {
   res.json({ success: true, user: req.user });
-});
+};
+
+// Authentication routes (/auth/* and /admin/* aliases)
+router.post('/auth/login', loginLimiter, handleLogin);
+router.post('/admin/login', loginLimiter, handleLogin);
+
+router.post('/auth/logout', handleLogout);
+router.post('/admin/logout', handleLogout);
+
+router.get('/auth/me', apiKeyAuth, handleMe);
+router.get('/admin/me', apiKeyAuth, handleMe);
 
 // =========================================================
 // USER MANAGEMENT ROUTES (/admin/users)

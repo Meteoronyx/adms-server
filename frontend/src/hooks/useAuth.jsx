@@ -29,7 +29,7 @@ export function AuthProvider({ children }) {
 
   const login = useCallback(async (userData) => {
     setIsAuthenticated(true);
-    if (userData) {
+    if (userData && Array.isArray(userData.permissions)) {
       setUser(userData);
     } else {
       await verifySession();
