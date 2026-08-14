@@ -21,7 +21,7 @@ export function DeleteUserModal({
       open={open}
       onOpenChange={(val) => !val && onClose()}
       title="Hapus Pengguna"
-      description="Tindakan ini tidak dapat dibatalkan"
+      description="Akun akan dihapus secara permanen dan tidak dapat dipulihkan"
       size="sm"
       footer={
         <>
@@ -50,7 +50,7 @@ export function DeleteUserModal({
         <span className="font-semibold text-slate-900 dark:text-slate-100">
           "{user?.username}"
         </span>
-        ? Seluruh akses login untuk pengguna ini akan dicabut.
+        ? Akun akan dihapus permanen dari database beserta seluruh akses login-nya.
       </div>
     </Modal>
   );

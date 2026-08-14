@@ -23,8 +23,11 @@ export function DevicePegawaiTable({
   onOpenUpdateUser,
   onOpenEnroll,
   onDeleteUser,
+  canWrite = false,
+  canManageFingerprint = false,
 }) {
   const totalPages = Math.ceil(totalCount / limit) || 1;
+  const canManage = canWrite || canManageFingerprint;
 
   return (
     <div className="bg-white dark:bg-[#18192d] border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-5 shadow-sm space-y-4">
@@ -33,7 +36,7 @@ export function DevicePegawaiTable({
         <div>
           <h2 className="text-xs font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider flex items-center gap-2">
             <Users size={16} className="text-indigo-600 dark:text-indigo-400" />
-            Daftar Pegawai Terdaftar ({totalCount})
+            Daftar Pegawai({totalCount})
           </h2>
           <p className="text-[11px] text-slate-400 dark:text-slate-400">
             Daftar pegawai dan status sidik jari yang tersinkronisasi di mesin ini
@@ -72,7 +75,7 @@ export function DevicePegawaiTable({
                   <th className="px-4 py-3">Nama Pegawai</th>
                   <th className="px-4 py-3">Privilege</th>
                   <th className="px-4 py-3">Sidik Jari</th>
-                  <th className="px-4 py-3 text-right">Aksi</th>
+                  {canManage && <th className="px-4 py-3 text-right">Aksi</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-slate-700 dark:text-slate-300">
@@ -85,8 +88,8 @@ export function DevicePegawaiTable({
                       {p.name || <span className="italic text-slate-400">Belum diisi</span>}
                     </td>
                     <td className="px-4 py-3">
-                      <Badge variant={p.privilege === '14' ? 'warning' : 'neutral'}>
-                        {p.privilege === '14' ? 'Admin Mesin' : 'User Normal'}
+                      <Badge variant={Number(p.privilege) === 14 ? 'warning' : 'neutral'}>
+                        {Number(p.privilege) === 14 ? 'Admin Mesin' : 'User Normal'}
                       </Badge>
                     </td>
                     <td className="px-4 py-3">
@@ -99,32 +102,42 @@ export function DevicePegawaiTable({
                       )}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <DropdownMenu
-                        trigger={
-                          <button className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                            <MoreHorizontal size={16} />
-                          </button>
-                        }
-                        items={[
-                          {
-                            label: 'Edit User Mesin',
-                            icon: Edit,
-                            onClick: () => onOpenUpdateUser(p),
-                          },
-                          {
-                            label: 'Enroll Sidik Jari',
-                            icon: Fingerprint,
-                            onClick: () => onOpenEnroll(p),
-                          },
-                          { type: 'separator' },
-                          {
-                            label: 'Hapus dari Mesin',
-                            icon: Trash2,
-                            variant: 'danger',
-                            onClick: () => onDeleteUser(p.pin),
-                          },
-                        ]}
-                      />
+                      {canManage ? (
+                        <DropdownMenu
+                          trigger={
+                            <button className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                              <MoreHorizontal size={16} />
+                            </button>
+                          }
+                          items={[
+                            ...(canWrite ? [
+                              {
+                                label: 'Edit User Mesin',
+                                icon: Edit,
+                                onClick: () => onOpenUpdateUser(p),
+                              },
+                            ] : []),
+                            ...(canManageFingerprint ? [
+                              {
+                                label: 'Enroll Sidik Jari',
+                                icon: Fingerprint,
+                                onClick: () => onOpenEnroll(p),
+                              },
+                            ] : []),
+                            ...(canWrite ? [
+                              { type: 'separator' },
+                              {
+                                label: 'Hapus dari Mesin',
+                                icon: Trash2,
+                                variant: 'danger',
+                                onClick: () => onDeleteUser(p.pin),
+                              },
+                            ] : []),
+                          ]}
+                        />
+                      ) : (
+                        <span className="text-slate-300 dark:text-slate-600">-</span>
+                      )}
                     </td>
                   </tr>
                 ))}

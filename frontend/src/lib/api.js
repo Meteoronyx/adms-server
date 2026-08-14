@@ -138,4 +138,28 @@ export const updateAdminRole = (id, roleData) =>
 export const deleteAdminRole = (id) =>
   fetchJSON(`/admin/roles/${id}`, { method: 'DELETE' });
 
+export const listOpds = ({ all = false, search = '', page = 1, limit = 50 } = {}) => {
+  const p = new URLSearchParams();
+  if (all) p.append('all', 'true');
+  if (search) p.append('search', search);
+  if (page) p.append('page', page);
+  if (limit) p.append('limit', limit);
+  return fetchJSON(`/admin/opds?${p.toString()}`);
+};
+
+export const getOpd = (id) =>
+  fetchJSON(`/admin/opds/${id}`);
+
+export const createOpd = (opdData) =>
+  fetchJSON('/admin/opds', { method: 'POST', body: JSON.stringify(opdData) });
+
+export const updateOpd = (id, opdData) =>
+  fetchJSON(`/admin/opds/${id}`, { method: 'PUT', body: JSON.stringify(opdData) });
+
+export const deleteOpd = (id) =>
+  fetchJSON(`/admin/opds/${id}`, { method: 'DELETE' });
+
+export const triggerAutoMap = () =>
+  fetchJSON('/admin/opds/auto-map', { method: 'POST' });
+
 

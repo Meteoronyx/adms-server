@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Modal } from '../../../../components/ui/Modal';
-import { UserPlus, UserCheck, Shield } from 'lucide-react';
+import { SearchableSelect } from '../../../../components/ui/SearchableSelect';
+import { UserPlus, Shield } from 'lucide-react';
 
 export function CreateUserModal({
   open,
   onClose,
   onSubmit,
   roles,
+  opds = [],
   submitting,
 }) {
   const [formData, setFormData] = useState({
@@ -14,7 +16,12 @@ export function CreateUserModal({
     name: '',
     password: '',
     role_id: '',
+    opd_id: '',
   });
+  const [error, setError] = useState('');
+
+  const selectedRole = roles.find((r) => String(r.id) === String(formData.role_id));
+  const isAdminRole = selectedRole?.slug === 'admin';
 
   useEffect(() => {
     if (open) {
@@ -23,15 +30,23 @@ export function CreateUserModal({
         name: '',
         password: '',
         role_id: roles.length > 0 ? roles[0].id : '',
+        opd_id: '',
       });
+      setError('');
     }
   }, [open, roles]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!isAdminRole && !formData.opd_id) {
+      setError('Pengguna non-admin wajib memilih Induk Unit Kerja (OPD)');
+      return;
+    }
+    setError('');
     const success = await onSubmit({
       ...formData,
-      role_id: formData.role_id ? parseInt(formData.role_id, 10) : null,
+      role_id: formData.role_id || null,
+      opd_id: formData.opd_id || null,
     });
     if (success) {
       onClose();
@@ -43,7 +58,7 @@ export function CreateUserModal({
       open={open}
       onOpenChange={(val) => !val && onClose()}
       title="Tambah Pengguna Baru"
-      description="Buat akun pengguna sistem baru beserta penetapan role akses"
+      description="Buat akun pengguna sistem baru beserta penetapan role dan unit kerja OPD"
       size="md"
       footer={
         <>
@@ -129,6 +144,29 @@ export function CreateUserModal({
             </select>
             <Shield className="absolute right-3 top-2.5 w-4 h-4 text-slate-400 pointer-events-none" />
           </div>
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+            Induk Unit Kerja (OPD)
+            {!isAdminRole && <span className="text-rose-500"> *</span>}
+          </label>
+          <SearchableSelect
+            value={formData.opd_id || ''}
+            onChange={(val) => setFormData({ ...formData, opd_id: val })}
+            options={opds.map((o) => ({
+              value: o.id,
+              label: `${o.nama_opd} (${o.kdunker})`,
+            }))}
+            defaultOptionLabel={isAdminRole ? '-- Global / Seluruh OPD (Admin System) --' : ''}
+            placeholder={isAdminRole ? '-- Global / Seluruh OPD (Admin System) --' : '-- Pilih Induk Unit Kerja (wajib) --'}
+          />
+          {!isAdminRole && (
+            <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">
+              Wajib dipilih agar pengguna hanya melihat data unit kerjanya sendiri
+            </p>
+          )}
+          {error && <p className="text-[11px] text-rose-600 dark:text-rose-400 mt-1">{error}</p>}
         </div>
       </form>
     </Modal>

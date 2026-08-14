@@ -6,6 +6,7 @@ import { SearchableSelect } from '../components/ui/SearchableSelect';
 import { format } from 'date-fns';
 import { useToast } from '../hooks/useToast';
 import { useSocket } from '../hooks/useSocket';
+import { useAuth } from '../hooks/useAuth';
 import { Calendar, Filter, ChevronLeft, ChevronRight, ClipboardList } from 'lucide-react';
 
 export default function AttendanceLogs() {
@@ -16,6 +17,8 @@ export default function AttendanceLogs() {
   const [offset, setOffset] = useState(0);
   const { addToast } = useToast();
   const { socket } = useSocket();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
 
   const columns = [
     {
@@ -38,6 +41,11 @@ export default function AttendanceLogs() {
           return <span className="text-slate-400">{row.original.check_time}</span>;
         }
       }
+    },
+    {
+      accessorKey: 'nama_opd',
+      header: 'OPD',
+      cell: ({ row }) => row.original.nama_opd || <span className="text-slate-400">-</span>
     },
     {
       accessorKey: 'device_name',
@@ -143,7 +151,13 @@ export default function AttendanceLogs() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Attendance Logs</h1>
-          <p className="text-sm text-slate-500 mt-1">Log absensi dari seluruh perangkat</p>
+          <p className="text-sm text-slate-500 mt-1">
+            {isAdmin
+              ? 'Log absensi dari seluruh perangkat'
+              : user?.nama_opd
+                ? `Log absensi ${user.nama_opd}`
+                : 'Log absensi OPD Anda'}
+          </p>
         </div>
         <div className="flex items-center gap-2 text-xs text-slate-400">
           <ClipboardList size={14} />

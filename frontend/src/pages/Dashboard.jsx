@@ -8,6 +8,7 @@ import {
   CheckCircle2, AlertCircle
 } from 'lucide-react';
 import { useSocket } from '../hooks/useSocket';
+import { useAuth } from '../hooks/useAuth';
 
 const HIGHLIGHT_THEMES = {
   emerald: {
@@ -67,6 +68,8 @@ export default function Dashboard() {
   const prevStats = useRef(null);
   const highlightTimers = useRef({});
   const { socket } = useSocket();
+  const { hasPermission } = useAuth();
+  const canViewCommands = hasPermission('devices:command');
 
   const triggerHighlight = useCallback((card) => {
     // Clear previous timers
@@ -91,42 +94,55 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchAll = async () => {
       try {
-        const [h, d, c, s] = await Promise.all([
+        // Fetch per-endpoint agar satu kegagalan (mis. 403 karena kurang permission)
+        // tidak merusak seluruh halaman dashboard
+        const [h, d, c, s] = await Promise.allSettled([
           getHealth(),
           listDevices(),
-          getCommandQueue(),
+          canViewCommands ? getCommandQueue() : Promise.resolve({ commands: [] }),
           getStats(),
         ]);
+
+        const resolved = (r) => (r.status === 'fulfilled' ? r.value : null);
+        const hRes = resolved(h);
+        const dRes = resolved(d);
+        const cRes = resolved(c);
+        const sRes = resolved(s);
 
         // Comparison for Highlight
         if (prevStats.current) {
           const old = prevStats.current;
-          const curr = s.stats || {};
+          const curr = (sRes && sRes.stats) || {};
           const oldDevs = old.devices || [];
-          const currDevs = d.devices || [];
+          const currDevs = (dRes && dRes.devices) || [];
 
           if (curr.total_pegawai !== old.stats?.total_pegawai) triggerHighlight('pegawai');
           if (curr.total_fingerprints !== old.stats?.total_fingerprints) triggerHighlight('fingerprint');
           if (curr.total_admins !== old.stats?.total_admins) triggerHighlight('admin');
-          if (c.commands?.length !== old.commands?.length) triggerHighlight('commands');
+          if ((cRes && cRes.commands?.length) !== old.commands?.length) triggerHighlight('commands');
 
           if (currDevs.length !== oldDevs.length) triggerHighlight('total_device');
           const oldOnline = oldDevs.filter(x => x.status === 'online').length;
           const currOnline = currDevs.filter(x => x.status === 'online').length;
           if (currOnline !== oldOnline) triggerHighlight('online_device');
-          if (d.offlineDevices?.length !== old.offlineDevices?.length) triggerHighlight('offline_device');
+          if ((dRes && dRes.offlineDevices?.length) !== old.offlineDevices?.length) triggerHighlight('offline_device');
         }
 
-        prevStats.current = { stats: s.stats, devices: d.devices, commands: c.commands, offlineDevices: d.offlineDevices };
+        prevStats.current = {
+          stats: (sRes && sRes.stats) || {},
+          devices: (dRes && dRes.devices) || [],
+          commands: (cRes && cRes.commands) || [],
+          offlineDevices: (dRes && dRes.offlineDevices) || [],
+        };
 
-        setHealth(h);
-        setDevices(d.devices || []);
-        setOfflineDevices(d.offlineDevices || []);
-        setCommands(c.commands || []);
-        setStats(s.stats || null);
-        setLogsToday(parseInt(s.stats?.logs_today, 10) || 0);
-        setLogsWeekly(parseInt(s.stats?.logs_weekly, 10) || 0);
-        setLogsMonth(parseInt(s.stats?.logs_monthly, 10) || 0);
+        if (hRes) setHealth(hRes);
+        setDevices((dRes && dRes.devices) || []);
+        setOfflineDevices((dRes && dRes.offlineDevices) || []);
+        setCommands((cRes && cRes.commands) || []);
+        setStats((sRes && sRes.stats) || null);
+        setLogsToday(parseInt((sRes && sRes.stats?.logs_today), 10) || 0);
+        setLogsWeekly(parseInt((sRes && sRes.stats?.logs_weekly), 10) || 0);
+        setLogsMonth(parseInt((sRes && sRes.stats?.logs_monthly), 10) || 0);
       } catch {
         // ignore
       } finally {
@@ -138,7 +154,7 @@ export default function Dashboard() {
     // Kurangi beban polling jadi per 30 detik karena sekarang ada WebSocket
     const iv = setInterval(fetchAll, 30000);
     return () => clearInterval(iv);
-  }, []);
+  }, [canViewCommands]);
 
   useEffect(() => {
     if (!socket) return;
@@ -196,7 +212,9 @@ export default function Dashboard() {
               <StatCard label="Total Pegawai" value={stats?.total_pegawai} icon={Users} accent="bg-blue-50 text-blue-600" highlight={highlightedCards.pegawai} />
               <StatCard label="Total Fingerprint" value={stats?.total_fingerprints} icon={Fingerprint} accent="bg-violet-50 text-violet-600" highlight={highlightedCards.fingerprint} />
               <StatCard label="Admin Mesin" value={stats?.total_admins} icon={ShieldCheck} accent="bg-amber-50 text-amber-600" highlight={highlightedCards.admin} />
-              <StatCard label="Pending Commands" value={commands.length} icon={ListOrdered} accent="bg-orange-50 text-orange-600" highlight={highlightedCards.commands} />
+              {canViewCommands && (
+                <StatCard label="Pending Commands" value={commands.length} icon={ListOrdered} accent="bg-orange-50 text-orange-600" highlight={highlightedCards.commands} />
+              )}
             </div>
           </section>
 

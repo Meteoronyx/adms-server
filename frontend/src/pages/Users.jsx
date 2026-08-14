@@ -38,9 +38,9 @@ export default function Users() {
           <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
             Manajemen Pengguna & Pengaturan Akses
           </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+          {/* <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             Kelola akun administrator, staf operasional, dan konfigurasi hak akses berbasis role (RBAC)
-          </p>
+          </p> */}
         </div>
 
         <Tabs tabs={tabOptions} activeTab={activeTab} onChange={setActiveTab} />
@@ -51,11 +51,14 @@ export default function Users() {
         <UsersTab
           users={usersHook.filteredUsers}
           roles={rolesHook.roles}
+          opds={usersHook.opds}
           loading={usersHook.loading}
           search={usersHook.search}
           setSearch={usersHook.setSearch}
           roleFilter={usersHook.roleFilter}
           setRoleFilter={usersHook.setRoleFilter}
+          opdFilter={usersHook.opdFilter}
+          setOpdFilter={usersHook.setOpdFilter}
           currentUser={currentUser}
           hasPermission={hasPermission}
           onOpenCreate={modalsHook.openCreateUser}
@@ -82,6 +85,7 @@ export default function Users() {
         onClose={modalsHook.closeModal}
         onSubmit={usersHook.createUser}
         roles={rolesHook.roles}
+        opds={usersHook.opds}
         submitting={usersHook.submitting}
       />
 
@@ -91,6 +95,7 @@ export default function Users() {
         onSubmit={usersHook.updateUser}
         user={modalsHook.selectedUser}
         roles={rolesHook.roles}
+        opds={usersHook.opds}
         submitting={usersHook.submitting}
       />
 

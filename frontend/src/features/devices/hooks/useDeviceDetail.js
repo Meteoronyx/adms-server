@@ -3,16 +3,9 @@ import { useSocket } from '../../../hooks/useSocket';
 import { useToast } from '../../../hooks/useToast';
 import {
   getDevicePegawai,
-  verifyDevice,
-  unverifyDevice,
-  reuploadDevice,
-  rebootDevice,
-  clearLog,
-  infoDevice,
   updateUser,
   deleteUser,
   enrollFingerprint,
-  updateDeviceName,
 } from '../../../lib/api';
 
 export function useDeviceDetail(sn) {
@@ -30,7 +23,6 @@ export function useDeviceDetail(sn) {
   // Modals
   const [updateUserModal, setUpdateUserModal] = useState({ open: false, data: null });
   const [enrollModal, setEnrollModal] = useState({ open: false, data: null });
-  const [editNameModal, setEditNameModal] = useState(false);
 
   const fetchData = useCallback(async () => {
     if (!sn) return;
@@ -77,16 +69,6 @@ export function useDeviceDetail(sn) {
     return () => socket.off('device_update', handleDeviceUpdate);
   }, [socket, sn, fetchData]);
 
-  const executeCommand = async (commandFn, successMsg) => {
-    try {
-      await commandFn(sn);
-      addToast(successMsg, 'success');
-      await fetchData();
-    } catch (err) {
-      addToast(err.message || 'Perintah gagal dieksekusi', 'error');
-    }
-  };
-
   const removeUserFromDevice = async (pin) => {
     if (!window.confirm(`Hapus pengguna dengan PIN ${pin} dari perangkat ini?`)) return;
     try {
@@ -123,25 +105,12 @@ export function useDeviceDetail(sn) {
     }
   };
 
-  const submitDeviceName = async (newName) => {
-    if (!newName.trim()) return false;
-    try {
-      await updateDeviceName(sn, newName.trim());
-      addToast('Nama perangkat berhasil diperbarui', 'success');
-      setEditNameModal(false);
-      await fetchData();
-      return true;
-    } catch (err) {
-      addToast(err.message || 'Gagal mengubah nama perangkat', 'error');
-      return false;
-    }
-  };
-
   return {
     sn,
     device: data?.device || null,
     pegawai: data?.pegawai || [],
-    totalCount: data?.totalCount || 0,
+    totalCount: data?.total ?? 0,
+    pegawaiCount: data?.count ?? 0,
     loading,
     search,
     setSearch,
@@ -152,18 +121,8 @@ export function useDeviceDetail(sn) {
     setUpdateUserModal,
     enrollModal,
     setEnrollModal,
-    editNameModal,
-    setEditNameModal,
-    executeCommand,
     removeUserFromDevice,
     submitUpdateUser,
     submitEnrollFingerprint,
-    submitDeviceName,
-    verify: () => executeCommand(verifyDevice, 'Perangkat diverifikasi'),
-    unverify: () => executeCommand(unverifyDevice, 'Verifikasi dicabut'),
-    reupload: () => executeCommand(reuploadDevice, 'Perintah Reupload dikirim'),
-    reboot: () => executeCommand(rebootDevice, 'Perintah Reboot dikirim'),
-    clearLog: () => executeCommand(clearLog, 'Perintah Clear Log dikirim'),
-    requestInfo: () => executeCommand(infoDevice, 'Perintah Info dikirim'),
   };
 }

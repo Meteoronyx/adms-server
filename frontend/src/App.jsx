@@ -13,6 +13,7 @@ import Commands from './pages/Commands';
 import Fingerprint from './pages/Fingerprint';
 import AttendanceLogs from './pages/AttendanceLogs';
 import Users from './pages/Users';
+import Opds from './pages/Opds';
 
 function PrivateRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
@@ -121,6 +122,16 @@ function AppRoutes() {
           <PrivateRoute>
             <PermissionRoute permission={['users:read', 'roles:read']}>
               <Users />
+            </PermissionRoute>
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/opds"
+        element={
+          <PrivateRoute>
+            <PermissionRoute permission="opds:read">
+              <Opds />
             </PermissionRoute>
           </PrivateRoute>
         }

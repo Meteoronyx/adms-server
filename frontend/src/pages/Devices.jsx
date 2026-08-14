@@ -12,6 +12,7 @@ import {
 } from '../lib/api';
 import { useToast } from '../hooks/useToast';
 import { useSocket } from '../hooks/useSocket';
+import { useAuth } from '../hooks/useAuth';
 import StatusBadge from '../components/StatusBadge';
 import { DataTable } from '../components/ui/DataTable';
 import { Skeleton } from '../components/ui/Skeleton';
@@ -36,6 +37,9 @@ export default function Devices() {
   const [editModal, setEditModal] = useState({ open: false, sn: '', currentName: '' });
   const { addToast } = useToast();
   const { socket } = useSocket();
+  const { hasPermission } = useAuth();
+  const canWrite = hasPermission('devices:write');
+  const canCommand = hasPermission('devices:command');
 
   const fetchDevices = async () => {
     try {
@@ -129,13 +133,15 @@ export default function Devices() {
       cell: ({ row }) => (
         <div className="flex items-center gap-1.5 group">
           <span className="font-medium text-slate-700 dark:text-slate-300">{row.original.device_name || <span className="text-slate-400 italic">Belum diisi</span>}</span>
-          <button
-            title="Edit device name"
-            onClick={() => setEditModal({ open: true, sn: row.original.sn, currentName: row.original.device_name || '' })}
-            className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
-          >
-            <Pencil size={12} />
-          </button>
+          {canWrite && (
+            <button
+              title="Edit device name"
+              onClick={() => setEditModal({ open: true, sn: row.original.sn, currentName: row.original.device_name || '' })}
+              className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+            >
+              <Pencil size={12} />
+            </button>
+          )}
         </div>
       )
     },
@@ -171,47 +177,62 @@ export default function Devices() {
       cell: ({ row }) => {
         const d = row.original;
 
-        const actionItems = [
-          {
+        const actionItems = [];
+        if (canWrite) {
+          actionItems.push({
             label: 'Edit Device Name',
             icon: Pencil,
             onClick: () => setEditModal({ open: true, sn: d.sn, currentName: d.device_name || '' })
-          },
-          d.verified
-            ? {
-                label: 'Unverify Device',
-                icon: XCircle,
-                onClick: () => doAction(unverifyDevice, d.sn, `Unverified ${d.sn}`)
-              }
-            : {
-                label: 'Verify Device',
-                icon: CheckCircle2,
-                onClick: () => doAction(verifyDevice, d.sn, `Verified ${d.sn}`)
-              },
-          {
-            label: 'Reupload Attendance',
-            icon: RefreshCw,
-            onClick: () => doAction(reuploadDevice, d.sn, `Reupload queued for ${d.sn}`)
-          },
-          {
-            label: 'Request Device Info',
-            icon: Info,
-            onClick: () => doAction(infoDevice, d.sn, `Info queued for ${d.sn}`)
-          },
-          { type: 'separator' },
-          {
-            label: 'Reboot Device',
-            icon: Power,
-            variant: 'danger',
-            onClick: () => doAction(rebootDevice, d.sn, `Reboot queued for ${d.sn}`)
-          },
-          {
-            label: 'Clear Device Log',
-            icon: Trash2,
-            variant: 'danger',
-            onClick: () => doAction(clearLog, d.sn, `Clear log queued for ${d.sn}`)
-          }
-        ];
+          });
+        }
+        if (canWrite) {
+          actionItems.push(
+            d.verified
+              ? {
+                  label: 'Unverify Device',
+                  icon: XCircle,
+                  onClick: () => doAction(unverifyDevice, d.sn, `Unverified ${d.sn}`)
+                }
+              : {
+                  label: 'Verify Device',
+                  icon: CheckCircle2,
+                  onClick: () => doAction(verifyDevice, d.sn, `Verified ${d.sn}`)
+                }
+          );
+        }
+        if (canCommand) {
+          actionItems.push(
+            {
+              label: 'Reupload Attendance',
+              icon: RefreshCw,
+              onClick: () => doAction(reuploadDevice, d.sn, `Reupload queued for ${d.sn}`)
+            },
+            {
+              label: 'Request Device Info',
+              icon: Info,
+              onClick: () => doAction(infoDevice, d.sn, `Info queued for ${d.sn}`)
+            }
+          );
+        }
+        if (canCommand) {
+          actionItems.push(
+            { type: 'separator' },
+            {
+              label: 'Reboot Device',
+              icon: Power,
+              variant: 'danger',
+              onClick: () => doAction(rebootDevice, d.sn, `Reboot queued for ${d.sn}`)
+            },
+            {
+              label: 'Clear Device Log',
+              icon: Trash2,
+              variant: 'danger',
+              onClick: () => doAction(clearLog, d.sn, `Clear log queued for ${d.sn}`)
+            }
+          );
+        }
+
+        if (actionItems.length === 0) return null;
 
         return (
           <DropdownMenu
@@ -229,7 +250,7 @@ export default function Devices() {
         );
       }
     }
-  ], [doAction]);
+  ], [doAction, canWrite, canCommand]);
 
   return (
     <div className="space-y-6 fade-in">

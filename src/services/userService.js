@@ -73,8 +73,8 @@ const syncFingerprints = async (deviceSN, fingerprints) => {
 /**
  * Get pegawai with all fingerprint info across devices
  */
-const getPegawaiWithFingerprints = async (pin) => {
-  return queries.getPegawaiWithFingerprints(pin);
+const getPegawaiWithFingerprints = async (pin, opdId = null) => {
+  return queries.getPegawaiWithFingerprints(pin, opdId);
 };
 
 /**

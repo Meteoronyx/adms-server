@@ -8,8 +8,17 @@ const { requirePermission } = require('../middleware/requireRole');
 const validateDevice = require('../middleware/deviceCheck');
 const asyncHandler = require('../middleware/asyncHandler');
 const adminController = require('../controllers/adminController');
+const opdController = require('../controllers/opdController');
 
 router.use('/admin', apiKeyAuth);
+
+// OPD Management Routes
+router.get('/admin/opds', requirePermission('opds:read'), asyncHandler(opdController.listOpds));
+router.get('/admin/opds/:id', requirePermission('opds:read'), asyncHandler(opdController.getOpd));
+router.post('/admin/opds/auto-map', requirePermission('opds:write'), asyncHandler(opdController.triggerAutoMap));
+router.post('/admin/opds', requirePermission('opds:write'), asyncHandler(opdController.createOpd));
+router.put('/admin/opds/:id', requirePermission('opds:write'), asyncHandler(opdController.updateOpd));
+router.delete('/admin/opds/:id', requirePermission('opds:delete'), asyncHandler(opdController.deleteOpd));
 
 // Device Reupload & Commands Queue
 router.post(config.PATHS.ADMIN.REUPLOAD, requirePermission('devices:command'), validateDevice, asyncHandler(adminController.reuploadDevice));

@@ -90,8 +90,8 @@ const getAndExecuteNext = async (sn) => {
   return null;
 };
 
-const getQueueStatus = async () => {
-  return queries.getAllPendingCommands();
+const getQueueStatus = async (opdId = null) => {
+  return queries.getAllPendingCommands(opdId);
 };
 
 const processCommandResult = async (sn, id, returnValue) => {

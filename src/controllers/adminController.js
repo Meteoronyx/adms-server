@@ -29,6 +29,24 @@ exports.reuploadDevice = async (req, res) => {
 
 exports.getReuploadQueue = async (req, res) => {
   const queue = reuploadService.getQueueStatus();
+
+  // Multi-tenant OPD scoping: non-admin hanya melihat antrian reupload perangkat OPD-nya
+  const isSystemAdmin = req.user.role === 'admin';
+  if (!isSystemAdmin && !req.user.opd_id) {
+    return res.json({ success: true, queue: {} });
+  }
+  if (!isSystemAdmin && req.user.opd_id) {
+    const sns = Object.keys(queue);
+    const scopedQueue = {};
+    for (const sn of sns) {
+      const device = await queries.getDeviceInfo(sn);
+      if (device && device.opd_id === req.user.opd_id) {
+        scopedQueue[sn] = queue[sn];
+      }
+    }
+    return res.json({ success: true, queue: scopedQueue });
+  }
+
   res.json({
     success: true,
     queue
@@ -73,8 +91,20 @@ exports.unverifyDevice = async (req, res) => {
 };
 
 exports.listDevices = async (req, res) => {
-  const devices = await queries.getAllDevices();
-  const offlineDevices = await queries.getOfflineDevices();
+  const isSystemAdmin = req.user.role === 'admin';
+  const opdId = !isSystemAdmin ? req.user.opd_id : null;
+
+  // Multi-tenant OPD scoping: non-admin tanpa OPD tidak melihat data apa pun
+  if (!isSystemAdmin && !opdId) {
+    return res.json({
+      success: true,
+      devices: [],
+      offlineDevices: []
+    });
+  }
+
+  const devices = await queries.getAllDevices(opdId);
+  const offlineDevices = await queries.getOfflineDevices(opdId);
 
   res.json({
     success: true,
@@ -87,13 +117,6 @@ exports.updateDeviceName = async (req, res) => {
   const { sn } = req.params;
   const { device_name } = req.body;
 
-  if (!device_name || !device_name.trim()) {
-    return res.status(400).json({
-      success: false,
-      message: 'device_name is required and cannot be empty'
-    });
-  }
-
   // Check device exists
   const device = await queries.getDeviceInfo(sn);
   if (!device) {
@@ -103,14 +126,29 @@ exports.updateDeviceName = async (req, res) => {
     });
   }
 
-  await queries.updateDeviceName(sn, device_name.trim());
-  logger.info('Device name updated via API', { sn, device_name: device_name.trim(), ip: req.ip });
+  // Multi-tenant OPD scoping: non-admin hanya boleh mengubah perangkat milik OPD-nya
+  const isSystemAdmin = req.user.role === 'admin';
+  if (!isSystemAdmin) {
+    const owned = !!req.user.opd_id && device.opd_id === req.user.opd_id;
+    if (!owned) {
+      return res.status(403).json({
+        success: false,
+        message: 'Perangkat tidak berada di unit kerja (OPD) Anda'
+      });
+    }
+  }
+
+  if (device_name && device_name.trim()) {
+    await queries.updateDeviceName(sn, device_name.trim());
+  }
+
+  const updatedDevice = await queries.getDeviceInfo(sn);
+  logger.info('Device details updated via API', { sn, device_name, ip: req.ip });
 
   res.json({
     success: true,
-    message: `Device name updated for ${sn}`,
-    sn,
-    device_name: device_name.trim()
+    message: `Device ${sn} details updated`,
+    device: updatedDevice
   });
 };
 
@@ -320,7 +358,14 @@ exports.enrollFingerprint = async (req, res) => {
 
 // Device Commands (getcommandqueue)
 exports.getCommandQueue = async (req, res) => {
-  const commands = await commandService.getQueueStatus();
+  const isSystemAdmin = req.user.role === 'admin';
+  const opdId = !isSystemAdmin ? req.user.opd_id : null;
+
+  if (!isSystemAdmin && !opdId) {
+    return res.json({ success: true, commands: [] });
+  }
+
+  const commands = await commandService.getQueueStatus(opdId);
   res.json({
     success: true,
     commands
@@ -330,7 +375,17 @@ exports.getCommandQueue = async (req, res) => {
 // Data Retrieval Routes (getpegawai)
 exports.getPegawai = async (req, res) => {
   const { pin } = req.params;
-  const pegawai = await userService.getPegawaiWithFingerprints(pin);
+  const isSystemAdmin = req.user.role === 'admin';
+  const opdId = !isSystemAdmin ? req.user.opd_id : null;
+
+  if (!isSystemAdmin && !opdId) {
+    return res.status(403).json({
+      success: false,
+      message: 'Akun Anda belum terikat ke unit kerja (OPD)'
+    });
+  }
+
+  const pegawai = await userService.getPegawaiWithFingerprints(pin, opdId);
 
   if (!pegawai) {
     return res.status(404).json({
@@ -356,7 +411,19 @@ exports.searchPegawai = async (req, res) => {
     });
   }
 
-  const results = await queries.searchPegawaiByName(q.trim(), limit ? parseInt(limit) : 10);
+  const isSystemAdmin = req.user.role === 'admin';
+  const opdId = !isSystemAdmin ? req.user.opd_id : null;
+
+  if (!isSystemAdmin && !opdId) {
+    return res.json({
+      success: true,
+      query: q.trim(),
+      count: 0,
+      results: []
+    });
+  }
+
+  const results = await queries.searchPegawaiByName(q.trim(), limit ? parseInt(limit) : 10, opdId);
   res.json({
     success: true,
     query: q.trim(),
@@ -377,7 +444,20 @@ exports.getAttendanceLogs = async (req, res) => {
   const endDate = req.query.endDate || null;
   const search = req.query.search || null;
 
-  const result = await queries.getAttendanceLogs(limit, offset, sn, pin, year, month, startDate, endDate, search);
+  const isSystemAdmin = req.user.role === 'admin';
+  const opdId = !isSystemAdmin ? req.user.opd_id : null;
+
+  if (!isSystemAdmin && !opdId) {
+    return res.json({
+      success: true,
+      data: [],
+      total: 0,
+      limit,
+      offset
+    });
+  }
+
+  const result = await queries.getAttendanceLogs(limit, offset, sn, pin, year, month, startDate, endDate, search, opdId);
   res.json({
     success: true,
     data: result.data,
@@ -389,7 +469,24 @@ exports.getAttendanceLogs = async (req, res) => {
 
 // Dashboard statistics
 exports.getDashboardStats = async (req, res) => {
-  const stats = await queries.getDashboardStats();
+  const isSystemAdmin = req.user.role === 'admin';
+  const opdId = !isSystemAdmin ? req.user.opd_id : null;
+
+  if (!isSystemAdmin && !opdId) {
+    return res.json({
+      success: true,
+      stats: {
+        total_pegawai: 0,
+        total_fingerprints: 0,
+        total_admins: 0,
+        logs_today: 0,
+        logs_weekly: 0,
+        logs_monthly: 0
+      }
+    });
+  }
+
+  const stats = await queries.getDashboardStats(opdId);
   res.json({
     success: true,
     stats
@@ -456,6 +553,18 @@ exports.checkFingerprintOnDevice = async (req, res) => {
     });
   }
 
+  // Multi-tenant OPD scoping: non-admin hanya boleh memeriksa perangkat OPD-nya
+  const isSystemAdmin = req.user.role === 'admin';
+  if (!isSystemAdmin) {
+    const owned = !!req.user.opd_id && device.opd_id === req.user.opd_id;
+    if (!owned) {
+      return res.status(403).json({
+        success: false,
+        message: 'Perangkat tidak berada di unit kerja (OPD) Anda'
+      });
+    }
+  }
+
   const fingerprints = await userService.checkFingerprintOnDevice(pin, sn);
 
   if (fingerprints.length === 0) {
@@ -492,6 +601,25 @@ exports.transferFingerprint = async (req, res) => {
       success: false,
       message: 'Missing required parameter: source_sn (source device)'
     });
+  }
+
+  // Multi-tenant OPD scoping: non-admin hanya boleh transfer dari perangkat OPD-nya
+  const isSystemAdmin = req.user.role === 'admin';
+  if (!isSystemAdmin) {
+    const sourceDevice = await queries.getDeviceInfo(source_sn);
+    if (!sourceDevice) {
+      return res.status(404).json({
+        success: false,
+        message: `${config.RESPONSE.ADMIN.DEVICE_NOT_FOUND}: ${source_sn}`
+      });
+    }
+    const owned = !!req.user.opd_id && sourceDevice.opd_id === req.user.opd_id;
+    if (!owned) {
+      return res.status(403).json({
+        success: false,
+        message: 'Perangkat sumber tidak berada di unit kerja (OPD) Anda'
+      });
+    }
   }
 
   // Get fingerprints from source device

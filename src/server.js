@@ -225,9 +225,52 @@ io.use((socket, next) => {
   cookieParser()(socket.request, {}, next);
 });
 
-io.on('connection', (socket) => {
-  logger.info(`Client connected: ${socket.id}`);
+// Authenticate socket via JWT cookie and join OPD-scoped room
+io.use(async (socket, next) => {
+  try {
+    const jwt = require('jsonwebtoken');
+    const { query } = require('./db/connection');
+    const token = socket.request.cookies && socket.request.cookies.token;
 
+    // Static system API key fallback → admin room
+    if (token && token === config.JWT_SECRET) {
+      socket.data.scope = { role: 'admin', opd_id: null };
+      socket.join('opd:all');
+      return next();
+    }
+
+    if (!token) {
+      return next(new Error('unauthorized'));
+    }
+
+    const decoded = jwt.verify(token, config.JWT_SECRET);
+    const res = await query(
+      `SELECT u.opd_id, COALESCE(r.slug, u.role) AS role_slug
+       FROM users u
+       LEFT JOIN roles r ON (u.role_id IS NOT NULL AND u.role_id = r.id) OR (u.role_id IS NULL AND LOWER(u.role) = r.slug)
+       WHERE u.id = $1 AND u.is_active = true`,
+      [decoded.id || decoded.username]
+    );
+    const user = res.rows[0];
+
+    if (!user) {
+      return next(new Error('unauthorized'));
+    }
+
+    socket.data.scope = { role: user.role_slug, opd_id: user.opd_id };
+    if (user.role_slug === 'admin') {
+      socket.join('opd:all');
+    } else if (user.opd_id) {
+      socket.join(`opd:${user.opd_id}`);
+    }
+    next();
+  } catch (err) {
+    next(new Error('unauthorized'));
+  }
+});
+
+io.on('connection', (socket) => {
+  logger.info(`Client connected: ${socket.id}`, { scope: socket.data.scope });
   socket.on('disconnect', () => {
     logger.info(`Client disconnected: ${socket.id}`);
   });

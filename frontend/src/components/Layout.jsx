@@ -20,6 +20,7 @@ import {
   PanelLeft,
   User,
   UserCog,
+  Building2,
 } from 'lucide-react';
 
 const navGroups = [
@@ -42,6 +43,7 @@ const navGroups = [
       { path: '/pegawai', label: 'Pegawai', icon: Users, permission: 'devices:read' },
       { path: '/attendance', label: 'Log Absen', icon: ClipboardList, permission: 'attendance:read' },
       { path: '/commands', label: 'Commands', icon: ListOrdered, permission: 'devices:command' },
+      { path: '/opds', label: 'Unit Kerja (OPD)', icon: Building2, permission: 'opds:read' },
       { path: '/users', label: 'Kelola Pengguna', icon: UserCog, permission: ['users:read', 'roles:read'] },
     ],
   },

@@ -10,7 +10,20 @@ const attendanceService = require('../services/attendanceService');
 const reuploadService = require('../services/reuploadService');
 const commandService = require('../services/commandService');
 const userService = require('../services/userService');
+const queries = require('../db/queries');
 const logger = require('../utils/logger');
+
+// Broadcast event hanya ke admin (room opd:all) dan room OPD pemilik perangkat
+async function broadcastDeviceEvent(app, sn, event, payload) {
+  const io = app.get('io');
+  if (!io) return;
+  const opdId = await queries.getDeviceOpdId(sn);
+  if (opdId) {
+    io.to('opd:all').to(`opd:${opdId}`).emit(event, payload);
+  } else {
+    io.to('opd:all').emit(event, payload);
+  }
+}
 
 // GET /iclock/cdata - Handshake & Time sync
 router.get(config.PATHS.ICLOCK.CDATA, async (req, res) => {
@@ -128,11 +141,8 @@ router.post(config.PATHS.ICLOCK.CDATA, rawBodyParser, async (req, res) => {
     
     await attendanceService.insertAttendanceLogs(SN, logs);
     
-    // Broadcast attendance update
-    const io = req.app.get('io');
-    if (io) {
-      io.emit('attendance_update', { sn: SN, logCount: logs.length });
-    }
+    // Broadcast attendance update (OPD-scoped)
+    await broadcastDeviceEvent(req.app, SN, 'attendance_update', { sn: SN, logCount: logs.length });
 
     res.set('Content-Type', 'text/plain');
     res.send(config.RESPONSE.OK);
@@ -161,11 +171,8 @@ router.get(config.PATHS.ICLOCK.GETREQUEST, async (req, res) => {
   try {
     await deviceService.handleDeviceHeartbeat(SN, ip, INFO);
     
-    // Broadcast device status update
-    const io = req.app.get('io');
-    if (io) {
-      io.emit('device_update', { sn: SN });
-    }
+    // Broadcast device status update (OPD-scoped)
+    await broadcastDeviceEvent(req.app, SN, 'device_update', { sn: SN });
 
     // Step 1: Check if admin requested reupload
     const needsReupload = reuploadService.checkAndRemove(SN);
@@ -237,11 +244,8 @@ router.post(config.PATHS.ICLOCK.DEVICECMD, rawBodyParser, async (req, res) => {
       await deviceService.handleDeviceCommand(SN, ip, deviceInfo);
     }
     
-    // Broadcast device update via Socket.io to trigger frontend real-time updates
-    const io = req.app.get('io');
-    if (io) {
-      io.emit('device_update', { sn: SN });
-    }
+    // Broadcast device update via Socket.io to trigger frontend real-time updates (OPD-scoped)
+    await broadcastDeviceEvent(req.app, SN, 'device_update', { sn: SN });
     
     res.set('Content-Type', 'text/plain');
     res.send(config.RESPONSE.OK);

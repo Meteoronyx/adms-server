@@ -71,15 +71,19 @@ const apiKeyAuth = async (req, res, next) => {
         u.name, 
         u.is_active, 
         u.role_id,
+        u.opd_id,
+        o.nama_opd,
+        o.kdunker,
         COALESCE(r.slug, u.role) AS role_slug,
         COALESCE(r.name, u.role) AS role_name,
         COALESCE(ARRAY_REMOVE(ARRAY_AGG(p.code), NULL), '{}') AS permissions
       FROM users u
       LEFT JOIN roles r ON (u.role_id IS NOT NULL AND u.role_id = r.id) OR (u.role_id IS NULL AND LOWER(u.role) = r.slug)
+      LEFT JOIN opds o ON u.opd_id = o.id
       LEFT JOIN role_permissions rp ON r.id = rp.role_id
       LEFT JOIN permissions p ON rp.permission_id = p.id
       WHERE ${decoded.id ? 'u.id = $1' : 'u.username = $1'}
-      GROUP BY u.id, u.username, u.name, u.is_active, u.role_id, r.slug, r.name;
+      GROUP BY u.id, u.username, u.name, u.is_active, u.role_id, u.opd_id, o.nama_opd, o.kdunker, r.slug, r.name;
     `;
     const dbRes = await query(userQuery, [decoded.id || decoded.username]);
     const dbUser = dbRes.rows[0];
@@ -102,6 +106,9 @@ const apiKeyAuth = async (req, res, next) => {
       role: dbUser.role_slug,
       role_name: dbUser.role_name,
       role_id: dbUser.role_id,
+      opd_id: dbUser.opd_id,
+      nama_opd: dbUser.nama_opd,
+      kdunker: dbUser.kdunker,
       permissions: isSystemAdmin ? ['*', ...permissionsList] : permissionsList
     };
 

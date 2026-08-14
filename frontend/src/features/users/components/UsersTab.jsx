@@ -1,4 +1,5 @@
 import { Badge } from '../../../components/ui/Badge';
+import { SearchableSelect } from '../../../components/ui/SearchableSelect';
 import {
   UserPlus,
   Search,
@@ -14,11 +15,14 @@ import {
 export function UsersTab({
   users,
   roles,
+  opds = [],
   loading,
   search,
   setSearch,
   roleFilter,
   setRoleFilter,
+  opdFilter,
+  setOpdFilter,
   currentUser,
   hasPermission,
   onOpenCreate,
@@ -38,26 +42,45 @@ export function UsersTab({
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Cari nama atau username..."
+              placeholder="Cari nama, username, atau OPD..."
               className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-slate-900 dark:text-slate-100 placeholder-slate-400 transition-colors"
             />
           </div>
 
           {/* Role Filter */}
-          <div className="relative w-full sm:w-48">
-            <select
-              value={roleFilter}
-              onChange={(e) => setRoleFilter(e.target.value)}
-              className="w-full px-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-slate-900 dark:text-slate-100 transition-colors cursor-pointer"
-            >
-              <option value="all">Semua Role</option>
-              <option value="no_role">Tanpa Role</option>
-              {roles.map((r) => (
-                <option key={r.id} value={r.name}>
-                  Role: {r.name}
-                </option>
-              ))}
-            </select>
+          <div className="w-full sm:w-48">
+            <SearchableSelect
+              size="xs"
+              value={roleFilter === 'all' ? '' : roleFilter}
+              onChange={(val) => setRoleFilter(val === '' ? 'all' : val)}
+              options={[
+                { value: 'no_role', label: 'Tanpa Role' },
+                ...roles.map((r) => ({
+                  value: r.name,
+                  label: `Role: ${r.name}`,
+                })),
+              ]}
+              defaultOptionLabel="Semua Role"
+              placeholder="Semua Role"
+            />
+          </div>
+
+          {/* OPD Filter */}
+          <div className="w-full sm:w-64">
+            <SearchableSelect
+              size="xs"
+              value={opdFilter === 'all' ? '' : opdFilter}
+              onChange={(val) => setOpdFilter(val === '' ? 'all' : val)}
+              options={[
+                { value: 'global', label: 'Global / Tanpa OPD' },
+                ...opds.map((o) => ({
+                  value: o.id,
+                  label: `${o.nama_opd} (${o.kdunker})`,
+                })),
+              ]}
+              defaultOptionLabel="Semua Unit Kerja (OPD)"
+              placeholder="Semua Unit Kerja (OPD)"
+            />
           </div>
         </div>
 
@@ -93,6 +116,7 @@ export function UsersTab({
                   <th className="px-4 py-3">Pengguna</th>
                   <th className="px-4 py-3">Username</th>
                   <th className="px-4 py-3">Role</th>
+                  <th className="px-4 py-3">Induk Unit Kerja (OPD)</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3 text-right">Aksi</th>
                 </tr>
@@ -129,6 +153,16 @@ export function UsersTab({
                           </Badge>
                         ) : (
                           <Badge variant="neutral">Tanpa Role</Badge>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
+                        {u.nama_opd ? (
+                          <div className="flex flex-col">
+                            <span className="font-medium text-slate-800 dark:text-slate-200">{u.nama_opd}</span>
+                            <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500">{u.kdunker}</span>
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 italic">Global / Seluruh OPD</span>
                         )}
                       </td>
                       <td className="px-4 py-3">

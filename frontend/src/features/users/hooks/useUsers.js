@@ -5,26 +5,36 @@ import {
   updateAdminUser,
   resetAdminUserPassword,
   deleteAdminUser,
+  listOpds,
 } from '../../../lib/api';
 import { useToast } from '../../../hooks/useToast';
 
 export function useUsers() {
   const [users, setUsers] = useState([]);
+  const [opds, setOpds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
+  const [opdFilter, setOpdFilter] = useState('all');
   const [submitting, setSubmitting] = useState(false);
   const { addToast } = useToast();
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await getAdminUsers();
-      if (res && res.data) {
-        setUsers(res.data);
+      const [resUsers, resOpds] = await Promise.all([
+        getAdminUsers(),
+        listOpds({ all: true }).catch(() => ({ data: [] }))
+      ]);
+
+      if (resUsers && resUsers.data) {
+        setUsers(resUsers.data);
+      }
+      if (resOpds && resOpds.data) {
+        setOpds(resOpds.data);
       }
     } catch (err) {
-      addToast(err.message || 'Gagal memuat daftar pengguna', 'error');
+      addToast(err.message || 'Gagal memuat data pengguna', 'error');
     } finally {
       setLoading(false);
     }
@@ -35,10 +45,14 @@ export function useUsers() {
   }, [fetchUsers]);
 
   const filteredUsers = useMemo(() => {
+    const s = search.toLowerCase().trim();
     return users.filter((u) => {
       const matchSearch =
-        (u.name && u.name.toLowerCase().includes(search.toLowerCase())) ||
-        (u.username && u.username.toLowerCase().includes(search.toLowerCase()));
+        !s ||
+        (u.name && u.name.toLowerCase().includes(s)) ||
+        (u.username && u.username.toLowerCase().includes(s)) ||
+        (u.nama_opd && u.nama_opd.toLowerCase().includes(s)) ||
+        (u.kdunker && u.kdunker.toLowerCase().includes(s));
 
       const matchRole =
         roleFilter === 'all'
@@ -47,9 +61,16 @@ export function useUsers() {
           ? !u.role_name
           : u.role_name === roleFilter;
 
-      return matchSearch && matchRole;
+      const matchOpd =
+        opdFilter === 'all'
+          ? true
+          : opdFilter === 'global'
+          ? !u.opd_id
+          : u.opd_id === opdFilter;
+
+      return matchSearch && matchRole && matchOpd;
     });
-  }, [users, search, roleFilter]);
+  }, [users, search, roleFilter, opdFilter]);
 
   const createUser = async (formData) => {
     setSubmitting(true);
@@ -112,12 +133,15 @@ export function useUsers() {
 
   return {
     users,
+    opds,
     filteredUsers,
     loading,
     search,
     setSearch,
     roleFilter,
     setRoleFilter,
+    opdFilter,
+    setOpdFilter,
     submitting,
     fetchUsers,
     createUser,

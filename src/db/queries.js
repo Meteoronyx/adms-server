@@ -161,7 +161,7 @@ const getDeviceVerificationStatus = async (sn) => {
 // Get device info for admin
 const getDeviceInfo = async (sn) => {
   const query = `
-    SELECT sn, name, device_name, last_activity, status, ip_address, verified
+    SELECT sn, name, device_name, last_activity, status, ip_address, verified, opd_id, nama_opd, kdunker
     FROM devices_with_status
     WHERE sn = $1
   `;
@@ -170,6 +170,12 @@ const getDeviceInfo = async (sn) => {
     return null;
   }
   return result.rows[0];
+};
+
+// Get OPD id of a device (cheap lookup for socket broadcast scoping)
+const getDeviceOpdId = async (sn) => {
+  const result = await db.query('SELECT opd_id FROM devices WHERE sn = $1', [sn]);
+  return result.rows[0]?.opd_id || null;
 };
 
 // Check if initial sync is completed
@@ -224,26 +230,36 @@ const updateDeviceName = async (sn, deviceName) => {
   return db.query(query, [deviceName, sn]);
 };
 
-// Get all devices
-const getAllDevices = async () => {
-  const query = `
-    SELECT sn, name, device_name, ip_address, last_activity, status, verified, initial_sync_completed
+// Get all devices (with optional OPD scoping filter)
+const getAllDevices = async (opdId = null) => {
+  let query = `
+    SELECT sn, name, device_name, ip_address, last_activity, status, verified, initial_sync_completed, opd_id, nama_opd, kdunker
     FROM devices_with_status
-    ORDER BY last_activity DESC
   `;
-  const result = await db.query(query, []);
+  const params = [];
+  if (opdId) {
+    params.push(opdId);
+    query += ` WHERE opd_id = $1`;
+  }
+  query += ` ORDER BY last_activity DESC`;
+  const result = await db.query(query, params);
   return result.rows;
 };
 
-// Get offline devices
-const getOfflineDevices = async () => {
-  const query = `
-    SELECT sn, name, device_name, ip_address, last_activity, status, verified, initial_sync_completed
+// Get offline devices (with optional OPD scoping filter)
+const getOfflineDevices = async (opdId = null) => {
+  let query = `
+    SELECT sn, name, device_name, ip_address, last_activity, status, verified, initial_sync_completed, opd_id, nama_opd, kdunker
     FROM devices_with_status
     WHERE status = 'offline'
-    ORDER BY last_activity DESC
   `;
-  const result = await db.query(query, []);
+  const params = [];
+  if (opdId) {
+    params.push(opdId);
+    query += ` AND opd_id = $1`;
+  }
+  query += ` ORDER BY last_activity DESC`;
+  const result = await db.query(query, params);
   return result.rows;
 };
 
@@ -281,16 +297,18 @@ const markCommandExecuted = async (id) => {
   return db.query(query, [id, new Date()]);
 };
 
-// Get all pending commands (for admin view)
-const getAllPendingCommands = async () => {
+// Get all pending commands (for admin view, with optional OPD scoping filter)
+const getAllPendingCommands = async (opdId = null) => {
   const query = `
     SELECT dc.id, dc.device_sn, dc.command_type, dc.command_params, dc.created_at, d.device_name as device_name
     FROM device_commands dc
     LEFT JOIN devices d ON dc.device_sn = d.sn
     WHERE dc.status = 'pending'
+      ${opdId ? `AND d.opd_id = $1` : ''}
     ORDER BY dc.created_at ASC
   `;
-  const result = await db.query(query, []);
+  const params = opdId ? [opdId] : [];
+  const result = await db.query(query, params);
   return result.rows;
 };
 
@@ -402,14 +420,20 @@ const upsertFingerprint = async (pin, deviceSN, fingerId, template) => {
 };
 
 // Get pegawai with fingerprint summary across all devices
-const getPegawaiWithFingerprints = async (pin) => {
+const getPegawaiWithFingerprints = async (pin, opdId = null) => {
   const pegawaiQuery = `
     SELECT e.*, 
            (SELECT COUNT(*) FROM pegawai_fingerprints ef WHERE ef.pegawai_pin = e.pin) as total_fingerprints
     FROM pegawai e
     WHERE e.pin = $1 AND e.deleted_at IS NULL
+      ${opdId ? `AND (e.opd_id = $2 OR EXISTS (
+        SELECT 1 FROM pegawai_device_mapping pdm
+        JOIN devices dv ON pdm.device_sn = dv.sn
+        WHERE pdm.pegawai_pin = e.pin AND pdm.deleted_at IS NULL AND dv.opd_id = $2
+      ))` : ''}
   `;
-  const pegawaiResult = await db.query(pegawaiQuery, [pin]);
+  const pegawaiParams = opdId ? [pin, opdId] : [pin];
+  const pegawaiResult = await db.query(pegawaiQuery, pegawaiParams);
   if (pegawaiResult.rows.length === 0) {
     return null;
   }
@@ -423,9 +447,11 @@ const getPegawaiWithFingerprints = async (pin) => {
             WHERE ef.pegawai_pin = edm.pegawai_pin AND ef.device_sn = edm.device_sn) as fingerprint_count
     FROM pegawai_device_mapping edm
     WHERE edm.pegawai_pin = $1 AND edm.deleted_at IS NULL
+      ${opdId ? `AND EXISTS (SELECT 1 FROM devices dv WHERE dv.sn = edm.device_sn AND dv.opd_id = $2)` : ''}
     ORDER BY edm.synced_at DESC
   `;
-  const mappingResult = await db.query(mappingQuery, [pin]);
+  const mappingParams = opdId ? [pin, opdId] : [pin];
+  const mappingResult = await db.query(mappingQuery, mappingParams);
 
   return {
     ...pegawai,
@@ -517,22 +543,28 @@ const getPegawaiFingerprints = async (pin, deviceSN) => {
   return result.rows;
 };
 
-// Search pegawai by name using ILIKE
-const searchPegawaiByName = async (name, limit = 10) => {
+// Search pegawai by name using ILIKE (with optional OPD scoping filter)
+const searchPegawaiByName = async (name, limit = 10, opdId = null) => {
   const query = `
     SELECT p.pin, p.name, p.card, p.group_no, p.timezone,
            (SELECT COUNT(*) FROM pegawai_fingerprints ef WHERE ef.pegawai_pin = p.pin) as total_fingerprints
     FROM pegawai p
     WHERE p.name ILIKE $1 AND p.deleted_at IS NULL
+      ${opdId ? `AND (p.opd_id = $2 OR EXISTS (
+        SELECT 1 FROM pegawai_device_mapping pdm
+        JOIN devices dv ON pdm.device_sn = dv.sn
+        WHERE pdm.pegawai_pin = p.pin AND pdm.deleted_at IS NULL AND dv.opd_id = $2
+      ))` : ''}
     ORDER BY p.name ASC
-    LIMIT $2
+    LIMIT $${opdId ? 3 : 2}
   `;
-  const result = await db.query(query, [`%${name}%`, limit]);
+  const params = opdId ? [`%${name}%`, opdId, limit] : [`%${name}%`, limit];
+  const result = await db.query(query, params);
   return result.rows;
 };
 
-// Get attendance logs
-const getAttendanceLogs = async (limit = 100, offset = 0, sn = null, pin = null, year = null, month = null, startDate = null, endDate = null, search = null) => {
+// Get attendance logs (with optional OPD scoping filter)
+const getAttendanceLogs = async (limit = 100, offset = 0, sn = null, pin = null, year = null, month = null, startDate = null, endDate = null, search = null, opdId = null) => {
   let query = `
     SELECT 
       a.device_sn, 
@@ -542,13 +574,21 @@ const getAttendanceLogs = async (limit = 100, offset = 0, sn = null, pin = null,
       a.verify_mode, 
       a.received_at,
       p.name as pegawai_name,
-      d.device_name as device_name
+      d.device_name as device_name,
+      d.opd_id as device_opd_id,
+      o.nama_opd as nama_opd
     FROM attendance_logs a
     LEFT JOIN pegawai p ON a.user_pin = p.pin
     LEFT JOIN devices d ON a.device_sn = d.sn
+    LEFT JOIN opds o ON o.id = d.opd_id
     WHERE 1=1
   `;
   const params = [];
+
+  if (opdId) {
+    params.push(opdId);
+    query += ` AND d.opd_id = $${params.length}`;
+  }
 
   if (sn) {
     params.push(sn);
@@ -567,7 +607,6 @@ const getAttendanceLogs = async (limit = 100, offset = 0, sn = null, pin = null,
 
   if (endDate) {
     params.push(endDate);
-    // Add 1 day to include the whole end date, or use <= with time 23:59:59
     query += ` AND a.check_time <= $${params.length}::timestamp + interval '1 day' - interval '1 second'`;
   }
 
@@ -614,9 +653,15 @@ const getAttendanceLogs = async (limit = 100, offset = 0, sn = null, pin = null,
     SELECT COUNT(*) 
     FROM attendance_logs a
     LEFT JOIN pegawai p ON a.user_pin = p.pin
+    LEFT JOIN devices d ON a.device_sn = d.sn
     WHERE 1=1
   `;
   const countParams = [];
+
+  if (opdId) {
+    countParams.push(opdId);
+    countQuery += ` AND d.opd_id = $${countParams.length}`;
+  }
 
   if (sn) { countParams.push(sn); countQuery += ` AND a.device_sn = $${countParams.length}`; }
   if (pin) { countParams.push(pin); countQuery += ` AND a.user_pin = $${countParams.length}`; }
@@ -672,18 +717,37 @@ const getAttendanceLogs = async (limit = 100, offset = 0, sn = null, pin = null,
   };
 };
 
-// Get dashboard statistics
-const getDashboardStats = async () => {
-  const query = `
-    SELECT
-      (SELECT COUNT(*) FROM pegawai WHERE deleted_at IS NULL) AS total_pegawai,
-      (SELECT COUNT(*) FROM pegawai_fingerprints) AS total_fingerprints,
-      (SELECT COUNT(*) FROM pegawai_device_mapping WHERE privilege > 0 AND deleted_at IS NULL) AS total_admins,
-      (SELECT COUNT(*) FROM attendance_logs WHERE check_time >= CURRENT_DATE) AS logs_today,
-      (SELECT COUNT(*) FROM attendance_logs WHERE check_time >= CURRENT_DATE - INTERVAL '7 days') AS logs_weekly,
-      (SELECT COUNT(*) FROM attendance_logs WHERE check_time >= DATE_TRUNC('month', CURRENT_DATE)) AS logs_monthly
-  `;
-  const result = await db.query(query, []);
+// Get dashboard statistics (with optional OPD filter)
+const getDashboardStats = async (opdId = null) => {
+  let query;
+  let params = [];
+
+  if (opdId) {
+    params = [opdId];
+    query = `
+      SELECT
+        (SELECT COUNT(*) FROM opds WHERE id = $1 AND deleted_at IS NULL) AS total_opd,
+        (SELECT COUNT(*) FROM pegawai p WHERE p.deleted_at IS NULL AND p.opd_id = $1) AS total_pegawai,
+        (SELECT COUNT(*) FROM pegawai_fingerprints pf JOIN pegawai p ON pf.pegawai_pin = p.pin WHERE p.opd_id = $1) AS total_fingerprints,
+        (SELECT COUNT(*) FROM pegawai_device_mapping pdm JOIN pegawai p ON pdm.pegawai_pin = p.pin WHERE pdm.privilege > 0 AND pdm.deleted_at IS NULL AND p.opd_id = $1) AS total_admins,
+        (SELECT COUNT(*) FROM attendance_logs a JOIN devices d ON a.device_sn = d.sn WHERE a.check_time >= CURRENT_DATE AND d.opd_id = $1) AS logs_today,
+        (SELECT COUNT(*) FROM attendance_logs a JOIN devices d ON a.device_sn = d.sn WHERE a.check_time >= CURRENT_DATE - INTERVAL '7 days' AND d.opd_id = $1) AS logs_weekly,
+        (SELECT COUNT(*) FROM attendance_logs a JOIN devices d ON a.device_sn = d.sn WHERE a.check_time >= DATE_TRUNC('month', CURRENT_DATE) AND d.opd_id = $1) AS logs_monthly
+    `;
+  } else {
+    query = `
+      SELECT
+        (SELECT COUNT(*) FROM opds WHERE deleted_at IS NULL) AS total_opd,
+        (SELECT COUNT(*) FROM pegawai WHERE deleted_at IS NULL) AS total_pegawai,
+        (SELECT COUNT(*) FROM pegawai_fingerprints) AS total_fingerprints,
+        (SELECT COUNT(*) FROM pegawai_device_mapping WHERE privilege > 0 AND deleted_at IS NULL) AS total_admins,
+        (SELECT COUNT(*) FROM attendance_logs WHERE check_time >= CURRENT_DATE) AS logs_today,
+        (SELECT COUNT(*) FROM attendance_logs WHERE check_time >= CURRENT_DATE - INTERVAL '7 days') AS logs_weekly,
+        (SELECT COUNT(*) FROM attendance_logs WHERE check_time >= DATE_TRUNC('month', CURRENT_DATE)) AS logs_monthly
+    `;
+  }
+
+  const result = await db.query(query, params);
   return result.rows[0];
 };
 
@@ -787,6 +851,7 @@ module.exports = {
   insertAttendanceLogs,
   getDeviceVerificationStatus,
   getDeviceInfo,
+  getDeviceOpdId,
   getInitialSyncStatus,
   markInitialSyncCompleted,
   resetInitialSync,
