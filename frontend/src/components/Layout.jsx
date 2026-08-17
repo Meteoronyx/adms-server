@@ -6,6 +6,7 @@ import { useTheme } from '../hooks/useTheme';
 import { logout as apiLogout } from '../lib/api';
 import { DropdownMenu } from './ui/DropdownMenu';
 import { Tooltip } from './ui/Tooltip';
+import { ChangePasswordModal } from './modals/ChangePasswordModal';
 import {
   LayoutDashboard,
   HardDrive,
@@ -21,6 +22,7 @@ import {
   User,
   UserCog,
   Building2,
+  KeyRound,
 } from 'lucide-react';
 
 const navGroups = [
@@ -51,6 +53,7 @@ const navGroups = [
 
 export default function Layout({ children }) {
   const [collapsed, setCollapsed] = useState(false);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const { logout, user, hasPermission } = useAuth();
   const { addToast } = useToast();
   const { dark, toggle } = useTheme();
@@ -69,7 +72,12 @@ export default function Layout({ children }) {
 
   const userMenuItems = [
     {
-      label: dark ? 'Light' : 'Dark',
+      label: 'Ubah Password',
+      icon: KeyRound,
+      onClick: () => setIsChangePasswordOpen(true),
+    },
+    {
+      label: dark ? 'Light Mode' : 'Dark Mode',
       icon: dark ? Sun : Moon,
       onClick: toggle,
     },
@@ -84,6 +92,12 @@ export default function Layout({ children }) {
 
   return (
     <div className="flex h-screen bg-[#f8f9fb] dark:bg-[#121324] text-slate-900 dark:text-slate-100 transition-colors duration-200">
+      {/* Change Password Modal */}
+      <ChangePasswordModal
+        open={isChangePasswordOpen}
+        onClose={() => setIsChangePasswordOpen(false)}
+      />
+
       {/* Sidebar */}
       <aside
         className={`relative flex flex-col bg-white dark:bg-[#18192d] border-r border-slate-200/80 dark:border-slate-800/80 transition-all duration-300 ease-in-out z-20 select-none ${collapsed ? 'w-16' : 'w-64'

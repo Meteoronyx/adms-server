@@ -61,6 +61,16 @@ export const getDevicePegawai = (sn, { limit, offset, search } = {}) => {
   return fetchJSON(`/admin/devices/${sn}/pegawai${qs ? `?${qs}` : ''}`);
 };
 
+export const listPegawai = ({ limit = 25, offset = 0, search = '', opdId = '' } = {}) => {
+  const p = new URLSearchParams();
+  if (limit) p.append('limit', limit);
+  if (offset !== undefined && offset !== null) p.append('offset', offset);
+  if (search) p.append('search', search);
+  if (opdId) p.append('opd_id', opdId);
+  const qs = p.toString();
+  return fetchJSON(`/admin/pegawai${qs ? `?${qs}` : ''}`);
+};
+
 export const getPegawai = (pin) =>
   fetchJSON(`/admin/pegawai/${pin}`);
 
@@ -117,8 +127,11 @@ export const createAdminUser = (userData) =>
 export const updateAdminUser = (id, userData) =>
   fetchJSON(`/admin/users/${id}`, { method: 'PUT', body: JSON.stringify(userData) });
 
-export const resetAdminUserPassword = (id, newPassword, oldPassword) =>
-  fetchJSON(`/admin/users/${id}/password`, { method: 'PUT', body: JSON.stringify({ newPassword, oldPassword }) });
+export const changeOwnPassword = (oldPassword, newPassword) =>
+  fetchJSON('/auth/change-password', { method: 'PUT', body: JSON.stringify({ oldPassword, newPassword }) });
+
+export const resetAdminUserPassword = (id, newPassword) =>
+  fetchJSON(`/admin/users/${id}/password`, { method: 'PUT', body: JSON.stringify({ newPassword }) });
 
 export const deleteAdminUser = (id) =>
   fetchJSON(`/admin/users/${id}`, { method: 'DELETE' });
