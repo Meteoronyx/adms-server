@@ -30,19 +30,41 @@ function parseCsvLine(line) {
 }
 
 async function seedOpdsFromCsv(filePath) {
-  const csvPath = filePath || path.join(__dirname, 'data/koordinat_opds_202608130811.csv');
+  let csvPath = filePath;
 
-  if (!fs.existsSync(csvPath)) {
-    logger.warn(`File CSV OPD tidak ditemukan di: ${csvPath}`);
-    return;
+  if (!csvPath) {
+    const candidates = [
+      path.join(__dirname, 'data/koordinat_opds_202608130811.csv'),
+      path.join(__dirname, '../../koordinat_opds_202608130811.csv'),
+      path.join(process.cwd(), 'src/db/data/koordinat_opds_202608130811.csv'),
+      path.join(process.cwd(), 'koordinat_opds_202608130811.csv')
+    ];
+
+    // Check if there is any .csv file inside src/db/data directory
+    const dataDir = path.join(__dirname, 'data');
+    if (fs.existsSync(dataDir)) {
+      const files = fs.readdirSync(dataDir).filter(f => f.endsWith('.csv'));
+      for (const f of files) {
+        candidates.push(path.join(dataDir, f));
+      }
+    }
+
+    csvPath = candidates.find(p => fs.existsSync(p));
+  }
+
+  if (!csvPath || !fs.existsSync(csvPath)) {
+    const errorMsg = `File CSV OPD tidak ditemukan! Jalur yang diperiksa meliputi: ${path.join(__dirname, 'data/koordinat_opds_202608130811.csv')} dan root project.`;
+    logger.error(errorMsg);
+    throw new Error(errorMsg);
   }
 
   const content = fs.readFileSync(csvPath, 'utf8');
   const lines = content.split('\n').filter(l => l.trim().length > 0);
 
   if (lines.length <= 1) {
-    logger.warn('File CSV OPD kosong atau hanya berisi header.');
-    return;
+    const errorMsg = `File CSV OPD di ${csvPath} kosong atau hanya berisi header.`;
+    logger.warn(errorMsg);
+    throw new Error(errorMsg);
   }
 
   const rows = lines.slice(1);
