@@ -249,17 +249,75 @@ async function updateUser(req, res) {
 }
 
 /**
+ * PUT /auth/change-password
+ * Self-service password change for currently authenticated user
+ */
+async function changeOwnPassword(req, res) {
+  const { oldPassword, newPassword } = req.body;
+  const userId = req.user.id;
+
+  if (!oldPassword || typeof oldPassword !== 'string') {
+    return res.status(400).json({
+      success: false,
+      message: 'Password lama wajib diisi'
+    });
+  }
+
+  if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 8) {
+    return res.status(400).json({
+      success: false,
+      message: 'Password baru minimal 8 karakter'
+    });
+  }
+
+  if (oldPassword === newPassword) {
+    return res.status(400).json({
+      success: false,
+      message: 'Password baru tidak boleh sama dengan password lama'
+    });
+  }
+
+  const userRes = await query('SELECT id, username, password_hash FROM users WHERE id = $1', [userId]);
+  if (userRes.rows.length === 0) {
+    return res.status(404).json({
+      success: false,
+      message: 'Pengguna tidak ditemukan'
+    });
+  }
+
+  const targetUser = userRes.rows[0];
+
+  const match = await bcrypt.compare(oldPassword, targetUser.password_hash);
+  if (!match) {
+    return res.status(401).json({
+      success: false,
+      message: 'Password lama tidak sesuai'
+    });
+  }
+
+  const newHash = await bcrypt.hash(newPassword, 10);
+  await query('UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2', [newHash, userId]);
+
+  logger.info(`Pengguna '${targetUser.username}' berhasil mengubah password sendiri`);
+
+  res.json({
+    success: true,
+    message: 'Password berhasil diperbarui'
+  });
+}
+
+/**
  * PUT /admin/users/:id/password
- * Reset/Change user password
+ * Administrative Reset user password
  */
 async function changePassword(req, res) {
   const { id } = req.params;
-  const { oldPassword, newPassword } = req.body;
+  const { newPassword } = req.body;
 
-  if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 6) {
+  if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 8) {
     return res.status(400).json({
       success: false,
-      message: 'Password baru minimal 6 karakter'
+      message: 'Password baru minimal 8 karakter'
     });
   }
 
@@ -273,28 +331,10 @@ async function changePassword(req, res) {
 
   const targetUser = userRes.rows[0];
 
-  // If non-admin is changing password, verify old password
-  if (req.user.id === targetUser.id && req.user.role !== 'admin') {
-    if (!oldPassword) {
-      return res.status(400).json({
-        success: false,
-        message: 'Password lama wajib diisi'
-      });
-    }
-
-    const match = await bcrypt.compare(oldPassword, targetUser.password_hash);
-    if (!match) {
-      return res.status(401).json({
-        success: false,
-        message: 'Password lama tidak sesuai'
-      });
-    }
-  }
-
   const newHash = await bcrypt.hash(newPassword, 10);
   await query('UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2', [newHash, id]);
 
-  logger.info(`Password untuk pengguna '${targetUser.username}' telah diubah`);
+  logger.info(`Password untuk pengguna '${targetUser.username}' telah direset oleh admin '${req.user.username}'`);
 
   res.json({
     success: true,
@@ -338,6 +378,7 @@ module.exports = {
   listUsers,
   createUser,
   updateUser,
+  changeOwnPassword,
   changePassword,
   deleteUser
 };

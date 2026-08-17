@@ -543,6 +543,70 @@ const getPegawaiFingerprints = async (pin, deviceSN) => {
   return result.rows;
 };
 
+// List all pegawai with pagination, search, and optional OPD scoping filter
+const listPegawai = async ({ limit = 25, offset = 0, search = null, opdId = null } = {}) => {
+  let whereClauses = ['p.deleted_at IS NULL'];
+  const params = [];
+
+  if (search && search.trim()) {
+    params.push(`%${search.trim()}%`);
+    whereClauses.push(`(p.name ILIKE $${params.length} OR p.pin ILIKE $${params.length})`);
+  }
+
+  if (opdId) {
+    params.push(opdId);
+    whereClauses.push(`(p.opd_id = $${params.length} OR EXISTS (
+      SELECT 1 FROM pegawai_device_mapping pdm
+      JOIN devices dv ON pdm.device_sn = dv.sn
+      WHERE pdm.pegawai_pin = p.pin AND pdm.deleted_at IS NULL AND dv.opd_id = $${params.length}
+    ))`);
+  }
+
+  const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+
+  // Get total count
+  const countQuery = `
+    SELECT COUNT(*) as count
+    FROM pegawai p
+    ${whereSql}
+  `;
+  const countRes = await db.query(countQuery, params);
+  const total = parseInt(countRes.rows[0]?.count || 0, 10);
+
+  // Get paginated data
+  const dataParams = [...params];
+  dataParams.push(limit);
+  const limitIdx = dataParams.length;
+  dataParams.push(offset);
+  const offsetIdx = dataParams.length;
+
+  const dataQuery = `
+    SELECT 
+      p.pin, 
+      p.name, 
+      p.card, 
+      p.group_no, 
+      p.timezone, 
+      p.opd_id,
+      o.nama_opd, 
+      o.kdunker,
+      (SELECT COUNT(*) FROM pegawai_fingerprints ef WHERE ef.pegawai_pin = p.pin) as total_fingerprints,
+      (SELECT COUNT(*) FROM pegawai_device_mapping pdm WHERE pdm.pegawai_pin = p.pin AND pdm.deleted_at IS NULL) as total_devices
+    FROM pegawai p
+    LEFT JOIN opds o ON p.opd_id = o.id
+    ${whereSql}
+    ORDER BY p.name ASC NULLS LAST, p.pin ASC
+    LIMIT $${limitIdx} OFFSET $${offsetIdx}
+  `;
+
+  const dataRes = await db.query(dataQuery, dataParams);
+
+  return {
+    rows: dataRes.rows,
+    total
+  };
+};
+
 // Search pegawai by name using ILIKE (with optional OPD scoping filter)
 const searchPegawaiByName = async (name, limit = 10, opdId = null) => {
   const query = `
@@ -929,6 +993,7 @@ module.exports = {
   getPegawaiByDevice,
   getPegawaiFingerprints,
   getPegawaiBasicInfo,
+  listPegawai,
   searchPegawaiByName,
   getAttendanceLogs,
   getDashboardStats,

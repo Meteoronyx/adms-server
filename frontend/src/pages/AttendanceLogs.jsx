@@ -7,8 +7,7 @@ import { format } from 'date-fns';
 import { useToast } from '../hooks/useToast';
 import { useSocket } from '../hooks/useSocket';
 import { useAuth } from '../hooks/useAuth';
-import { ExportPegawaiModal } from '../features/attendance/components/ExportPegawaiModal';
-import { Calendar, Filter, ChevronLeft, ChevronRight, ClipboardList, FileDown } from 'lucide-react';
+import { Calendar, Filter, ChevronLeft, ChevronRight, ClipboardList } from 'lucide-react';
 
 export default function AttendanceLogs() {
   const [logs, setLogs] = useState([]);
@@ -18,9 +17,8 @@ export default function AttendanceLogs() {
   const [offset, setOffset] = useState(0);
   const { addToast } = useToast();
   const { socket } = useSocket();
-  const { user, hasPermission } = useAuth();
+  const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
-  const [exportModalOpen, setExportModalOpen] = useState(false);
 
   const columns = [
     {
@@ -251,16 +249,6 @@ export default function AttendanceLogs() {
           </div>
         </div>
         <div className="flex justify-end items-center gap-3">
-          {hasPermission('attendance:export') && (
-            <button
-              type="button"
-              onClick={() => setExportModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-lg shadow-sm transition-all active:scale-[0.98]"
-            >
-              <FileDown size={15} />
-              <span>Ekspor Rekap Pegawai</span>
-            </button>
-          )}
           <button
             onClick={handleApplyFilters}
             className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-sm font-medium rounded-lg transition-colors active:scale-[0.98]"
@@ -307,12 +295,6 @@ export default function AttendanceLogs() {
           </div>
         </div>
       )}
-
-      {/* Modal Ekspor Presensi Pegawai */}
-      <ExportPegawaiModal
-        open={exportModalOpen}
-        onOpenChange={setExportModalOpen}
-      />
     </div>
   );
 }

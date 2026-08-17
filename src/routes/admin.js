@@ -48,6 +48,7 @@ router.get('/admin/fingerprint-check', requirePermission('fingerprint:manage'), 
 router.post(config.PATHS.ADMIN.TRANSFER_FP, requirePermission('fingerprint:manage'), validateDevice, asyncHandler(adminController.transferFingerprint));
 
 // Data Retrieval Routes (Pegawai)
+router.get('/admin/pegawai', requirePermission('devices:read'), asyncHandler(adminController.listPegawai));
 router.get('/admin/pegawai/search', requirePermission('devices:read'), asyncHandler(adminController.searchPegawai));
 router.get('/admin/pegawai/:pin', requirePermission('devices:read'), asyncHandler(adminController.getPegawai));
 router.get('/admin/devices/:sn/pegawai', requirePermission('devices:read'), validateDevice, asyncHandler(adminController.getPegawaiByDevice));

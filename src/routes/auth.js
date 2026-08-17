@@ -8,7 +8,7 @@ const rateLimit = require('express-rate-limit');
 const config = require('../config');
 const { query } = require('../db/connection');
 const apiKeyAuth = require('../middleware/apiKeyAuth');
-const requireRole = require('../middleware/requireRole');
+const { requireRole, requirePermission } = require('../middleware/requireRole');
 const asyncHandler = require('../middleware/asyncHandler');
 const userController = require('../controllers/userController');
 const logger = require('../utils/logger');
@@ -24,6 +24,22 @@ const loginLimiter = rateLimit({
     res.status(429).json({
       success: false,
       message: 'Terlalu banyak percobaan login, silakan coba lagi setelah 15 menit.'
+    });
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const changePasswordLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10,
+  handler: (req, res) => {
+    const clientIp = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    logger.warn(`Percobaan ganti password dibatasi untuk IP: ${clientIp}`, { ip: clientIp });
+
+    res.status(429).json({
+      success: false,
+      message: 'Terlalu banyak percobaan ganti password, silakan coba lagi setelah 15 menit.'
     });
   },
   standardHeaders: true,
@@ -129,13 +145,17 @@ router.post('/admin/logout', handleLogout);
 router.get('/auth/me', apiKeyAuth, handleMe);
 router.get('/admin/me', apiKeyAuth, handleMe);
 
+// Self-service password change
+router.put('/auth/change-password', apiKeyAuth, changePasswordLimiter, asyncHandler(userController.changeOwnPassword));
+router.put('/admin/change-password', apiKeyAuth, changePasswordLimiter, asyncHandler(userController.changeOwnPassword));
+
 // =========================================================
 // USER MANAGEMENT ROUTES (/admin/users)
 // =========================================================
-router.get('/admin/users', apiKeyAuth, requireRole(['admin']), asyncHandler(userController.listUsers));
-router.post('/admin/users', apiKeyAuth, requireRole(['admin']), asyncHandler(userController.createUser));
-router.put('/admin/users/:id', apiKeyAuth, requireRole(['admin']), asyncHandler(userController.updateUser));
-router.put('/admin/users/:id/password', apiKeyAuth, asyncHandler(userController.changePassword));
-router.delete('/admin/users/:id', apiKeyAuth, requireRole(['admin']), asyncHandler(userController.deleteUser));
+router.get('/admin/users', apiKeyAuth, requirePermission('users:read'), asyncHandler(userController.listUsers));
+router.post('/admin/users', apiKeyAuth, requirePermission('users:write'), asyncHandler(userController.createUser));
+router.put('/admin/users/:id', apiKeyAuth, requirePermission('users:write'), asyncHandler(userController.updateUser));
+router.put('/admin/users/:id/password', apiKeyAuth, requirePermission('users:write'), asyncHandler(userController.changePassword));
+router.delete('/admin/users/:id', apiKeyAuth, requirePermission('users:delete'), asyncHandler(userController.deleteUser));
 
 module.exports = router;

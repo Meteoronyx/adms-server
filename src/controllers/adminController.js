@@ -410,6 +410,40 @@ exports.getPegawai = async (req, res) => {
   });
 };
 
+// Data Retrieval Routes (listPegawai with pagination and OPD scoping)
+exports.listPegawai = async (req, res) => {
+  const limit = Math.min(Math.max(parseInt(req.query.limit) || 25, 1), 100);
+  const offset = Math.max(parseInt(req.query.offset) || 0, 0);
+  const search = req.query.search ? req.query.search.trim() : null;
+
+  const isSystemAdmin = req.user.role === 'admin';
+  let opdId = null;
+  if (isSystemAdmin) {
+    opdId = req.query.opd_id ? req.query.opd_id.trim() : null;
+  } else {
+    opdId = req.user.opd_id || null;
+  }
+
+  if (!isSystemAdmin && !opdId) {
+    return res.json({
+      success: true,
+      data: [],
+      total: 0,
+      limit,
+      offset
+    });
+  }
+
+  const result = await queries.listPegawai({ limit, offset, search, opdId });
+  res.json({
+    success: true,
+    data: result.rows,
+    total: result.total,
+    limit,
+    offset
+  });
+};
+
 // Data Retrieval Routes (searchPegawai by name)
 exports.searchPegawai = async (req, res) => {
   const { q, limit } = req.query;
