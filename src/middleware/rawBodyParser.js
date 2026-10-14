@@ -29,4 +29,29 @@ const rawBodyParser = async (req, res, next) => {
   }
 };
 
+// Middleware untuk parse raw binary Buffer (mis. untuk /iclock/fdata)
+const rawBufferParser = async (req, res, next) => {
+  if (req.method === 'POST') {
+    try {
+      req.rawBuffer = await getRawBody(req, {
+        length: req.headers['content-length'],
+        limit: config.REQUEST.RAW_BODY_LIMIT,
+        encoding: null
+      });
+      next();
+    } catch (err) {
+      logger.error('Raw buffer parse error', {
+        message: err.message,
+        contentLength: req.headers['content-length']
+      });
+      req.rawBuffer = Buffer.alloc(0);
+      next();
+    }
+  } else {
+    next();
+  }
+};
+
+rawBodyParser.rawBufferParser = rawBufferParser;
+
 module.exports = rawBodyParser;

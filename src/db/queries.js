@@ -627,6 +627,7 @@ const listPegawai = async ({ limit = 25, offset = 0, search = null, opdId = null
       o.nama_opd, 
       o.kdunker,
       (SELECT COUNT(*) FROM pegawai_fingerprints ef WHERE ef.pegawai_pin = p.pin) as total_fingerprints,
+      (SELECT COUNT(*) FROM pegawai_faces efc WHERE efc.pegawai_pin = p.pin) as total_faces,
       (SELECT COUNT(*) FROM pegawai_device_mapping pdm WHERE pdm.pegawai_pin = p.pin AND pdm.deleted_at IS NULL) as total_devices
     FROM pegawai p
     LEFT JOIN opds o ON p.opd_id = o.id
@@ -676,11 +677,22 @@ const getAttendanceLogs = async (limit = 100, offset = 0, sn = null, pin = null,
       p.name as pegawai_name,
       d.device_name as device_name,
       d.opd_id as device_opd_id,
-      o.nama_opd as nama_opd
+      o.nama_opd as nama_opd,
+      ap.id as photo_id,
+      ap.photo_time as photo_time
     FROM attendance_logs a
     LEFT JOIN pegawai p ON a.user_pin = p.pin
     LEFT JOIN devices d ON a.device_sn = d.sn
     LEFT JOIN opds o ON o.id = d.opd_id
+    LEFT JOIN LATERAL (
+      SELECT p_img.id, p_img.photo_time
+      FROM attendance_photos p_img
+      WHERE p_img.device_sn = a.device_sn
+        AND p_img.user_pin = a.user_pin
+        AND p_img.photo_time BETWEEN a.check_time - INTERVAL '60 seconds' AND a.check_time + INTERVAL '60 seconds'
+      ORDER BY ABS(EXTRACT(EPOCH FROM (p_img.photo_time - a.check_time))) ASC
+      LIMIT 1
+    ) ap ON TRUE
     WHERE 1=1
   `;
   const params = [];
@@ -1011,6 +1023,231 @@ const getMonthlyLogsForPegawai = async (pin, startDate, endDate, opdId = null) =
   return result.rows;
 };
 
+// =========================================================
+// ATTENDANCE PHOTOS OPERATIONS
+// =========================================================
+
+const insertAttendancePhoto = async ({ sn, pin, photoTime, filePath, fileSize }) => {
+  const query = `
+    WITH inserted AS (
+      INSERT INTO attendance_photos (device_sn, user_pin, photo_time, file_path, file_size)
+      VALUES ($1, $2, $3, $4, $5)
+      ON CONFLICT (device_sn, user_pin, photo_time) DO UPDATE SET
+        file_path = EXCLUDED.file_path,
+        file_size = EXCLUDED.file_size
+      RETURNING *
+    )
+    SELECT 
+      i.*,
+      p.name AS pegawai_name,
+      d.device_name,
+      d.opd_id,
+      o.nama_opd
+    FROM inserted i
+    LEFT JOIN pegawai p ON p.pin = i.user_pin
+    LEFT JOIN devices d ON d.sn = i.device_sn
+    LEFT JOIN opds o ON o.id = d.opd_id
+  `;
+  const result = await db.query(query, [sn, pin, photoTime, filePath, fileSize]);
+  return result.rows[0];
+};
+
+const getAttendancePhotoById = async (id) => {
+  const query = `
+    SELECT 
+      ap.*,
+      p.name AS pegawai_name,
+      p.opd_id AS pegawai_opd_id,
+      d.device_name,
+      d.opd_id AS device_opd_id,
+      o.nama_opd
+    FROM attendance_photos ap
+    LEFT JOIN pegawai p ON p.pin = ap.user_pin
+    LEFT JOIN devices d ON d.sn = ap.device_sn
+    LEFT JOIN opds o ON o.id = d.opd_id
+    WHERE ap.id = $1
+  `;
+  const result = await db.query(query, [id]);
+  return result.rows[0] || null;
+};
+
+const getRecentAttendancePhotos = async ({ limit = 8, opdId = null, sn = null } = {}) => {
+  const params = [];
+  const whereClauses = ['1=1'];
+
+  if (opdId) {
+    params.push(opdId);
+    whereClauses.push(`d.opd_id = $${params.length}`);
+  }
+
+  if (sn) {
+    params.push(sn);
+    whereClauses.push(`ap.device_sn = $${params.length}`);
+  }
+
+  params.push(limit);
+  const query = `
+    SELECT 
+      ap.id,
+      ap.device_sn AS sn,
+      ap.user_pin AS pin,
+      ap.photo_time,
+      ap.file_size,
+      ap.created_at,
+      p.name AS pegawai_name,
+      COALESCE(d.device_name, d.name, ap.device_sn) AS device_name,
+      d.opd_id,
+      o.nama_opd
+    FROM attendance_photos ap
+    LEFT JOIN devices d ON d.sn = ap.device_sn
+    LEFT JOIN pegawai p ON p.pin = ap.user_pin
+    LEFT JOIN opds o ON o.id = d.opd_id
+    WHERE ${whereClauses.join(' AND ')}
+    ORDER BY ap.photo_time DESC, ap.id DESC
+    LIMIT $${params.length}
+  `;
+  const result = await db.query(query, params);
+  return result.rows;
+};
+
+// =========================================================
+// BROADCAST MESSAGES (PUBLIC SMS TAG=253) OPERATIONS
+// =========================================================
+
+const getTargetDevicesForBroadcast = async ({ opdId = null, deviceSn = null } = {}) => {
+  const params = [];
+  const whereClauses = ['verified = TRUE'];
+
+  if (deviceSn) {
+    params.push(deviceSn);
+    whereClauses.push(`sn = $${params.length}`);
+  }
+
+  if (opdId) {
+    params.push(opdId);
+    whereClauses.push(`opd_id = $${params.length}`);
+  }
+
+  const query = `
+    SELECT sn, name, device_name, opd_id, timezone
+    FROM devices
+    WHERE ${whereClauses.join(' AND ')}
+    ORDER BY device_name ASC NULLS LAST, sn ASC
+  `;
+  const result = await db.query(query, params);
+  return result.rows;
+};
+
+const createBroadcastMessage = async ({
+  opdId = null,
+  deviceSn = null,
+  message,
+  tag = 253,
+  startTime = null,
+  durationMinutes = 0,
+  createdBy = null
+}) => {
+  const query = `
+    INSERT INTO device_broadcast_messages (
+      opd_id, device_sn, message, tag, start_time, duration_minutes, is_active, created_by
+    )
+    VALUES ($1, $2, $3, $4, COALESCE($5, NOW()), $6, TRUE, $7)
+    RETURNING *
+  `;
+  const result = await db.query(query, [
+    opdId || null,
+    deviceSn || null,
+    message,
+    tag,
+    startTime || null,
+    durationMinutes,
+    createdBy || null
+  ]);
+  return result.rows[0];
+};
+
+const listBroadcastMessages = async ({ opdId = null, activeOnly = false, limit = 50, offset = 0 } = {}) => {
+  const params = [];
+  const whereClauses = ['1=1'];
+
+  if (opdId) {
+    params.push(opdId);
+    whereClauses.push(`(bm.opd_id = $${params.length} OR d.opd_id = $${params.length})`);
+  }
+
+  if (activeOnly) {
+    whereClauses.push(`bm.is_active = TRUE`);
+  }
+
+  const countQuery = `
+    SELECT COUNT(*)::integer AS count
+    FROM device_broadcast_messages bm
+    LEFT JOIN devices d ON d.sn = bm.device_sn
+    WHERE ${whereClauses.join(' AND ')}
+  `;
+  const countRes = await db.query(countQuery, params);
+  const total = countRes.rows[0]?.count || 0;
+
+  const dataParams = [...params, limit, offset];
+  const query = `
+    SELECT 
+      bm.*,
+      o.nama_opd,
+      COALESCE(d.device_name, d.name) AS device_name,
+      u.name AS created_by_name,
+      COALESCE(cmd_stats.total_targets, 0)::integer AS total_targets,
+      COALESCE(cmd_stats.delivered_count, 0)::integer AS delivered_count,
+      COALESCE(cmd_stats.success_count, 0)::integer AS success_count,
+      COALESCE(cmd_stats.pending_count, 0)::integer AS pending_count,
+      COALESCE(cmd_stats.failed_count, 0)::integer AS failed_count
+    FROM device_broadcast_messages bm
+    LEFT JOIN opds o ON o.id = bm.opd_id
+    LEFT JOIN devices d ON d.sn = bm.device_sn
+    LEFT JOIN users u ON u.id = bm.created_by
+    LEFT JOIN LATERAL (
+      SELECT 
+        COUNT(*) AS total_targets,
+        COUNT(*) FILTER (WHERE dc.status IN ('executed', 'success')) AS delivered_count,
+        COUNT(*) FILTER (WHERE dc.status = 'success') AS success_count,
+        COUNT(*) FILTER (WHERE dc.status = 'pending') AS pending_count,
+        COUNT(*) FILTER (WHERE dc.status = 'failed') AS failed_count
+      FROM device_commands dc
+      WHERE dc.command_type = 'DATA_SMS'
+        AND (dc.command_params->>'uid') = bm.id::text
+    ) cmd_stats ON TRUE
+    WHERE ${whereClauses.join(' AND ')}
+    ORDER BY bm.created_at DESC
+    LIMIT $${dataParams.length - 1} OFFSET $${dataParams.length}
+  `;
+  const result = await db.query(query, dataParams);
+  return {
+    rows: result.rows,
+    total
+  };
+};
+
+const getBroadcastMessageById = async (id) => {
+  const query = `
+    SELECT bm.*, d.opd_id AS device_opd_id
+    FROM device_broadcast_messages bm
+    LEFT JOIN devices d ON d.sn = bm.device_sn
+    WHERE bm.id = $1
+  `;
+  const result = await db.query(query, [id]);
+  return result.rows[0] || null;
+};
+
+const deactivateBroadcastMessage = async (id) => {
+  const query = `
+    UPDATE device_broadcast_messages
+    SET is_active = FALSE, updated_at = NOW()
+    WHERE id = $1
+    RETURNING *
+  `;
+  const result = await db.query(query, [id]);
+  return result.rows[0] || null;
+};
+
 module.exports = {
   upsertDevice,
   updateDeviceInfo,
@@ -1053,5 +1290,13 @@ module.exports = {
   softDeletePegawai,
   getPegawaiProfileForExport,
   getMonthlyLogsForPegawai,
+  insertAttendancePhoto,
+  getAttendancePhotoById,
+  getRecentAttendancePhotos,
+  getTargetDevicesForBroadcast,
+  createBroadcastMessage,
+  listBroadcastMessages,
+  getBroadcastMessageById,
+  deactivateBroadcastMessage,
 };
 

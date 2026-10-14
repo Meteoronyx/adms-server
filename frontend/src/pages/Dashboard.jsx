@@ -1,11 +1,12 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { getHealth, listDevices, getCommandQueue, getStats } from '../lib/api';
+import { getHealth, listDevices, getCommandQueue, getStats, getRecentAttendancePhotos, getAttendancePhotoUrl } from '../lib/api';
 import StatusBadge from '../components/StatusBadge';
 import AnimatedNumber from '../components/AnimatedNumber';
+import { AttendancePhotoModal } from '../features/attendance/components/AttendancePhotoModal';
 import {
   HardDrive, ListOrdered, RefreshCw, Clock, MemoryStick,
   Users, Fingerprint, ShieldCheck, CalendarDays, CalendarRange, Calendar,
-  CheckCircle2, AlertCircle
+  CheckCircle2, AlertCircle, Camera, Eye
 } from 'lucide-react';
 import { useSocket } from '../hooks/useSocket';
 import { useAuth } from '../hooks/useAuth';
@@ -63,6 +64,8 @@ export default function Dashboard() {
   const [logsToday, setLogsToday] = useState(0);
   const [logsWeekly, setLogsWeekly] = useState(0);
   const [logsMonth, setLogsMonth] = useState(0);
+  const [recentPhotos, setRecentPhotos] = useState([]);
+  const [selectedPhoto, setSelectedPhoto] = useState(null);
   const [loading, setLoading] = useState(true);
   const [highlightedCards, setHighlightedCards] = useState({});
   const prevStats = useRef(null);
@@ -70,6 +73,7 @@ export default function Dashboard() {
   const { socket } = useSocket();
   const { hasPermission } = useAuth();
   const canViewCommands = hasPermission('devices:command');
+  const canViewAttendance = hasPermission('attendance:read');
 
   const triggerHighlight = useCallback((card) => {
     // Clear previous timers
@@ -96,11 +100,12 @@ export default function Dashboard() {
       try {
         // Fetch per-endpoint agar satu kegagalan (mis. 403 karena kurang permission)
         // tidak merusak seluruh halaman dashboard
-        const [h, d, c, s] = await Promise.allSettled([
+        const [h, d, c, s, p] = await Promise.allSettled([
           getHealth(),
           listDevices(),
           canViewCommands ? getCommandQueue() : Promise.resolve({ commands: [] }),
           getStats(),
+          canViewAttendance ? getRecentAttendancePhotos({ limit: 6 }) : Promise.resolve({ photos: [] }),
         ]);
 
         const resolved = (r) => (r.status === 'fulfilled' ? r.value : null);
@@ -108,6 +113,10 @@ export default function Dashboard() {
         const dRes = resolved(d);
         const cRes = resolved(c);
         const sRes = resolved(s);
+        const pRes = resolved(p);
+        if (pRes && Array.isArray(pRes.photos)) {
+          setRecentPhotos(pRes.photos);
+        }
 
         // Comparison for Highlight
         if (prevStats.current) {
@@ -174,9 +183,20 @@ export default function Dashboard() {
       triggerHighlight('monthly');
     };
 
+    const handleAttendancePhoto = (photoEvent) => {
+      if (!photoEvent || !photoEvent.id) return;
+      setRecentPhotos((prev) => {
+        const filtered = prev.filter((item) => item.id !== photoEvent.id);
+        return [photoEvent, ...filtered].slice(0, 6);
+      });
+      triggerHighlight('photoService');
+    };
+
     socket.on('attendance_update', handleAttendanceUpdate);
+    socket.on('attendance_photo', handleAttendancePhoto);
     return () => {
       socket.off('attendance_update', handleAttendanceUpdate);
+      socket.off('attendance_photo', handleAttendancePhoto);
     };
   }, [socket, triggerHighlight]);
 
@@ -443,11 +463,124 @@ export default function Dashboard() {
                     </div>
                   )}
                 </div>
+
+                {/* Live Photo Service Card (Real-time WebSocket) */}
+                <div className={`
+                  bg-white rounded-xl border shadow-sm p-6 transition-all duration-300 relative overflow-hidden
+                  ${highlightedCards.photoService
+                    ? 'border-emerald-400 shadow-[0_0_20px_rgba(52,211,153,0.3)] highlight-pulse-emerald'
+                    : 'border-slate-200/60'
+                  }
+                `}>
+                  {highlightedCards.photoService && <div className="shimmer-sweep" />}
+                  <div className="flex items-center justify-between mb-4 relative z-10">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center">
+                        <Camera size={16} className="text-indigo-600" />
+                      </div>
+                      <div>
+                        <h2 className="text-sm font-semibold text-slate-900">Photo Service</h2>
+                        <p className="text-[11px] text-slate-400">Live Capture Stream (/iclock/fdata)</p>
+                      </div>
+                    </div>
+                    {/* <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      LIVE WS
+                    </span> */}
+                  </div>
+                  {recentPhotos.length > 0 ? (
+                    <div className="space-y-3 relative z-10">
+                      {(() => {
+                        const latest = recentPhotos[0];
+                        const latestUrl = latest.photo_url || getAttendancePhotoUrl(latest.id);
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => setSelectedPhoto(latest)}
+                            className="group w-full text-left p-1.5 rounded-xl bg-slate-50 border border-slate-200/70 hover:border-indigo-300 transition-all"
+                          >
+                            <div className="relative aspect-[16/10] w-full rounded-lg overflow-hidden bg-slate-950">
+                              <img
+                                src={latestUrl}
+                                alt={latest.pegawai_name || latest.pin}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              />
+                              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/20 to-transparent" />
+                              <div className="absolute bottom-2.5 left-2.5 right-2.5 flex items-end justify-between text-white">
+                                <div className="min-w-0">
+                                  <p className="text-xs font-semibold truncate">
+                                    {latest.pegawai_name || `PIN ${latest.pin}`}
+                                  </p>
+                                  <p className="text-[10px] text-slate-300 truncate">
+                                    {latest.device_name || latest.sn} • {latest.photo_time ? new Date(latest.photo_time).toLocaleTimeString('id-ID') : '-'}
+                                  </p>
+                                </div>
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-white/20 text-[10px] font-medium shrink-0">
+                                  <Eye size={11} />
+                                  Detail
+                                </span>
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })()}
+
+                      {recentPhotos.length > 1 && (
+                        <div className="space-y-1.5 max-h-[210px] overflow-y-auto pr-0.5">
+                          {recentPhotos.slice(1).map((item) => {
+                            const thumbUrl = item.photo_url || getAttendancePhotoUrl(item.id);
+                            return (
+                              <button
+                                key={item.id}
+                                type="button"
+                                onClick={() => setSelectedPhoto(item)}
+                                className="w-full flex items-center gap-2.5 p-2 rounded-lg bg-slate-50/80 hover:bg-slate-100/80 border border-slate-100 text-left transition-colors"
+                              >
+                                <img
+                                  src={thumbUrl}
+                                  alt={item.pin}
+                                  className="w-9 h-9 rounded-md object-cover bg-slate-900 shrink-0 border border-slate-200"
+                                />
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-xs font-semibold text-slate-800 truncate">
+                                    {item.pegawai_name || `PIN ${item.pin}`}
+                                  </p>
+                                  <p className="text-[11px] text-slate-400 truncate">
+                                    {item.device_name || item.sn}
+                                  </p>
+                                </div>
+                                <span className="text-[10px] font-mono text-slate-400 shrink-0">
+                                  {item.photo_time ? new Date(item.photo_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-'}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-8 text-center relative z-10">
+                      <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center mb-2">
+                        <Camera size={20} className="text-slate-400" strokeWidth={1.5} />
+                      </div>
+                      <p className="text-sm font-medium text-slate-700">Menunggu Tangkapan Kamera</p>
+                      <p className="text-xs text-slate-400 mt-1">
+                        Foto verifikasi wajah/absensi akan tampil secara real-time di sini.
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </section>
         </>
       )}
+
+      <AttendancePhotoModal
+        open={Boolean(selectedPhoto)}
+        onOpenChange={(open) => !open && setSelectedPhoto(null)}
+        photo={selectedPhoto}
+      />
     </div>
   );
 }

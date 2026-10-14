@@ -56,9 +56,16 @@ router.get('/admin/pegawai/search', requirePermission('devices:read'), asyncHand
 router.get('/admin/pegawai/:pin', requirePermission('devices:read'), asyncHandler(adminController.getPegawai));
 router.get('/admin/devices/:sn/pegawai', requirePermission('devices:read'), validateDevice, asyncHandler(adminController.getPegawaiByDevice));
 
-// Attendance Logs & Export
+// Attendance Logs, Photos & Export
 router.get('/admin/attendance', requirePermission('attendance:read'), asyncHandler(adminController.getAttendanceLogs));
 router.get('/admin/attendance/export/pdf', requirePermission('attendance:export'), asyncHandler(adminController.exportAttendancePdf));
+router.get('/admin/attendance-photos/recent', requirePermission('attendance:read'), asyncHandler(adminController.getRecentAttendancePhotos));
+router.get('/admin/attendance-photos/:id', requirePermission('attendance:read'), asyncHandler(adminController.getAttendancePhotoFile));
+
+// Broadcast Messages (Public SMS / Running Text)
+router.get('/admin/broadcast-messages', requirePermission('devices:command'), asyncHandler(adminController.listBroadcastMessages));
+router.post('/admin/broadcast-messages', requirePermission('devices:command'), asyncHandler(adminController.createBroadcastMessage));
+router.delete('/admin/broadcast-messages/:id', requirePermission('devices:command'), asyncHandler(adminController.deleteBroadcastMessage));
 
 // Dashboard Stats
 router.get('/admin/stats', requirePermission('devices:read'), asyncHandler(adminController.getDashboardStats));

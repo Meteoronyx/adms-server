@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import {
   checkFingerprint,
+  checkFace,
   transferFingerprint,
+  transferFace,
+  transferAllBiometrics,
   enrollFingerprint,
 } from '../lib/api';
 import { useToast } from '../hooks/useToast';
-import { Search, ArrowRight, PlusCircle } from 'lucide-react';
+import { Search, ArrowRight, PlusCircle, ScanFace, Fingerprint as FpIcon, Layers } from 'lucide-react';
 
 export default function Fingerprint() {
   const [tab, setTab] = useState('check');
@@ -21,6 +24,7 @@ export default function Fingerprint() {
   const [tfPin, setTfPin] = useState('');
   const [tfSource, setTfSource] = useState('');
   const [tfTarget, setTfTarget] = useState('');
+  const [tfMode, setTfMode] = useState('all'); // 'all' | 'fp' | 'face'
   const [tfLoading, setTfLoading] = useState(false);
 
   // Enroll state
@@ -35,9 +39,22 @@ export default function Fingerprint() {
     e.preventDefault();
     setCheckLoading(true);
     try {
-      const data = await checkFingerprint(checkPin, checkSn);
-      setCheckResult(data);
-      addToast(`Found ${data.count} fingerprint(s)`);
+      const [fpRes, faceRes] = await Promise.allSettled([
+        checkFingerprint(checkPin, checkSn),
+        checkFace(checkPin, checkSn),
+      ]);
+      const fpData = fpRes.status === 'fulfilled' ? fpRes.value : { count: 0, fingerprints: [] };
+      const faceData = faceRes.status === 'fulfilled' ? faceRes.value : { count: 0, faces: [] };
+
+      setCheckResult({
+        pin: checkPin,
+        sn: checkSn,
+        fpCount: fpData.count || 0,
+        fingerprints: fpData.fingerprints || [],
+        faceCount: faceData.count || 0,
+        faces: faceData.faces || [],
+      });
+      addToast(`Ditemukan ${fpData.count || 0} sidik jari & ${faceData.count || 0} segmen wajah`);
     } catch (err) {
       setCheckResult(null);
       addToast(err.message || 'Check failed', 'error');
@@ -50,8 +67,15 @@ export default function Fingerprint() {
     e.preventDefault();
     setTfLoading(true);
     try {
-      await transferFingerprint(tfTarget, { pin: tfPin, source_sn: tfSource });
-      addToast('Transfer queued successfully');
+      let res;
+      if (tfMode === 'face') {
+        res = await transferFace(tfTarget, { pin: tfPin, source_sn: tfSource });
+      } else if (tfMode === 'fp') {
+        res = await transferFingerprint(tfTarget, { pin: tfPin, source_sn: tfSource });
+      } else {
+        res = await transferAllBiometrics(tfTarget, { pin: tfPin, source_sn: tfSource });
+      }
+      addToast(res.message || 'Transfer biometrik berhasil diantrekan');
     } catch (err) {
       addToast(err.message || 'Transfer failed', 'error');
     } finally {
@@ -82,8 +106,8 @@ export default function Fingerprint() {
     <div className="space-y-6 fade-in pb-8">
       {/* Page Header */}
       <div>
-        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Fingerprint Management</h1>
-        <p className="text-sm text-slate-500 mt-1">Check, transfer, dan enroll fingerprint pada perangkat</p>
+        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Biometrik (Sidik Jari & Wajah)</h1>
+        <p className="text-sm text-slate-500 mt-1">Cek, transfer lintas perangkat (Sidik Jari & 12 Segmen Wajah ADMS), dan enroll sidik jari baru</p>
       </div>
 
       {/* Tabs */}
@@ -144,7 +168,7 @@ export default function Fingerprint() {
                     disabled={checkLoading}
                     className="w-full px-4 py-2 text-sm font-medium rounded-lg bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors active:scale-[0.98]"
                   >
-                    {checkLoading ? 'Checking...' : 'Check Fingerprint'}
+                    {checkLoading ? 'Checking...' : 'Cek Biometrik'}
                   </button>
                 </div>
               </div>
@@ -153,13 +177,24 @@ export default function Fingerprint() {
 
           {checkResult && (
             <div className="bg-white rounded-xl border border-slate-200/60 shadow-sm overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-100">
-                <h3 className="text-sm font-semibold text-slate-900">Hasil Pemeriksaan</h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Found <span className="font-semibold text-slate-700">{checkResult.count}</span> fingerprint(s) for PIN{' '}
-                  <span className="font-mono text-slate-700">{checkResult.pegawai_pin}</span> on device{' '}
-                  <span className="font-mono text-slate-700">{checkResult.device}</span>
-                </p>
+              <div className="px-6 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-900">Hasil Pemeriksaan Biometrik</h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    PIN <span className="font-mono font-semibold text-slate-700">{checkResult.pin}</span> pada perangkat{' '}
+                    <span className="font-mono font-semibold text-slate-700">{checkResult.sn}</span>
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 font-semibold">
+                    <FpIcon size={13} />
+                    {checkResult.fpCount} Sidik Jari
+                  </span>
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 font-semibold">
+                    <ScanFace size={13} />
+                    {checkResult.faceCount}/12 Segmen Wajah
+                  </span>
+                </div>
               </div>
               {checkResult.fingerprints?.length > 0 && (
                 <div className="overflow-x-auto">
@@ -183,6 +218,23 @@ export default function Fingerprint() {
                   </table>
                 </div>
               )}
+              {checkResult.faces?.length > 0 && (
+                <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/40">
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                    Segmen Wajah Tersimpan (ZKFace v7)
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {checkResult.faces.map((fc) => (
+                      <span
+                        key={fc.face_id}
+                        className="px-2 py-1 rounded-md text-[11px] font-mono bg-emerald-50 text-emerald-700 border border-emerald-200/60"
+                      >
+                        FID #{fc.face_id} ({fc.size}B)
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -192,9 +244,37 @@ export default function Fingerprint() {
       {tab === 'transfer' && (
         <div className="max-w-lg">
           <div className="bg-white rounded-xl border border-slate-200/60 shadow-sm p-6">
-            <h3 className="text-sm font-semibold text-slate-900 mb-1">Transfer Fingerprint</h3>
-            <p className="text-xs text-slate-500 mb-5">Transfer fingerprint dari source device ke target device</p>
+            <h3 className="text-sm font-semibold text-slate-900 mb-1">Transfer Biometrik Lintas Perangkat</h3>
+            <p className="text-xs text-slate-500 mb-5">Transfer data User, Sidik Jari, dan/atau 12 Segmen Wajah dari perangkat sumber ke perangkat tujuan</p>
             <form onSubmit={handleTransfer} className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1.5">Mode Transfer</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: 'all', label: 'Semua (FP + Face)', icon: Layers },
+                    { id: 'fp', label: 'Sidik Jari Saja', icon: FpIcon },
+                    { id: 'face', label: 'Wajah Saja (12 FID)', icon: ScanFace },
+                  ].map((mode) => {
+                    const Icon = mode.icon;
+                    const active = tfMode === mode.id;
+                    return (
+                      <button
+                        key={mode.id}
+                        type="button"
+                        onClick={() => setTfMode(mode.id)}
+                        className={`flex flex-col items-center justify-center gap-1 p-2.5 rounded-xl border text-xs font-medium transition-all ${
+                          active
+                            ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                            : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-slate-300'
+                        }`}
+                      >
+                        <Icon size={15} />
+                        <span className="text-[11px] text-center">{mode.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
               <div>
                 <label className="block text-xs font-medium text-slate-500 mb-1.5">PIN</label>
                 <input

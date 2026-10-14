@@ -1,13 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getAttendanceLogs } from '../lib/api';
+import { getAttendanceLogs, getAttendancePhotoUrl } from '../lib/api';
 import { DataTable } from '../components/ui/DataTable';
 import { Skeleton } from '../components/ui/Skeleton';
 import { SearchableSelect } from '../components/ui/SearchableSelect';
+import { AttendancePhotoModal } from '../features/attendance/components/AttendancePhotoModal';
 import { format } from 'date-fns';
 import { useToast } from '../hooks/useToast';
 import { useSocket } from '../hooks/useSocket';
 import { useAuth } from '../hooks/useAuth';
-import { Calendar, Filter, ChevronLeft, ChevronRight, ClipboardList } from 'lucide-react';
+import { Calendar, Filter, ChevronLeft, ChevronRight, ClipboardList, Camera } from 'lucide-react';
 
 export default function AttendanceLogs() {
   const [logs, setLogs] = useState([]);
@@ -15,12 +16,41 @@ export default function AttendanceLogs() {
   const [total, setTotal] = useState(0);
   const [limit, setLimit] = useState(50);
   const [offset, setOffset] = useState(0);
+  const [selectedPhoto, setSelectedPhoto] = useState(null);
   const { addToast } = useToast();
   const { socket } = useSocket();
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
 
   const columns = [
+    {
+      accessorKey: 'photo_id',
+      header: 'Snapshot',
+      cell: ({ row }) => {
+        const photoId = row.original.photo_id;
+        if (!photoId) {
+          return (
+            <div className="w-9 h-9 rounded-lg bg-slate-100 border border-slate-200/70 flex items-center justify-center text-slate-300" title="Tidak ada foto snapshot">
+              <Camera size={14} />
+            </div>
+          );
+        }
+        return (
+          <button
+            type="button"
+            onClick={() => setSelectedPhoto(row.original)}
+            className="group relative w-9 h-9 rounded-lg overflow-hidden border border-slate-200 hover:border-indigo-500 transition-all shadow-2xs"
+            title="Klik untuk memperbesar foto absensi"
+          >
+            <img
+              src={getAttendancePhotoUrl(photoId)}
+              alt={row.original.user_pin}
+              className="w-full h-full object-cover group-hover:scale-110 transition-transform"
+            />
+          </button>
+        );
+      }
+    },
     {
       accessorKey: 'pegawai_name',
       header: 'Pegawai Name',
@@ -120,11 +150,15 @@ export default function AttendanceLogs() {
 
   useEffect(() => {
     if (!socket) return;
-    const handleAttendanceUpdate = (data) => {
+    const handleAttendanceUpdate = () => {
       if (offset === 0) fetchLogs();
     };
     socket.on('attendance_update', handleAttendanceUpdate);
-    return () => socket.off('attendance_update', handleAttendanceUpdate);
+    socket.on('attendance_photo', handleAttendanceUpdate);
+    return () => {
+      socket.off('attendance_update', handleAttendanceUpdate);
+      socket.off('attendance_photo', handleAttendanceUpdate);
+    };
   }, [socket, offset, fetchLogs]);
 
   const [devices, setDevices] = useState([]);
@@ -295,6 +329,12 @@ export default function AttendanceLogs() {
           </div>
         </div>
       )}
+
+      <AttendancePhotoModal
+        open={Boolean(selectedPhoto)}
+        onOpenChange={(open) => !open && setSelectedPhoto(null)}
+        photo={selectedPhoto}
+      />
     </div>
   );
 }

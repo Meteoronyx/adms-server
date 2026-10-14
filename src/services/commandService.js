@@ -58,6 +58,41 @@ const buildCommandString = (command) => {
       return `${prefix}DATA UPDATE FACE PIN=${pin}\tFID=${face_id}\tValid=${valid}\tSIZE=${sizeVal}\tTMP=${template}`;
     }
 
+    case config.COMMAND_TYPES.DATA_SMS: {
+      // Format: C:<id>:DATA UPDATE SMS MSG=xxx\tTAG=253\tUID=xxx\tMIN=xxx\tStartTime=yyyy-MM-dd HH:mm:ss
+      const { uid, message, duration = 0, startTime, tag = 253 } = command_params;
+
+      let timeStr = startTime;
+      if (!timeStr || !/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(String(timeStr))) {
+        const dt = timeStr ? new Date(timeStr) : new Date();
+        const validDt = isNaN(dt.getTime()) ? new Date() : dt;
+        // Format in local machine timezone (Asia/Jakarta / +07:00)
+        const parts = new Intl.DateTimeFormat('en-CA', {
+          timeZone: 'Asia/Jakarta',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false
+        }).formatToParts(validDt);
+        const map = {};
+        for (const p of parts) map[p.type] = p.value;
+        const hour = map.hour === '24' ? '00' : map.hour;
+        timeStr = `${map.year}-${map.month}-${map.day} ${hour}:${map.minute}:${map.second}`;
+      }
+
+      const sanitizedMsg = String(message || '').replace(/[\t\r\n]+/g, ' ').trim().slice(0, 320);
+      return `${prefix}DATA UPDATE SMS MSG=${sanitizedMsg}\tTAG=${tag}\tUID=${uid}\tMIN=${duration}\tStartTime=${timeStr}`;
+    }
+
+    case config.COMMAND_TYPES.DELETE_SMS: {
+      // Format: C:<id>:DATA DELETE SMS UID=xxx
+      const { uid } = command_params;
+      return `${prefix}DATA DELETE SMS UID=${uid}`;
+    }
+
     default:
       return null;
   }

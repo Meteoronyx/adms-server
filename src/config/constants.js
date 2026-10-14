@@ -7,7 +7,8 @@ module.exports = {
     ICLOCK: {
       CDATA: '/iclock/cdata',
       GETREQUEST: '/iclock/getrequest',
-      DEVICECMD: '/iclock/devicecmd'
+      DEVICECMD: '/iclock/devicecmd',
+      FDATA: '/iclock/fdata'
     },
     ADMIN: {
       REUPLOAD: '/admin/reupload/:sn',
@@ -20,7 +21,11 @@ module.exports = {
       TRANSFER_FP: '/admin/transferfp/:sn',
       TRANSFER_FACE: '/admin/transferface/:sn',
       TRANSFER_ALL: '/admin/transferall/:sn',
-      COMMAND_QUEUE: '/admin/commands/queue'
+      COMMAND_QUEUE: '/admin/commands/queue',
+      BROADCAST_MESSAGES: '/admin/broadcast-messages',
+      BROADCAST_MESSAGE_DETAIL: '/admin/broadcast-messages/:id',
+      ATTENDANCE_PHOTOS_RECENT: '/admin/attendance-photos/recent',
+      ATTENDANCE_PHOTO_FILE: '/admin/attendance-photos/:id'
     }
   },
 
@@ -63,7 +68,9 @@ module.exports = {
     DELETE_USER: 'C:10:DATA DEL_USER',
     ENROLL_FP: 'C:10:ENROLL_FP',
     DATA_FP: 'C:10:DATA FP',
-    DATA_FACE: 'C:10:DATA UPDATE FACE'
+    DATA_FACE: 'C:10:DATA UPDATE FACE',
+    DATA_SMS: 'C:10:DATA UPDATE SMS',
+    DELETE_SMS: 'C:10:DATA DELETE SMS'
   },
 
   // Command types for database
@@ -76,7 +83,9 @@ module.exports = {
     DELETE_USER: 'DELETE_USER',
     ENROLL_FP: 'ENROLL_FP',
     DATA_FP: 'DATA_FP',
-    DATA_FACE: 'DATA_FACE'
+    DATA_FACE: 'DATA_FACE',
+    DATA_SMS: 'DATA_SMS',
+    DELETE_SMS: 'DELETE_SMS'
   },
 
   // Command status
@@ -88,7 +97,8 @@ module.exports = {
   // Table names
   TABLES: {
     ATTLOG: 'ATTLOG',
-    OPERLOG: 'OPERLOG'
+    OPERLOG: 'OPERLOG',
+    ATTPHOTO: 'ATTPHOTO'
   },
 
   // Privilege levels

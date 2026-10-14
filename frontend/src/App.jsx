@@ -11,6 +11,7 @@ import DeviceDetail from './pages/DeviceDetail';
 import Pegawai from './pages/Pegawai';
 import Commands from './pages/Commands';
 import Fingerprint from './pages/Fingerprint';
+import BroadcastMessages from './pages/BroadcastMessages';
 import AttendanceLogs from './pages/AttendanceLogs';
 import Users from './pages/Users';
 import Opds from './pages/Opds';
@@ -102,6 +103,16 @@ function AppRoutes() {
           <PrivateRoute>
             <PermissionRoute permission="fingerprint:manage">
               <Fingerprint />
+            </PermissionRoute>
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/broadcast"
+        element={
+          <PrivateRoute>
+            <PermissionRoute permission="devices:command">
+              <BroadcastMessages />
             </PermissionRoute>
           </PrivateRoute>
         }

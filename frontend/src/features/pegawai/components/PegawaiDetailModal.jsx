@@ -139,10 +139,10 @@ export function PegawaiDetailModal({
               <div className="space-y-0.5">
                 <div className="flex items-center gap-1 text-[11px] text-slate-400">
                   <Fingerprint size={12} />
-                  <span>Total Fingerprints</span>
+                  <span>Biometrik (FP / Wajah)</span>
                 </div>
                 <p className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                  {pegawai.total_fingerprints ?? 0}
+                  {pegawai.total_fingerprints ?? 0} FP • {pegawai.total_faces ?? 0} Segmen Wajah
                 </p>
               </div>
 
@@ -210,7 +210,7 @@ export function PegawaiDetailModal({
                       <th className="px-3.5 py-2.5">Device SN</th>
                       <th className="px-3.5 py-2.5">Nama Perangkat / Lokasi</th>
                       <th className="px-3.5 py-2.5">Hak Akses</th>
-                      <th className="px-3.5 py-2.5 text-center">Fingerprints</th>
+                      <th className="px-3.5 py-2.5 text-center">FP / Wajah</th>
                       <th className="px-3.5 py-2.5 text-center">Password</th>
                       <th className="px-3.5 py-2.5">Terakhir Sinkron</th>
                     </tr>
@@ -233,7 +233,7 @@ export function PegawaiDetailModal({
                               </span>
                             </td>
                             <td className="px-3.5 py-2.5 text-center font-semibold text-slate-800 dark:text-slate-200">
-                              {d.fingerprint_count ?? 0}
+                              {d.fingerprint_count ?? 0} FP / {d.face_count ?? 0} Face
                             </td>
                             <td className="px-3.5 py-2.5 text-center">
                               {hasPass ? (

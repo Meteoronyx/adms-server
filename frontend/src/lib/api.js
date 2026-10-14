@@ -103,11 +103,46 @@ export const getReuploadQueue = () =>
 export const checkFingerprint = (pin, sn) =>
   fetchJSON(`/admin/fingerprint-check?pin=${encodeURIComponent(pin)}&sn=${encodeURIComponent(sn)}`);
 
+export const checkFace = (pin, sn) =>
+  fetchJSON(`/admin/face-check?pin=${encodeURIComponent(pin)}&sn=${encodeURIComponent(sn)}`);
+
 export const transferFingerprint = (sn, { pin, source_sn }) =>
   fetchJSON(`/admin/transferfp/${sn}`, { method: 'POST', body: JSON.stringify({ pin, source_sn }) });
 
+export const transferFace = (sn, { pin, source_sn }) =>
+  fetchJSON(`/admin/transferface/${sn}`, { method: 'POST', body: JSON.stringify({ pin, source_sn }) });
+
+export const transferAllBiometrics = (sn, { pin, source_sn }) =>
+  fetchJSON(`/admin/transferall/${sn}`, { method: 'POST', body: JSON.stringify({ pin, source_sn }) });
+
 export const enrollFingerprint = (sn, { pin, fid, retry, overwrite }) =>
   fetchJSON(`/admin/enrollfp/${sn}`, { method: 'POST', body: JSON.stringify({ pin, fid, retry, overwrite }) });
+
+export const getRecentAttendancePhotos = ({ limit = 8, sn = '', opdId = '' } = {}) => {
+  const p = new URLSearchParams();
+  if (limit) p.append('limit', limit);
+  if (sn) p.append('sn', sn);
+  if (opdId) p.append('opd_id', opdId);
+  return fetchJSON(`/admin/attendance-photos/recent?${p.toString()}`);
+};
+
+export const getAttendancePhotoUrl = (photoId) =>
+  `${API_BASE}/admin/attendance-photos/${photoId}`;
+
+export const listBroadcastMessages = ({ limit = 50, offset = 0, active = false, opdId = '' } = {}) => {
+  const p = new URLSearchParams();
+  if (limit) p.append('limit', limit);
+  if (offset) p.append('offset', offset);
+  if (active) p.append('active', 'true');
+  if (opdId) p.append('opd_id', opdId);
+  return fetchJSON(`/admin/broadcast-messages?${p.toString()}`);
+};
+
+export const createBroadcastMessage = (payload) =>
+  fetchJSON('/admin/broadcast-messages', { method: 'POST', body: JSON.stringify(payload) });
+
+export const deleteBroadcastMessage = (id) =>
+  fetchJSON(`/admin/broadcast-messages/${id}`, { method: 'DELETE' });
 
 export const updateUser = (sn, { pin, privilege, passwd }) =>
   fetchJSON(`/admin/user/${sn}`, { method: 'POST', body: JSON.stringify({ pin, privilege, passwd }) });

@@ -17,6 +17,7 @@ services:
     restart: always
     volumes:
       - ./logs:/app/logs
+      - ./uploads:/app/uploads
 
   db:
     image: postgres:15-alpine

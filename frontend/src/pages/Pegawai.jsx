@@ -321,10 +321,13 @@ export default function Pegawai() {
 
                     {/* Biometric & Device Column */}
                     <td className="px-5 py-3.5 text-center whitespace-nowrap">
-                      <div className="inline-flex items-center gap-2">
+                      <div className="inline-flex items-center gap-1.5">
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
                           <Fingerprint size={12} className="text-slate-400" />
                           <span>{p.total_fingerprints ?? 0} FP</span>
+                        </span>
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300">
+                          <span>{p.total_faces ?? 0} Wajah</span>
                         </span>
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
                           <HardDrive size={12} className="text-slate-400" />

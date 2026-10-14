@@ -23,6 +23,7 @@ import {
   UserCog,
   Building2,
   KeyRound,
+  Megaphone,
 } from 'lucide-react';
 
 const navGroups = [
@@ -36,7 +37,8 @@ const navGroups = [
     group: 'Hardware & Biometrik',
     items: [
       { path: '/devices', label: 'Devices', icon: HardDrive, permission: 'devices:read' },
-      { path: '/fingerprint', label: 'Fingerprint', icon: Fingerprint, permission: 'fingerprint:manage' },
+      { path: '/fingerprint', label: 'Biometrik', icon: Fingerprint, permission: 'fingerprint:manage' },
+      { path: '/broadcast', label: 'Pesan Layar', icon: Megaphone, permission: 'devices:command' },
     ],
   },
   {

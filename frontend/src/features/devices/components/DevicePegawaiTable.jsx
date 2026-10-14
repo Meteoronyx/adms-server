@@ -77,7 +77,7 @@ export function DevicePegawaiTable({
                   <th className="px-4 py-3">PIN</th>
                   <th className="px-4 py-3">Nama Pegawai</th>
                   <th className="px-4 py-3">Privilege</th>
-                  <th className="px-4 py-3">Sidik Jari</th>
+                  <th className="px-4 py-3">Biometrik (FP / Wajah)</th>
                   {canManage && <th className="px-4 py-3 text-right">Aksi</th>}
                 </tr>
               </thead>
@@ -96,13 +96,20 @@ export function DevicePegawaiTable({
                       </Badge>
                     </td>
                     <td className="px-4 py-3">
-                      {p.fingerprint_count > 0 ? (
-                        <Badge variant="success" icon={Fingerprint}>
-                          {p.fingerprint_count} Sidik Jari
-                        </Badge>
-                      ) : (
-                        <Badge variant="neutral">Kosong</Badge>
-                      )}
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {p.fingerprint_count > 0 ? (
+                          <Badge variant="success" icon={Fingerprint}>
+                            {p.fingerprint_count} Sidik Jari
+                          </Badge>
+                        ) : (
+                          <Badge variant="neutral">0 Jari</Badge>
+                        )}
+                        {p.face_count > 0 && (
+                          <Badge variant="info">
+                            {p.face_count} Segmen Wajah
+                          </Badge>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-right">
                       {canManage ? (

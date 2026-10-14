@@ -10,6 +10,7 @@ const attendanceService = require('../services/attendanceService');
 const reuploadService = require('../services/reuploadService');
 const commandService = require('../services/commandService');
 const userService = require('../services/userService');
+const photoService = require('../services/photoService');
 const queries = require('../db/queries');
 const logger = require('../utils/logger');
 
@@ -105,6 +106,61 @@ router.post(config.PATHS.ICLOCK.CDATA, rawBodyParser, async (req, res) => {
         sn: SN
       });
       res.status(500).send(config.RESPONSE.ERROR.INTERNAL_SERVER_ERROR);
+    }
+    return;
+  }
+
+  // Handle ATTPHOTO via POST /iclock/cdata?table=ATTPHOTO (Base64 payload)
+  if (table === config.TABLES.ATTPHOTO) {
+    try {
+      const verified = await deviceService.getDeviceVerificationStatus(SN);
+      if (!verified) {
+        logger.warn('Unverified device attempted to send ATTPHOTO', {
+          sn: SN,
+          ip: ip,
+          action: 'blocked'
+        });
+        res.set('Content-Type', 'text/plain');
+        res.send(config.RESPONSE.ERROR.DEVICE_NOT_VERIFIED);
+        return;
+      }
+
+      const photos = parsers.parseAttendancePhotoBase64(req.rawBody);
+      for (const p of photos) {
+        const targetSn = p.sn || SN;
+        const photoRecord = await photoService.saveAttendancePhoto({
+          sn: targetSn,
+          pin: p.pin,
+          photoTime: p.photoTime,
+          buffer: p.jpegBuffer,
+          size: p.size
+        });
+
+        await broadcastDeviceEvent(req.app, targetSn, 'attendance_photo', {
+          id: photoRecord.id,
+          sn: targetSn,
+          device_name: photoRecord.device_name || targetSn,
+          nama_opd: photoRecord.nama_opd || null,
+          pin: p.pin,
+          pegawai_name: photoRecord.pegawai_name || null,
+          photo_time: photoRecord.photo_time,
+          file_size: photoRecord.file_size,
+          photo_url: `/admin/attendance-photos/${photoRecord.id}`
+        });
+      }
+
+      res.set('Content-Type', 'text/plain');
+      res.send(config.RESPONSE.OK);
+    } catch (err) {
+      logger.error('iclock/cdata POST ATTPHOTO error', {
+        message: err.message,
+        stack: err.stack,
+        url: req.url,
+        ip: req.ip,
+        sn: SN
+      });
+      res.set('Content-Type', 'text/plain');
+      res.send(config.RESPONSE.OK);
     }
     return;
   }
@@ -261,12 +317,69 @@ router.post(config.PATHS.ICLOCK.DEVICECMD, rawBodyParser, async (req, res) => {
   }
 });
 
-// POST /iclock/fdata - Safety dummy handler for snapshot/avatar uploads to prevent 404
-router.post('/iclock/fdata', rawBodyParser, (req, res) => {
+// POST /iclock/fdata - Ingestion foto absensi pegawai (Binary JPEG stream)
+router.post('/iclock/fdata', rawBodyParser.rawBufferParser, async (req, res) => {
   const { SN } = req.query;
-  logger.debug('Received /iclock/fdata upload (acknowledged without storing)', { sn: SN, ip: req.ip });
-  res.set('Content-Type', 'text/plain');
-  res.send(config.RESPONSE.OK);
+  const ip = req.ip || 'unknown';
+
+  try {
+    const parsed = parsers.parseAttendancePhotoStream(req.rawBuffer);
+    if (!parsed || !parsed.jpegBuffer) {
+      logger.debug('Received non-photo or invalid stream on /iclock/fdata', { sn: SN, ip });
+      res.set('Content-Type', 'text/plain');
+      return res.send(config.RESPONSE.OK);
+    }
+
+    const targetSn = parsed.sn || SN;
+    if (!targetSn) {
+      res.set('Content-Type', 'text/plain');
+      return res.send(config.RESPONSE.OK);
+    }
+
+    const verified = await deviceService.getDeviceVerificationStatus(targetSn);
+    if (!verified) {
+      logger.warn('Unverified device attempted to upload photo via /iclock/fdata', {
+        sn: targetSn,
+        ip,
+        action: 'blocked'
+      });
+      res.set('Content-Type', 'text/plain');
+      return res.send(config.RESPONSE.OK);
+    }
+
+    const photoRecord = await photoService.saveAttendancePhoto({
+      sn: targetSn,
+      pin: parsed.pin,
+      photoTime: parsed.photoTime,
+      buffer: parsed.jpegBuffer,
+      size: parsed.size
+    });
+
+    await broadcastDeviceEvent(req.app, targetSn, 'attendance_photo', {
+      id: photoRecord.id,
+      sn: targetSn,
+      device_name: photoRecord.device_name || targetSn,
+      nama_opd: photoRecord.nama_opd || null,
+      pin: parsed.pin,
+      pegawai_name: photoRecord.pegawai_name || null,
+      photo_time: photoRecord.photo_time,
+      file_size: photoRecord.file_size,
+      photo_url: `/admin/attendance-photos/${photoRecord.id}`
+    });
+
+    res.set('Content-Type', 'text/plain');
+    res.send(config.RESPONSE.OK);
+  } catch (err) {
+    logger.error('Error processing /iclock/fdata photo upload', {
+      sn: SN,
+      ip,
+      message: err.message,
+      stack: err.stack
+    });
+    // Tetap kirim OK agar mesin tidak re-upload terus menerus saat terjadi kendala internal
+    res.set('Content-Type', 'text/plain');
+    res.send(config.RESPONSE.OK);
+  }
 });
 
 module.exports = router;

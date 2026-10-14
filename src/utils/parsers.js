@@ -255,6 +255,182 @@ const parseCommandResults = (rawBody) => {
   return results;
 };
 
+// Parse timestamp string from ZKTeco photo filename or field (e.g., '20261014080000' or '2026-10-14 08:00:00')
+const parsePhotoTimestamp = (timeStr) => {
+  if (!timeStr) return new Date();
+  const str = String(timeStr).trim();
+
+  // Format compact 14-digit: YYYYMMDDHHmmss
+  const compactMatch = str.match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})$/);
+  if (compactMatch) {
+    const [, y, m, d, hh, mm, ss] = compactMatch;
+    const dt = new Date(`${y}-${m}-${d}T${hh}:${mm}:${ss}`);
+    return isNaN(dt.getTime()) ? new Date() : dt;
+  }
+
+  // Format standard YYYY-MM-DD HH:mm:ss or ISO
+  const normalized = str.replace(' ', 'T');
+  const dt = new Date(normalized);
+  return isNaN(dt.getTime()) ? new Date() : dt;
+};
+
+/**
+ * Ekstraksi header ASCII dan body JPEG dari stream biner /iclock/fdata
+ * Mendukung delimiter \r\n\r\n, \n\n, atau \0 (sesuai ers.tabledesc.xml endoperator="\0")
+ * serta fallback pencarian magic byte JPEG (0xFF 0xD8 0xFF)
+ * @param {Buffer} buffer - Raw payload request
+ * @returns {Object|null}
+ */
+const parseAttendancePhotoStream = (buffer) => {
+  if (!Buffer.isBuffer(buffer) || buffer.length === 0) return null;
+
+  let separatorIdx = -1;
+  let headerLength = 0;
+
+  // 1. Cek delimiter \r\n\r\n
+  separatorIdx = buffer.indexOf('\r\n\r\n');
+  if (separatorIdx !== -1 && separatorIdx < 512) {
+    headerLength = separatorIdx + 4;
+  }
+
+  // 2. Cek delimiter \n\n
+  if (separatorIdx === -1) {
+    const lfIdx = buffer.indexOf('\n\n');
+    if (lfIdx !== -1 && lfIdx < 512) {
+      separatorIdx = lfIdx;
+      headerLength = lfIdx + 2;
+    }
+  }
+
+  // 3. Cek delimiter null-byte \0 (standar ers.tabledesc.xml: CMD=uploadphoto\0<JPEG>)
+  if (separatorIdx === -1) {
+    const nullIdx = buffer.indexOf(0x00);
+    if (nullIdx !== -1 && nullIdx < 512) {
+      separatorIdx = nullIdx;
+      headerLength = nullIdx + 1;
+      // Skip optional trailing \r or \n right after \0
+      while (headerLength < buffer.length && (buffer[headerLength] === 0x0a || buffer[headerLength] === 0x0d)) {
+        headerLength++;
+      }
+    }
+  }
+
+  // 4. Fallback: cari JPEG SOI marker (FF D8 FF) di 512 byte pertama
+  const jpegStart = buffer.indexOf(Buffer.from([0xff, 0xd8, 0xff]));
+  if (separatorIdx === -1 && jpegStart > 0 && jpegStart < 512) {
+    separatorIdx = jpegStart;
+    headerLength = jpegStart;
+  } else if (jpegStart > 0 && jpegStart < 512 && headerLength < jpegStart) {
+    // Pastikan jpegBuffer dimulai tepat dari FF D8 FF jika ada byte pemisah ekstra
+    headerLength = jpegStart;
+  }
+
+  if (separatorIdx === -1 || headerLength >= buffer.length) return null;
+
+  const headerText = buffer.subarray(0, separatorIdx).toString('latin1');
+  const jpegBuffer = buffer.subarray(headerLength);
+
+  if (jpegBuffer.length === 0) return null;
+
+  const lines = headerText.split(/[\r\n\t&]+/);
+  const metadata = {};
+  for (const line of lines) {
+    const eqIdx = line.indexOf('=');
+    if (eqIdx > 0) {
+      const key = line.slice(0, eqIdx).replace(/\0/g, '').trim();
+      const val = line.slice(eqIdx + 1).replace(/\0/g, '').trim();
+      metadata[key] = val;
+    }
+  }
+
+  // Parse PIN & waktu dari filename (contoh: PIN=20261014080000-12064.jpg)
+  let pin = '';
+  let photoTimeStr = metadata.time || metadata.PhotoTime || '';
+  const rawPin = metadata.PIN || metadata.pin || '';
+  if (rawPin) {
+    const match = rawPin.match(/^(\d{14})-(.+?)(?:\.jpg|\.jpeg)?$/i);
+    if (match) {
+      photoTimeStr = match[1];
+      pin = match[2];
+    } else {
+      pin = rawPin.replace(/\.(jpg|jpeg)$/i, '');
+    }
+  }
+
+  if (!pin) return null;
+
+  return {
+    pin: String(pin).trim(),
+    sn: metadata.SN || metadata.sn || null,
+    size: parseInt(metadata.size, 10) || jpegBuffer.length,
+    photoTimeStr,
+    photoTime: parsePhotoTimestamp(photoTimeStr),
+    jpegBuffer
+  };
+};
+
+/**
+ * Parse payload Base64 dari POST /iclock/cdata?table=ATTPHOTO
+ * Format: pin=12064\tsn=AEYU...\ttime=2026-10-14 08:00:00\tsize=14250\tphoto=/9j/4AAQ...
+ * @param {string} rawBody
+ * @returns {Array}
+ */
+const parseAttendancePhotoBase64 = (rawBody) => {
+  if (!rawBody || typeof rawBody !== 'string') return [];
+
+  const lines = rawBody.trim().split(/\r?\n/);
+  const photos = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    const cleanLine = trimmed.replace(/^ATTPHOTO[\s\t]+/i, '');
+    const fields = cleanLine.split('\t');
+    const data = {};
+
+    for (const field of fields) {
+      const eqIdx = field.indexOf('=');
+      if (eqIdx > 0) {
+        const key = field.slice(0, eqIdx).trim().toLowerCase();
+        const val = field.slice(eqIdx + 1).trim();
+        data[key] = val;
+      }
+    }
+
+    const base64Data = data.photo || data.tmp || data.content;
+    const rawPin = data.pin || data.user_pin;
+
+    if (rawPin && base64Data) {
+      let pin = rawPin;
+      let photoTimeStr = data.time || data.phototime || '';
+
+      const match = rawPin.match(/^(\d{14})-(.+?)(?:\.jpg|\.jpeg)?$/i);
+      if (match) {
+        if (!photoTimeStr) photoTimeStr = match[1];
+        pin = match[2];
+      } else {
+        pin = rawPin.replace(/\.(jpg|jpeg)$/i, '');
+      }
+
+      const cleanedBase64 = base64Data.replace(/^data:image\/\w+;base64,/, '');
+      const jpegBuffer = Buffer.from(cleanedBase64, 'base64');
+      if (jpegBuffer.length > 0) {
+        photos.push({
+          pin: String(pin).trim(),
+          sn: data.sn || null,
+          size: parseInt(data.size, 10) || jpegBuffer.length,
+          photoTimeStr,
+          photoTime: parsePhotoTimestamp(photoTimeStr),
+          jpegBuffer
+        });
+      }
+    }
+  }
+
+  return photos;
+};
+
 module.exports = {
   parseAttendanceLogs,
   parseDeviceInfo,
@@ -262,4 +438,7 @@ module.exports = {
   parseFingerprintData,
   parseFaceData,
   parseCommandResults,
+  parsePhotoTimestamp,
+  parseAttendancePhotoStream,
+  parseAttendancePhotoBase64,
 };
