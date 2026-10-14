@@ -8,6 +8,7 @@ const handleOperlog = async (deviceSN, rawBody) => {
 
   const users = parsers.parseUserData(rawBody);
   const fingerprints = parsers.parseFingerprintData(rawBody);
+  const faces = parsers.parseFaceData(rawBody);
 
   const deviceInfo = await queries.getDeviceInfo(deviceSN);
   const deviceName = deviceInfo?.device_name || null;
@@ -28,6 +29,15 @@ const handleOperlog = async (deviceSN, rawBody) => {
       fingerprint_count: fingerprints.length
     });
     await syncFingerprints(deviceSN, fingerprints);
+  }
+
+  // Sync faces if any
+  if (faces.length > 0) {
+    logger.info('Syncing faces from device', {
+      sn: deviceSN,
+      face_count: faces.length
+    });
+    await syncFaces(deviceSN, faces);
   }
 };
 
@@ -70,6 +80,25 @@ const syncFingerprints = async (deviceSN, fingerprints) => {
   }
 };
 
+const syncFaces = async (deviceSN, faces) => {
+  for (const face of faces) {
+    try {
+      // Ensure pegawai exists in mapping (in case FACE comes before USER)
+      await queries.ensurePegawaiDeviceMapping(face.pin, deviceSN);
+
+      // Upsert face template
+      await queries.upsertFace(face.pin, deviceSN, face.faceId, face.size, face.valid, face.template);
+    } catch (err) {
+      logger.error('Failed to sync face', {
+        pin: face.pin,
+        face_id: face.faceId,
+        sn: deviceSN,
+        error: err.message
+      });
+    }
+  }
+};
+
 /**
  * Get pegawai with all fingerprint info across devices
  */
@@ -92,11 +121,20 @@ const checkFingerprintOnDevice = async (pin, deviceSN) => {
   return queries.getPegawaiFingerprints(pin, deviceSN);
 };
 
+/**
+ * Check face templates stored on a specific device
+ */
+const checkFaceOnDevice = async (pin, deviceSN) => {
+  return queries.getPegawaiFaces(pin, deviceSN);
+};
+
 module.exports = {
   handleOperlog,
   syncPegawai,
   syncFingerprints,
+  syncFaces,
   getPegawaiWithFingerprints,
   getPegawaiByDevice,
   checkFingerprintOnDevice,
+  checkFaceOnDevice,
 };

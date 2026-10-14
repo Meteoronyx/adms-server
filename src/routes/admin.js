@@ -42,10 +42,13 @@ router.post(config.PATHS.ADMIN.REBOOT, requirePermission('devices:command'), val
 router.post(config.PATHS.ADMIN.USER, requirePermission('devices:write'), validateDevice, asyncHandler(adminController.updateUser));
 router.delete(config.PATHS.ADMIN.USER_DELETE, requirePermission('devices:write'), validateDevice, asyncHandler(adminController.deleteUser));
 
-// Fingerprint Management Commands
+// Biometrics Management Commands (Fingerprint & Face)
 router.post(config.PATHS.ADMIN.ENROLL_FP, requirePermission('fingerprint:manage'), validateDevice, asyncHandler(adminController.enrollFingerprint));
 router.get('/admin/fingerprint-check', requirePermission('fingerprint:manage'), asyncHandler(adminController.checkFingerprintOnDevice));
 router.post(config.PATHS.ADMIN.TRANSFER_FP, requirePermission('fingerprint:manage'), validateDevice, asyncHandler(adminController.transferFingerprint));
+router.get('/admin/face-check', requirePermission('fingerprint:manage'), asyncHandler(adminController.checkFaceOnDevice));
+router.post(config.PATHS.ADMIN.TRANSFER_FACE, requirePermission('fingerprint:manage'), validateDevice, asyncHandler(adminController.transferFace));
+router.post(config.PATHS.ADMIN.TRANSFER_ALL, requirePermission('fingerprint:manage'), validateDevice, asyncHandler(adminController.transferAllBiometrics));
 
 // Data Retrieval Routes (Pegawai)
 router.get('/admin/pegawai', requirePermission('devices:read'), asyncHandler(adminController.listPegawai));

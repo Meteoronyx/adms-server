@@ -77,5 +77,4 @@ DBSpot menerapkan **Dynamic Permission-Based Role-Based Access Control (RBAC)** 
 - **User Management**: `GET /admin/users`, `POST /admin/users`, `PUT /admin/users/:id`, `DELETE /admin/users/:id`
 - **Role & Permission Management**: `GET /admin/roles`, `GET /admin/permissions`, `POST /admin/roles`, `PUT /admin/roles/:id`, `DELETE /admin/roles/:id`
 - **Device Operations**: `GET /admin/devices`, `PATCH /admin/devices/:sn`, `POST /admin/reboot`, `POST /admin/clear-log`
-- **Attendance & Logs**: `GET /admin/attendance`, `GET /admin/stats`
-- **Fingerprint Biometrics**: `POST /admin/enroll-fingerprint`, `POST /admin/transfer-fingerprint`, `GET /admin/fingerprint-check`
+- **Biometrics (Fingerprint & Face)**: `POST /admin/enrollfp/:sn`, `POST /admin/transferfp/:target_sn`, `GET /admin/fingerprint-check`, `POST /admin/transferface/:target_sn`, `POST /admin/transferall/:target_sn`, `GET /admin/face-check`

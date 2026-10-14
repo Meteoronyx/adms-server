@@ -18,6 +18,8 @@ module.exports = {
       USER_DELETE: '/admin/user/:sn/:pin',
       ENROLL_FP: '/admin/enrollfp/:sn',
       TRANSFER_FP: '/admin/transferfp/:sn',
+      TRANSFER_FACE: '/admin/transferface/:sn',
+      TRANSFER_ALL: '/admin/transferall/:sn',
       COMMAND_QUEUE: '/admin/commands/queue'
     }
   },
@@ -60,7 +62,8 @@ module.exports = {
     DATA_USER: 'C:10:DATA USER',
     DELETE_USER: 'C:10:DATA DEL_USER',
     ENROLL_FP: 'C:10:ENROLL_FP',
-    DATA_FP: 'C:10:DATA FP'
+    DATA_FP: 'C:10:DATA FP',
+    DATA_FACE: 'C:10:DATA UPDATE FACE'
   },
 
   // Command types for database
@@ -72,7 +75,8 @@ module.exports = {
     DATA_USER: 'DATA_USER',
     DELETE_USER: 'DELETE_USER',
     ENROLL_FP: 'ENROLL_FP',
-    DATA_FP: 'DATA_FP'
+    DATA_FP: 'DATA_FP',
+    DATA_FACE: 'DATA_FACE'
   },
 
   // Command status

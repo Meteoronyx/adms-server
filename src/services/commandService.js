@@ -5,60 +5,58 @@ const config = require('../config');
 const logger = require('../utils/logger');
 
 const buildCommandString = (command) => {
-  const { command_type, command_params } = command;
+  const { id, command_type, command_params } = command;
+  const cmdId = id !== undefined && id !== null ? id : 10;
+  const prefix = `C:${cmdId}:`;
 
   switch (command_type) {
     case config.COMMAND_TYPES.CLEAR_LOG:
-      return config.COMMANDS.CLEAR_LOG;
+      return `${prefix}CLEAR LOG`;
 
     case config.COMMAND_TYPES.INFO:
-      return config.COMMANDS.INFO;
+      return `${prefix}INFO`;
 
     case config.COMMAND_TYPES.REBOOT:
-      return config.COMMANDS.REBOOT;
+      return `${prefix}REBOOT`;
 
-    case config.COMMAND_TYPES.DATA_USER:
-      // Format: C:10:DATA USER PIN=1\tName=John\tPri=0 (passwd: 0 → hapus password, passwd: 123 → set password)
-      const { pin, privilege, passwd, name } = command_params;
-      let cmd = `${config.COMMANDS.DATA_USER} PIN=${pin}`;
+    case config.COMMAND_TYPES.DATA_USER: {
+      // Format: C:<id>:DATA USER PIN=1\tName=John\tPri=0
+      const { pin, privilege = 0, passwd, name } = command_params;
+      let cmd = `${prefix}DATA USER PIN=${pin}`;
       if (name !== undefined && name !== null && name !== '') {
         cmd += `\tName=${name}`;
       }
       cmd += `\tPri=${privilege}`;
-      if (passwd !== undefined && passwd !== null) {
-        if (passwd === 0) {
-          cmd += `\tPasswd=`;
-        } else {
-          cmd += `\tPasswd=${passwd}`;
-        }
+      if (passwd !== undefined && passwd !== null && passwd !== '') {
+        cmd += `\tPasswd=${passwd}`;
       }
       return cmd;
+    }
 
     case config.COMMAND_TYPES.DELETE_USER:
-      // Format: C:10:DATA DEL_USER PIN=1
-      return `${config.COMMANDS.DELETE_USER} PIN=${command_params.pin}`;
+      // Format: C:<id>:DATA DEL_USER PIN=1
+      return `${prefix}DATA DEL_USER PIN=${command_params.pin}`;
 
-    case config.COMMAND_TYPES.ENROLL_FP:
-      // Format: C:10:ENROLL_FP PIN=8888\tFID=0\tRETRY=3\tOVERWRITE=0
+    case config.COMMAND_TYPES.ENROLL_FP: {
+      // Format: C:<id>:ENROLL_FP PIN=8888\tFID=0\tRETRY=3\tOVERWRITE=0
       const { pin: fpPin, fid, retry = 3, overwrite = 0 } = command_params;
-      return `${config.COMMANDS.ENROLL_FP} PIN=${fpPin}\tFID=${fid}\tRETRY=${retry}\tOVERWRITE=${overwrite}`;
+      return `${prefix}ENROLL_FP PIN=${fpPin}\tFID=${fid}\tRETRY=${retry}\tOVERWRITE=${overwrite}`;
+    }
 
-    case config.COMMAND_TYPES.DATA_FP:
-      // Format: 
-      // C:10:DATA USER PIN=xxx\tName=xxx\tPri=x\tTZ=xxx\tGrp=x
-      // C:10:DATA FP PIN=xxx\tFID=x\tSize=x\tValid=1\tTMP=base64
-      const { pin: dataFpPin, finger_id, template, user_info } = command_params;
-      const size = template ? template.length : 0;
+    case config.COMMAND_TYPES.DATA_FP: {
+      // Format: C:<id>:DATA FP PIN=xxx\tFID=x\tSize=x\tValid=1\tTMP=base64
+      const { pin: dataFpPin, finger_id, template, size: explicitSize } = command_params;
+      const size = explicitSize || (template ? Buffer.from(template, 'base64').length : 0);
+      return `${prefix}DATA FP PIN=${dataFpPin}\tFID=${finger_id}\tSize=${size}\tValid=1\tTMP=${template}`;
+    }
 
-      const userName = user_info?.name || dataFpPin;
-      const userPri = user_info?.privilege || 0;
-      const userTZ = user_info?.timezone || '0001000100000000';
-      const userGrp = user_info?.group_no || 1;
-
-      const dataUserLine = `${config.COMMANDS.DATA_USER} PIN=${dataFpPin}\tName=${userName}\tPri=${userPri}\t\t\tTZ=${userTZ}\tGrp=${userGrp}`;
-      const dataFpLine = `${config.COMMANDS.DATA_FP} PIN=${dataFpPin}\tFID=${finger_id}\tSize=${size}\tValid=1\tTMP=${template}`;
-
-      return `${dataUserLine}\n${dataFpLine}`;
+    case config.COMMAND_TYPES.DATA_FACE: {
+      // Format: C:<id>:DATA UPDATE FACE PIN=xxx\tFID=x\tValid=1\tSIZE=xxx\tTMP=base64
+      // Note: SIZE must be uppercase per ers.tabledesc.xml to populate the Size column in SQLite
+      const { pin, face_id, size, valid = 1, template } = command_params;
+      const sizeVal = size || (template ? Buffer.from(template, 'base64').length : 1214);
+      return `${prefix}DATA UPDATE FACE PIN=${pin}\tFID=${face_id}\tValid=${valid}\tSIZE=${sizeVal}\tTMP=${template}`;
+    }
 
     default:
       return null;
@@ -114,9 +112,10 @@ const processCommandResult = async (sn, id, returnValue) => {
       await queries.softDeletePegawaiDeviceMapping(pin, sn);
       logger.info('Soft-deleted pegawai device mapping', { pin, sn });
 
-      // 2. Delete the fingerprints on this device
+      // 2. Delete the biometrics on this device
       await queries.deletePegawaiFingerprints(pin, sn);
-      logger.info('Deleted fingerprints for pegawai on device', { pin, sn });
+      await queries.deletePegawaiFaces(pin, sn);
+      logger.info('Deleted fingerprints and faces for pegawai on device', { pin, sn });
 
       // 3. If the pegawai is no longer mapped to any active devices, soft-delete them globally
       const activeCount = await queries.countActiveDeviceMappings(pin);

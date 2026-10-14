@@ -43,7 +43,7 @@ const getHandshakeResponse = async (sn) => {
 Stamp=0
 OpStamp=0
 PhotoStamp=0
-ErrorDelay=60
+ErrorDelay=10
 Delay=30
 TransTimes=00:00;03:00
 TransInterval=1

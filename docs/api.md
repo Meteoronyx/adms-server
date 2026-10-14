@@ -233,10 +233,42 @@ Mengecek template sidik jari spesifik di suatu perangkat.
 GET /admin/fingerprint-check?pin={PIN}&sn={SN}
 ```
 
+#### Cek Wajah pada Perangkat
+Mengecek ketersediaan template wajah (12 segmen) di suatu perangkat.
+```
+GET /admin/face-check?pin={PIN}&source_sn={SN}
+```
+
 #### Transfer Sidik Jari (Copy Fingerprint)
 Menyalin sidik jari dari satu mesin (sumber) ke mesin lain (tujuan).
 ```
 POST /admin/transferfp/:target_sn
+```
+**Body**:
+```json
+{
+  "pin": 12345,
+  "source_sn": "SOURCE_SN"
+}
+```
+
+#### Transfer Wajah (Copy Face)
+Menyalin 12 segmen template wajah dari mesin sumber ke mesin tujuan.
+```
+POST /admin/transferface/:target_sn
+```
+**Body**:
+```json
+{
+  "pin": 12345,
+  "source_sn": "SOURCE_SN"
+}
+```
+
+#### Transfer Seluruh Biometrik (User + Sidik Jari + Wajah)
+Menyalin user info, seluruh sidik jari, dan seluruh segmen wajah sekaligus.
+```
+POST /admin/transferall/:target_sn
 ```
 **Body**:
 ```json

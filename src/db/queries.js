@@ -419,11 +419,31 @@ const upsertFingerprint = async (pin, deviceSN, fingerId, template) => {
   return db.query(query, [pin, deviceSN, fingerId, template]);
 };
 
-// Get pegawai with fingerprint summary across all devices
+// Upsert face template
+const upsertFace = async (pin, deviceSN, faceId, size = 1214, valid = 1, template) => {
+  const query = `
+    INSERT INTO pegawai_faces (pegawai_pin, device_sn, face_id, size, valid, template, synced_at)
+    VALUES ($1, $2, $3, $4, $5, $6, NOW())
+    ON CONFLICT (pegawai_pin, device_sn, face_id) DO UPDATE SET
+      size = EXCLUDED.size,
+      valid = EXCLUDED.valid,
+      template = EXCLUDED.template,
+      synced_at = NOW()
+    WHERE
+      pegawai_faces.template != EXCLUDED.template OR
+      pegawai_faces.size != EXCLUDED.size OR
+      pegawai_faces.valid != EXCLUDED.valid
+    RETURNING id
+  `;
+  return db.query(query, [pin, deviceSN, faceId, size, valid, template]);
+};
+
+// Get pegawai with fingerprint & face summary across all devices
 const getPegawaiWithFingerprints = async (pin, opdId = null) => {
   const pegawaiQuery = `
     SELECT e.*, 
-           (SELECT COUNT(*) FROM pegawai_fingerprints ef WHERE ef.pegawai_pin = e.pin) as total_fingerprints
+           (SELECT COUNT(*) FROM pegawai_fingerprints ef WHERE ef.pegawai_pin = e.pin) as total_fingerprints,
+           (SELECT COUNT(*) FROM pegawai_faces efc WHERE efc.pegawai_pin = e.pin) as total_faces
     FROM pegawai e
     WHERE e.pin = $1 AND e.deleted_at IS NULL
       ${opdId ? `AND (e.opd_id = $2 OR EXISTS (
@@ -444,7 +464,9 @@ const getPegawaiWithFingerprints = async (pin, opdId = null) => {
   const mappingQuery = `
     SELECT edm.device_sn, edm.device_name, edm.privilege, edm.password, edm.synced_at,
            (SELECT COUNT(*) FROM pegawai_fingerprints ef 
-            WHERE ef.pegawai_pin = edm.pegawai_pin AND ef.device_sn = edm.device_sn) as fingerprint_count
+            WHERE ef.pegawai_pin = edm.pegawai_pin AND ef.device_sn = edm.device_sn) as fingerprint_count,
+           (SELECT COUNT(*) FROM pegawai_faces efc 
+            WHERE efc.pegawai_pin = edm.pegawai_pin AND efc.device_sn = edm.device_sn) as face_count
     FROM pegawai_device_mapping edm
     WHERE edm.pegawai_pin = $1 AND edm.deleted_at IS NULL
       ${opdId ? `AND EXISTS (SELECT 1 FROM devices dv WHERE dv.sn = edm.device_sn AND dv.opd_id = $2)` : ''}
@@ -467,7 +489,9 @@ const getPegawaiByDevice = async (deviceSN, limit = null, offset = null, search 
   let selectQuery = `
     SELECT e.pin, e.name, edm.privilege, edm.password, edm.synced_at,
            (SELECT COUNT(*) FROM pegawai_fingerprints ef 
-            WHERE ef.pegawai_pin = e.pin AND ef.device_sn = $1) as fingerprint_count
+            WHERE ef.pegawai_pin = e.pin AND ef.device_sn = $1) as fingerprint_count,
+           (SELECT COUNT(*) FROM pegawai_faces efc 
+            WHERE efc.pegawai_pin = e.pin AND efc.device_sn = $1) as face_count
     FROM pegawai e
     JOIN pegawai_device_mapping edm ON e.pin = edm.pegawai_pin
     WHERE edm.device_sn = $1 AND edm.deleted_at IS NULL AND e.deleted_at IS NULL
@@ -538,6 +562,18 @@ const getPegawaiFingerprints = async (pin, deviceSN) => {
     FROM pegawai_fingerprints ef
     WHERE ef.pegawai_pin = $1 AND ef.device_sn = $2
     ORDER BY ef.finger_id ASC
+  `;
+  const result = await db.query(query, [pin, deviceSN]);
+  return result.rows;
+};
+
+// Get faces for transfer
+const getPegawaiFaces = async (pin, deviceSN) => {
+  const query = `
+    SELECT face_id, size, valid, template, synced_at
+    FROM pegawai_faces
+    WHERE pegawai_pin = $1 AND device_sn = $2
+    ORDER BY face_id ASC
   `;
   const result = await db.query(query, [pin, deviceSN]);
   return result.rows;
@@ -820,7 +856,7 @@ const getPegawaiBasicInfo = async (pin, deviceSN = null) => {
   if (deviceSN) {
     // Get privilege from specific device
     const query = `
-      SELECT e.pin, e.name, edm.privilege, e.timezone, e.group_no
+      SELECT e.pin, e.name, edm.privilege, edm.password, e.timezone, e.group_no
       FROM pegawai e
       LEFT JOIN pegawai_device_mapping edm ON e.pin = edm.pegawai_pin AND edm.device_sn = $2
       WHERE e.pin = $1
@@ -883,6 +919,15 @@ const softDeletePegawaiDeviceMapping = async (pin, deviceSN) => {
 const deletePegawaiFingerprints = async (pin, deviceSN) => {
   const query = `
     DELETE FROM pegawai_fingerprints
+    WHERE pegawai_pin = $1 AND device_sn = $2
+  `;
+  return db.query(query, [pin, deviceSN]);
+};
+
+// Hard delete faces from specific device
+const deletePegawaiFaces = async (pin, deviceSN) => {
+  const query = `
+    DELETE FROM pegawai_faces
     WHERE pegawai_pin = $1 AND device_sn = $2
   `;
   return db.query(query, [pin, deviceSN]);
@@ -989,9 +1034,11 @@ module.exports = {
   upsertPegawaiDeviceMapping,
   ensurePegawaiDeviceMapping,
   upsertFingerprint,
+  upsertFace,
   getPegawaiWithFingerprints,
   getPegawaiByDevice,
   getPegawaiFingerprints,
+  getPegawaiFaces,
   getPegawaiBasicInfo,
   listPegawai,
   searchPegawaiByName,
@@ -1001,6 +1048,7 @@ module.exports = {
   updateCommandStatus,
   softDeletePegawaiDeviceMapping,
   deletePegawaiFingerprints,
+  deletePegawaiFaces,
   countActiveDeviceMappings,
   softDeletePegawai,
   getPegawaiProfileForExport,

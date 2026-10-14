@@ -171,6 +171,50 @@ const parseFingerprintData = (rawBody) => {
   return fingerprints;
 };
 
+// Parse Face data dari OPERLOG
+// Format: FACE PIN=12064\tFID=0\tValid=1\tSIZE=1214\tTMP=stringbase64==
+const parseFaceData = (rawBody) => {
+  if (!rawBody || typeof rawBody !== 'string') {
+    return [];
+  }
+
+  const lines = rawBody.trim().split('\n');
+  const faces = [];
+
+  for (const line of lines) {
+    if (!line || typeof line !== 'string') continue;
+    const trimmedLine = line.trim();
+    if (!trimmedLine.startsWith('FACE ')) continue;
+
+    // Remove 'FACE ' prefix and parse key=value pairs
+    const content = trimmedLine.substring(5);
+    const fields = content.split('\t');
+    const faceData = {};
+
+    for (const field of fields) {
+      const eqIdx = field.indexOf('=');
+      if (eqIdx > 0) {
+        const key = field.slice(0, eqIdx).trim();
+        const val = field.slice(eqIdx + 1).trim();
+        faceData[key] = val;
+      }
+    }
+
+    // Only add if PIN, FID, and TMP exist
+    if (faceData.PIN && faceData.FID !== undefined && faceData.TMP) {
+      faces.push({
+        pin: faceData.PIN,
+        faceId: parseInt(faceData.FID, 10),
+        size: parseInt(faceData.SIZE, 10) || 1214,
+        valid: faceData.Valid !== undefined ? parseInt(faceData.Valid, 10) : 1,
+        template: faceData.TMP
+      });
+    }
+  }
+
+  return faces;
+};
+
 // Parse command execution feedback from POST /devicecmd
 // Body format is typically key=value pairs, possibly multiple lines like ID=12&Return=0
 const parseCommandResults = (rawBody) => {
@@ -216,5 +260,6 @@ module.exports = {
   parseDeviceInfo,
   parseUserData,
   parseFingerprintData,
+  parseFaceData,
   parseCommandResults,
 };
