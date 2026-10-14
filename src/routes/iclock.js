@@ -78,8 +78,8 @@ router.post(config.PATHS.ICLOCK.CDATA, rawBodyParser, async (req, res) => {
     return;
   }
 
-  // Handle OPERLOG (User & Fingerprint data)
-  if (table === config.TABLES.OPERLOG) {
+  // Handle OPERLOG / BIODATA / FACE (User & Biometric data)
+  if (table === config.TABLES.OPERLOG || table === 'BIODATA' || table === 'FACE') {
     try {
       const verified = await deviceService.getDeviceVerificationStatus(SN);
       if (!verified) {
@@ -259,6 +259,14 @@ router.post(config.PATHS.ICLOCK.DEVICECMD, rawBodyParser, async (req, res) => {
     });
     res.status(500).send(config.RESPONSE.ERROR.INTERNAL_SERVER_ERROR);
   }
+});
+
+// POST /iclock/fdata - Safety dummy handler for snapshot/avatar uploads to prevent 404
+router.post('/iclock/fdata', rawBodyParser, (req, res) => {
+  const { SN } = req.query;
+  logger.debug('Received /iclock/fdata upload (acknowledged without storing)', { sn: SN, ip: req.ip });
+  res.set('Content-Type', 'text/plain');
+  res.send(config.RESPONSE.OK);
 });
 
 module.exports = router;

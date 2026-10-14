@@ -184,17 +184,17 @@ const parseFaceData = (rawBody) => {
   for (const line of lines) {
     if (!line || typeof line !== 'string') continue;
     const trimmedLine = line.trim();
-    if (!trimmedLine.startsWith('FACE ')) continue;
+    if (!trimmedLine.startsWith('FACE ') && !trimmedLine.startsWith('FACE\t')) continue;
 
-    // Remove 'FACE ' prefix and parse key=value pairs
-    const content = trimmedLine.substring(5);
+    // Remove 'FACE' prefix and parse key=value pairs
+    const content = trimmedLine.replace(/^FACE[\s\t]+/, '');
     const fields = content.split('\t');
     const faceData = {};
 
     for (const field of fields) {
       const eqIdx = field.indexOf('=');
       if (eqIdx > 0) {
-        const key = field.slice(0, eqIdx).trim();
+        const key = field.slice(0, eqIdx).trim().toUpperCase();
         const val = field.slice(eqIdx + 1).trim();
         faceData[key] = val;
       }
@@ -206,7 +206,7 @@ const parseFaceData = (rawBody) => {
         pin: faceData.PIN,
         faceId: parseInt(faceData.FID, 10),
         size: parseInt(faceData.SIZE, 10) || 1214,
-        valid: faceData.Valid !== undefined ? parseInt(faceData.Valid, 10) : 1,
+        valid: faceData.VALID !== undefined ? parseInt(faceData.VALID, 10) : 1,
         template: faceData.TMP
       });
     }
