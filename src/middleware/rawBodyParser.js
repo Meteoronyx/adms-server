@@ -8,19 +8,20 @@ const logger = require('../utils/logger');
 const rawBodyParser = async (req, res, next) => {
   if (req.method === 'POST') {
     try {
-      // Try to parse body regardless of content type
-      req.rawBody = await getRawBody(req, {
+      const buffer = await getRawBody(req, {
         length: req.headers['content-length'],
         limit: config.REQUEST.RAW_BODY_LIMIT,
-        encoding: config.REQUEST.RAW_BODY_ENCODING
+        encoding: null
       });
+      req.rawBuffer = buffer;
+      req.rawBody = buffer.toString(config.REQUEST.RAW_BODY_ENCODING || 'utf8');
       next();
     } catch (err) {
       logger.error('Raw body parse error', {
         message: err.message,
         contentLength: req.headers['content-length']
       });
-      // If parsing fails, set rawBody to empty string to avoid undefined
+      req.rawBuffer = Buffer.alloc(0);
       req.rawBody = '';
       next();
     }

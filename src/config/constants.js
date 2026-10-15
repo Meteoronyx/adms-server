@@ -70,7 +70,8 @@ module.exports = {
     DATA_FP: 'C:10:DATA FP',
     DATA_FACE: 'C:10:DATA UPDATE FACE',
     DATA_SMS: 'C:10:DATA UPDATE SMS',
-    DELETE_SMS: 'C:10:DATA DELETE SMS'
+    DELETE_SMS: 'C:10:DATA DELETE SMS',
+    SET_OPTION: 'C:10:SET OPTION'
   },
 
   // Command types for database
@@ -85,7 +86,8 @@ module.exports = {
     DATA_FP: 'DATA_FP',
     DATA_FACE: 'DATA_FACE',
     DATA_SMS: 'DATA_SMS',
-    DELETE_SMS: 'DELETE_SMS'
+    DELETE_SMS: 'DELETE_SMS',
+    SET_OPTION: 'SET_OPTION'
   },
 
   // Command status

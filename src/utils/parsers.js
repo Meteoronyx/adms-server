@@ -343,17 +343,26 @@ const parseAttendancePhotoStream = (buffer) => {
     }
   }
 
-  // Parse PIN & waktu dari filename (contoh: PIN=20261014080000-12064.jpg)
+  // Parse PIN & waktu dari filename (contoh: PIN=20261014080000-12064.jpg atau 20261014080000_12064.jpg)
   let pin = '';
-  let photoTimeStr = metadata.time || metadata.PhotoTime || '';
+  let photoTimeStr = metadata.time || metadata.PhotoTime || metadata.time_stamp || '';
   const rawPin = metadata.PIN || metadata.pin || '';
   if (rawPin) {
-    const match = rawPin.match(/^(\d{14})-(.+?)(?:\.jpg|\.jpeg)?$/i);
-    if (match) {
-      photoTimeStr = match[1];
-      pin = match[2];
+    const cleanPin = rawPin.replace(/\.(jpg|jpeg)$/i, '');
+    const match1 = cleanPin.match(/^(\d{14})[-_](.+)$/);
+    const match2 = cleanPin.match(/^(.+)[-_](\d{14})$/);
+    const match3 = cleanPin.match(/^0[-_](.+)$/);
+
+    if (match1) {
+      if (!photoTimeStr) photoTimeStr = match1[1];
+      pin = match1[2];
+    } else if (match2) {
+      pin = match2[1];
+      if (!photoTimeStr) photoTimeStr = match2[2];
+    } else if (match3) {
+      pin = match3[1];
     } else {
-      pin = rawPin.replace(/\.(jpg|jpeg)$/i, '');
+      pin = cleanPin;
     }
   }
 
@@ -405,12 +414,21 @@ const parseAttendancePhotoBase64 = (rawBody) => {
       let pin = rawPin;
       let photoTimeStr = data.time || data.phototime || '';
 
-      const match = rawPin.match(/^(\d{14})-(.+?)(?:\.jpg|\.jpeg)?$/i);
-      if (match) {
-        if (!photoTimeStr) photoTimeStr = match[1];
-        pin = match[2];
+      const cleanPin = rawPin.replace(/\.(jpg|jpeg)$/i, '');
+      const match1 = cleanPin.match(/^(\d{14})[-_](.+)$/);
+      const match2 = cleanPin.match(/^(.+)[-_](\d{14})$/);
+      const match3 = cleanPin.match(/^0[-_](.+)$/);
+
+      if (match1) {
+        if (!photoTimeStr) photoTimeStr = match1[1];
+        pin = match1[2];
+      } else if (match2) {
+        pin = match2[1];
+        if (!photoTimeStr) photoTimeStr = match2[2];
+      } else if (match3) {
+        pin = match3[1];
       } else {
-        pin = rawPin.replace(/\.(jpg|jpeg)$/i, '');
+        pin = cleanPin;
       }
 
       const cleanedBase64 = base64Data.replace(/^data:image\/\w+;base64,/, '');

@@ -28,7 +28,8 @@ async function broadcastDeviceEvent(app, sn, event, payload) {
 
 // GET /iclock/cdata - Handshake & Time sync
 router.get(config.PATHS.ICLOCK.CDATA, async (req, res) => {
-  const { SN, type } = req.query;
+  const SN = req.query.SN || req.query.sn;
+  const type = req.query.type || req.query.TYPE;
   const ip = req.ip || 'unknown';
 
   if (!SN) {
@@ -67,7 +68,9 @@ router.get(config.PATHS.ICLOCK.CDATA, async (req, res) => {
 
 // POST /iclock/cdata - Attendance logs
 router.post(config.PATHS.ICLOCK.CDATA, rawBodyParser, async (req, res) => {
-  const { SN, table } = req.query;
+  const SN = req.query.SN || req.query.sn;
+  const tableParam = req.query.table || req.query.TABLE;
+  const table = (tableParam || '').toUpperCase();
   const ip = req.ip || 'unknown';
 
   if (!SN) {
@@ -125,7 +128,20 @@ router.post(config.PATHS.ICLOCK.CDATA, rawBodyParser, async (req, res) => {
         return;
       }
 
-      const photos = parsers.parseAttendancePhotoBase64(req.rawBody);
+      logger.info('Received ATTPHOTO payload', {
+        sn: SN,
+        bodyPreview: req.rawBody ? req.rawBody.slice(0, 300) : null,
+        length: req.rawBody ? req.rawBody.length : 0
+      });
+
+      let photos = [];
+      const streamPhoto = parsers.parseAttendancePhotoStream(req.rawBuffer);
+      if (streamPhoto && streamPhoto.jpegBuffer) {
+        photos.push(streamPhoto);
+      } else {
+        photos = parsers.parseAttendancePhotoBase64(req.rawBody);
+      }
+
       for (const p of photos) {
         const targetSn = p.sn || SN;
         const photoRecord = await photoService.saveAttendancePhoto({
@@ -167,7 +183,7 @@ router.post(config.PATHS.ICLOCK.CDATA, rawBodyParser, async (req, res) => {
 
   // Ignore other non-ATTLOG tables
   if (table !== config.TABLES.ATTLOG) {
-    logger.debug('Ignoring non-ATTLOG/OPERLOG table', { sn: SN, table: table, ip: ip });
+    logger.debug('Ignoring non-ATTLOG/OPERLOG table', { sn: SN, table: tableParam, ip: ip });
     res.set('Content-Type', 'text/plain');
     res.send(config.RESPONSE.OK);
     return;
@@ -216,7 +232,8 @@ router.post(config.PATHS.ICLOCK.CDATA, rawBodyParser, async (req, res) => {
 
 // GET /iclock/getrequest - Heartbeat
 router.get(config.PATHS.ICLOCK.GETREQUEST, async (req, res) => {
-  const { SN, INFO } = req.query;
+  const SN = req.query.SN || req.query.sn;
+  const INFO = req.query.INFO || req.query.info;
   const ip = req.ip || 'unknown';
 
   if (!SN) {
@@ -283,7 +300,7 @@ router.get(config.PATHS.ICLOCK.GETREQUEST, async (req, res) => {
 
 // POST /iclock/devicecmd - Device commands
 router.post(config.PATHS.ICLOCK.DEVICECMD, rawBodyParser, async (req, res) => {
-  const { SN } = req.query;
+  const SN = req.query.SN || req.query.sn;
   const ip = req.ip || 'unknown';
 
   if (!SN) {
@@ -319,19 +336,20 @@ router.post(config.PATHS.ICLOCK.DEVICECMD, rawBodyParser, async (req, res) => {
 
 // POST /iclock/fdata - Ingestion foto absensi pegawai (Binary JPEG stream)
 router.post('/iclock/fdata', rawBodyParser.rawBufferParser, async (req, res) => {
-  const { SN } = req.query;
+  const snParam = req.query.SN || req.query.sn;
   const ip = req.ip || 'unknown';
 
   try {
     const parsed = parsers.parseAttendancePhotoStream(req.rawBuffer);
     if (!parsed || !parsed.jpegBuffer) {
-      logger.debug('Received non-photo or invalid stream on /iclock/fdata', { sn: SN, ip });
+      logger.debug('Received non-photo or invalid stream on /iclock/fdata', { sn: snParam, ip });
       res.set('Content-Type', 'text/plain');
       return res.send(config.RESPONSE.OK);
     }
 
-    const targetSn = parsed.sn || SN;
+    const targetSn = parsed.sn || snParam;
     if (!targetSn) {
+      logger.warn('Missing SN in /iclock/fdata upload', { ip });
       res.set('Content-Type', 'text/plain');
       return res.send(config.RESPONSE.OK);
     }
@@ -371,7 +389,7 @@ router.post('/iclock/fdata', rawBodyParser.rawBufferParser, async (req, res) => 
     res.send(config.RESPONSE.OK);
   } catch (err) {
     logger.error('Error processing /iclock/fdata photo upload', {
-      sn: SN,
+      sn: targetSn || snParam,
       ip,
       message: err.message,
       stack: err.stack

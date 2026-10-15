@@ -93,6 +93,13 @@ const buildCommandString = (command) => {
       return `${prefix}DATA DELETE SMS UID=${uid}`;
     }
 
+    case config.COMMAND_TYPES.SET_OPTION: {
+      // Format: C:<id>:SET OPTION Name=Value
+      const { name, value, option } = command_params;
+      const optionString = option || `${name}=${value}`;
+      return `${prefix}SET OPTION ${optionString}`;
+    }
+
     default:
       return null;
   }
