@@ -1,11 +1,11 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { getHealth, listDevices, getCommandQueue, getStats, getRecentAttendancePhotos, getAttendancePhotoUrl } from '../lib/api';
+import { getHealth, listDevices, getCommandQueueCount, getStats, getRecentAttendancePhotos, getAttendancePhotoUrl } from '../lib/api';
 import StatusBadge from '../components/StatusBadge';
 import AnimatedNumber from '../components/AnimatedNumber';
 import { AttendancePhotoModal } from '../features/attendance/components/AttendancePhotoModal';
 import {
   HardDrive, ListOrdered, RefreshCw, Clock, MemoryStick,
-  Users, Fingerprint, ShieldCheck, CalendarDays, CalendarRange, Calendar,
+  Users, Fingerprint, ScanFace, CalendarDays, CalendarRange, Calendar,
   CheckCircle2, AlertCircle, Camera, Eye
 } from 'lucide-react';
 import { useSocket } from '../hooks/useSocket';
@@ -59,7 +59,7 @@ export default function Dashboard() {
   const [health, setHealth] = useState(null);
   const [devices, setDevices] = useState([]);
   const [offlineDevices, setOfflineDevices] = useState([]);
-  const [commands, setCommands] = useState([]);
+  const [pendingCommandCount, setPendingCommandCount] = useState(0);
   const [stats, setStats] = useState(null);
   const [logsToday, setLogsToday] = useState(0);
   const [logsWeekly, setLogsWeekly] = useState(0);
@@ -103,7 +103,7 @@ export default function Dashboard() {
         const [h, d, c, s, p] = await Promise.allSettled([
           getHealth(),
           listDevices(),
-          canViewCommands ? getCommandQueue() : Promise.resolve({ commands: [] }),
+          canViewCommands ? getCommandQueueCount() : Promise.resolve({ count: 0 }),
           getStats(),
           canViewAttendance ? getRecentAttendancePhotos({ limit: 6 }) : Promise.resolve({ photos: [] }),
         ]);
@@ -118,6 +118,8 @@ export default function Dashboard() {
           setRecentPhotos(pRes.photos);
         }
 
+        const currPendingCount = cRes ? (cRes.count ?? (cRes.commands?.length || 0)) : 0;
+
         // Comparison for Highlight
         if (prevStats.current) {
           const old = prevStats.current;
@@ -127,8 +129,8 @@ export default function Dashboard() {
 
           if (curr.total_pegawai !== old.stats?.total_pegawai) triggerHighlight('pegawai');
           if (curr.total_fingerprints !== old.stats?.total_fingerprints) triggerHighlight('fingerprint');
-          if (curr.total_admins !== old.stats?.total_admins) triggerHighlight('admin');
-          if ((cRes && cRes.commands?.length) !== old.commands?.length) triggerHighlight('commands');
+          if (curr.total_faces !== old.stats?.total_faces) triggerHighlight('face');
+          if (currPendingCount !== (old.pendingCommandCount ?? 0)) triggerHighlight('commands');
 
           if (currDevs.length !== oldDevs.length) triggerHighlight('total_device');
           const oldOnline = oldDevs.filter(x => x.status === 'online').length;
@@ -140,14 +142,14 @@ export default function Dashboard() {
         prevStats.current = {
           stats: (sRes && sRes.stats) || {},
           devices: (dRes && dRes.devices) || [],
-          commands: (cRes && cRes.commands) || [],
+          pendingCommandCount: currPendingCount,
           offlineDevices: (dRes && dRes.offlineDevices) || [],
         };
 
         if (hRes) setHealth(hRes);
         setDevices((dRes && dRes.devices) || []);
         setOfflineDevices((dRes && dRes.offlineDevices) || []);
-        setCommands((cRes && cRes.commands) || []);
+        setPendingCommandCount(currPendingCount);
         setStats((sRes && sRes.stats) || null);
         setLogsToday(parseInt((sRes && sRes.stats?.logs_today), 10) || 0);
         setLogsWeekly(parseInt((sRes && sRes.stats?.logs_weekly), 10) || 0);
@@ -231,9 +233,9 @@ export default function Dashboard() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <StatCard label="Total Pegawai" value={stats?.total_pegawai} icon={Users} accent="bg-blue-50 text-blue-600" highlight={highlightedCards.pegawai} />
               <StatCard label="Total Fingerprint" value={stats?.total_fingerprints} icon={Fingerprint} accent="bg-violet-50 text-violet-600" highlight={highlightedCards.fingerprint} />
-              <StatCard label="Admin Mesin" value={stats?.total_admins} icon={ShieldCheck} accent="bg-amber-50 text-amber-600" highlight={highlightedCards.admin} />
+              <StatCard label="Total Wajah" value={stats?.total_faces} icon={ScanFace} accent="bg-indigo-50 text-indigo-600" highlight={highlightedCards.face} />
               {canViewCommands && (
-                <StatCard label="Pending Commands" value={commands.length} icon={ListOrdered} accent="bg-orange-50 text-orange-600" highlight={highlightedCards.commands} />
+                <StatCard label="Pending Commands" value={pendingCommandCount} icon={ListOrdered} accent="bg-orange-50 text-orange-600" highlight={highlightedCards.commands} />
               )}
             </div>
           </section>

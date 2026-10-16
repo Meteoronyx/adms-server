@@ -312,6 +312,18 @@ const getAllPendingCommands = async (opdId = null) => {
   return result.rows;
 };
 
+// Get count of pending commands (for dashboard / quick status)
+const getPendingCommandsCount = async (opdId = null) => {
+  const query = `
+    SELECT COUNT(*)::integer AS count
+    FROM device_commands dc
+    ${opdId ? `JOIN devices d ON dc.device_sn = d.sn WHERE dc.status = 'pending' AND d.opd_id = $1` : `WHERE dc.status = 'pending'`}
+  `;
+  const params = opdId ? [opdId] : [];
+  const result = await db.query(query, params);
+  return result.rows[0] ? parseInt(result.rows[0].count, 10) : 0;
+};
+
 // Upsert pegawai (master data only - privilege/password moved to device mapping)
 const upsertPegawai = async (userData) => {
   const query = `
@@ -841,6 +853,7 @@ const getDashboardStats = async (opdId = null) => {
         (SELECT COUNT(*) FROM opds WHERE id = $1 AND deleted_at IS NULL) AS total_opd,
         (SELECT COUNT(*) FROM pegawai p WHERE p.deleted_at IS NULL AND p.opd_id = $1) AS total_pegawai,
         (SELECT COUNT(*) FROM pegawai_fingerprints pf JOIN pegawai p ON pf.pegawai_pin = p.pin WHERE p.opd_id = $1) AS total_fingerprints,
+        (SELECT COUNT(DISTINCT pf.pegawai_pin) FROM pegawai_faces pf JOIN pegawai p ON pf.pegawai_pin = p.pin WHERE p.deleted_at IS NULL AND p.opd_id = $1) AS total_faces,
         (SELECT COUNT(*) FROM pegawai_device_mapping pdm JOIN pegawai p ON pdm.pegawai_pin = p.pin WHERE pdm.privilege > 0 AND pdm.deleted_at IS NULL AND p.opd_id = $1) AS total_admins,
         (SELECT COUNT(*) FROM attendance_logs a JOIN devices d ON a.device_sn = d.sn WHERE a.check_time >= CURRENT_DATE AND d.opd_id = $1) AS logs_today,
         (SELECT COUNT(*) FROM attendance_logs a JOIN devices d ON a.device_sn = d.sn WHERE a.check_time >= CURRENT_DATE - INTERVAL '7 days' AND d.opd_id = $1) AS logs_weekly,
@@ -852,6 +865,7 @@ const getDashboardStats = async (opdId = null) => {
         (SELECT COUNT(*) FROM opds WHERE deleted_at IS NULL) AS total_opd,
         (SELECT COUNT(*) FROM pegawai WHERE deleted_at IS NULL) AS total_pegawai,
         (SELECT COUNT(*) FROM pegawai_fingerprints) AS total_fingerprints,
+        (SELECT COUNT(DISTINCT pf.pegawai_pin) FROM pegawai_faces pf JOIN pegawai p ON pf.pegawai_pin = p.pin WHERE p.deleted_at IS NULL) AS total_faces,
         (SELECT COUNT(*) FROM pegawai_device_mapping WHERE privilege > 0 AND deleted_at IS NULL) AS total_admins,
         (SELECT COUNT(*) FROM attendance_logs WHERE check_time >= CURRENT_DATE) AS logs_today,
         (SELECT COUNT(*) FROM attendance_logs WHERE check_time >= CURRENT_DATE - INTERVAL '7 days') AS logs_weekly,
@@ -1267,6 +1281,7 @@ module.exports = {
   getNextPendingCommand,
   markCommandExecuted,
   getAllPendingCommands,
+  getPendingCommandsCount,
   upsertPegawai,
   upsertPegawaiDeviceMapping,
   ensurePegawaiDeviceMapping,

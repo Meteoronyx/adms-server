@@ -94,8 +94,15 @@ export const searchPegawai = (q, limit = 10) =>
 export const getStats = () =>
   fetchJSON('/admin/stats');
 
-export const getCommandQueue = () =>
-  fetchJSON('/admin/commands/queue');
+export const getCommandQueue = ({ countOnly = false } = {}) => {
+  if (countOnly) {
+    return fetchJSON('/admin/commands/count');
+  }
+  return fetchJSON('/admin/commands/queue');
+};
+
+export const getCommandQueueCount = () =>
+  fetchJSON('/admin/commands/count');
 
 export const getReuploadQueue = () =>
   fetchJSON('/admin/reupload/queue');

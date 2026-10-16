@@ -374,13 +374,37 @@ exports.getCommandQueue = async (req, res) => {
   const opdId = !isSystemAdmin ? req.user.opd_id : null;
 
   if (!isSystemAdmin && !opdId) {
-    return res.json({ success: true, commands: [] });
+    if (req.query.count_only === 'true' || req.query.count === 'true') {
+      return res.json({ success: true, count: 0 });
+    }
+    return res.json({ success: true, commands: [], count: 0 });
+  }
+
+  if (req.query.count_only === 'true' || req.query.count === 'true') {
+    const count = await commandService.getQueueCount(opdId);
+    return res.json({ success: true, count });
   }
 
   const commands = await commandService.getQueueStatus(opdId);
   res.json({
     success: true,
-    commands
+    commands,
+    count: commands.length
+  });
+};
+
+exports.getPendingCommandsCount = async (req, res) => {
+  const isSystemAdmin = req.user.role === 'admin';
+  const opdId = !isSystemAdmin ? req.user.opd_id : null;
+
+  if (!isSystemAdmin && !opdId) {
+    return res.json({ success: true, count: 0 });
+  }
+
+  const count = await commandService.getQueueCount(opdId);
+  res.json({
+    success: true,
+    count
   });
 };
 
@@ -524,6 +548,7 @@ exports.getDashboardStats = async (req, res) => {
       stats: {
         total_pegawai: 0,
         total_fingerprints: 0,
+        total_faces: 0,
         total_admins: 0,
         logs_today: 0,
         logs_weekly: 0,

@@ -134,6 +134,10 @@ const getQueueStatus = async (opdId = null) => {
   return queries.getAllPendingCommands(opdId);
 };
 
+const getQueueCount = async (opdId = null) => {
+  return queries.getPendingCommandsCount(opdId);
+};
+
 const processCommandResult = async (sn, id, returnValue) => {
   const command = await queries.getCommandById(id);
   if (!command) {
@@ -173,6 +177,7 @@ module.exports = {
   queueCommand,
   getAndExecuteNext,
   getQueueStatus,
+  getQueueCount,
   buildCommandString,
   processCommandResult,
 };
