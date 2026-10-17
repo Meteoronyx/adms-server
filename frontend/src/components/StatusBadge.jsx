@@ -5,6 +5,7 @@ const statusMap = {
   offline: { label: 'Offline', bg: 'bg-slate-100 text-slate-600 ring-slate-500/10', dot: 'bg-slate-400' },
   pending: { label: 'Pending', bg: 'bg-amber-50 text-amber-700 ring-amber-600/20', dot: 'bg-amber-500' },
   executed: { label: 'Executed', bg: 'bg-blue-50 text-blue-700 ring-blue-600/20', dot: 'bg-blue-500' },
+  failed: { label: 'Failed', bg: 'bg-rose-50 text-rose-700 ring-rose-600/20', dot: 'bg-rose-500' },
   healthy: { label: 'Healthy', bg: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20', dot: 'bg-emerald-500' },
   unhealthy: { label: 'Unhealthy', bg: 'bg-red-50 text-red-700 ring-red-600/20', dot: 'bg-red-500' },
 };

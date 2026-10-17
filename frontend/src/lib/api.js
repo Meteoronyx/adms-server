@@ -94,11 +94,30 @@ export const searchPegawai = (q, limit = 10) =>
 export const getStats = () =>
   fetchJSON('/admin/stats');
 
-export const getCommandQueue = ({ countOnly = false } = {}) => {
+export const getCommandQueue = ({
+  countOnly = false,
+  limit = 25,
+  offset = 0,
+  status = 'pending',
+  search = '',
+  commandType = '',
+  all = false
+} = {}) => {
   if (countOnly) {
     return fetchJSON('/admin/commands/count');
   }
-  return fetchJSON('/admin/commands/queue');
+  const params = new URLSearchParams();
+  if (all) {
+    params.append('all', 'true');
+  } else {
+    if (limit !== undefined && limit !== null) params.append('limit', limit);
+    if (offset !== undefined && offset !== null) params.append('offset', offset);
+  }
+  if (status) params.append('status', status);
+  if (search) params.append('search', search);
+  if (commandType) params.append('command_type', commandType);
+  const qs = params.toString();
+  return fetchJSON(`/admin/commands/queue${qs ? `?${qs}` : ''}`);
 };
 
 export const getCommandQueueCount = () =>

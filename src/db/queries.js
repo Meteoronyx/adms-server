@@ -300,7 +300,7 @@ const markCommandExecuted = async (id) => {
 // Get all pending commands (for admin view, with optional OPD scoping filter)
 const getAllPendingCommands = async (opdId = null) => {
   const query = `
-    SELECT dc.id, dc.device_sn, dc.command_type, dc.command_params, dc.created_at, d.device_name as device_name
+    SELECT dc.id, dc.device_sn, dc.command_type, dc.command_params, dc.status, dc.created_at, dc.executed_at, d.device_name as device_name
     FROM device_commands dc
     LEFT JOIN devices d ON dc.device_sn = d.sn
     WHERE dc.status = 'pending'
@@ -310,6 +310,81 @@ const getAllPendingCommands = async (opdId = null) => {
   const params = opdId ? [opdId] : [];
   const result = await db.query(query, params);
   return result.rows;
+};
+
+// Get device commands with pagination, filtering, and OPD scoping
+const getDeviceCommands = async ({
+  opdId = null,
+  status = 'pending',
+  search = null,
+  commandType = null,
+  limit = 25,
+  offset = 0,
+  all = false
+} = {}) => {
+  const conditions = [];
+  const params = [];
+  let paramIdx = 1;
+
+  if (opdId) {
+    conditions.push(`d.opd_id = $${paramIdx++}`);
+    params.push(opdId);
+  }
+
+  if (status && status !== 'all') {
+    conditions.push(`dc.status = $${paramIdx++}`);
+    params.push(status);
+  }
+
+  if (commandType && commandType !== 'all') {
+    conditions.push(`dc.command_type = $${paramIdx++}`);
+    params.push(commandType);
+  }
+
+  if (search && search.trim()) {
+    const s = `%${search.trim()}%`;
+    conditions.push(`(
+      dc.device_sn ILIKE $${paramIdx} OR
+      d.device_name ILIKE $${paramIdx} OR
+      dc.command_type ILIKE $${paramIdx} OR
+      dc.id::text ILIKE $${paramIdx}
+    )`);
+    params.push(s);
+    paramIdx++;
+  }
+
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  const countQuery = `
+    SELECT COUNT(*)::integer AS total
+    FROM device_commands dc
+    LEFT JOIN devices d ON dc.device_sn = d.sn
+    ${whereClause}
+  `;
+
+  let dataQuery = `
+    SELECT dc.id, dc.device_sn, dc.command_type, dc.command_params, dc.status, dc.created_at, dc.executed_at, d.device_name as device_name
+    FROM device_commands dc
+    LEFT JOIN devices d ON dc.device_sn = d.sn
+    ${whereClause}
+    ORDER BY dc.created_at DESC, dc.id DESC
+  `;
+
+  const dataParams = [...params];
+  if (!all) {
+    dataQuery += ` LIMIT $${paramIdx++} OFFSET $${paramIdx++}`;
+    dataParams.push(limit, offset);
+  }
+
+  const [countRes, dataRes] = await Promise.all([
+    db.query(countQuery, params),
+    db.query(dataQuery, dataParams)
+  ]);
+
+  return {
+    rows: dataRes.rows,
+    total: countRes.rows[0] ? parseInt(countRes.rows[0].total, 10) : 0
+  };
 };
 
 // Get count of pending commands (for dashboard / quick status)
@@ -1281,6 +1356,7 @@ module.exports = {
   getNextPendingCommand,
   markCommandExecuted,
   getAllPendingCommands,
+  getDeviceCommands,
   getPendingCommandsCount,
   upsertPegawai,
   upsertPegawaiDeviceMapping,

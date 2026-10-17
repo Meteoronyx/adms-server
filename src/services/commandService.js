@@ -130,7 +130,17 @@ const getAndExecuteNext = async (sn) => {
   return null;
 };
 
-const getQueueStatus = async (opdId = null) => {
+const getQueueStatus = async (opdId = null, options = {}) => {
+  if (
+    options.limit !== undefined ||
+    options.offset !== undefined ||
+    options.status !== undefined ||
+    options.search ||
+    options.commandType ||
+    options.all !== undefined
+  ) {
+    return queries.getDeviceCommands({ opdId, ...options });
+  }
   return queries.getAllPendingCommands(opdId);
 };
 

@@ -377,7 +377,7 @@ exports.getCommandQueue = async (req, res) => {
     if (req.query.count_only === 'true' || req.query.count === 'true') {
       return res.json({ success: true, count: 0 });
     }
-    return res.json({ success: true, commands: [], count: 0 });
+    return res.json({ success: true, commands: [], data: [], total: 0, count: 0, limit: 25, offset: 0 });
   }
 
   if (req.query.count_only === 'true' || req.query.count === 'true') {
@@ -385,11 +385,35 @@ exports.getCommandQueue = async (req, res) => {
     return res.json({ success: true, count });
   }
 
-  const commands = await commandService.getQueueStatus(opdId);
+  const isAll = req.query.all === 'true';
+  const limit = isAll
+    ? null
+    : Math.min(Math.max(parseInt(req.query.limit, 10) || 25, 1), 100);
+  const offset = isAll ? 0 : Math.max(parseInt(req.query.offset, 10) || 0, 0);
+  const status = req.query.status !== undefined ? req.query.status.trim() : 'pending';
+  const search = req.query.search ? req.query.search.trim() : null;
+  const commandType = req.query.command_type ? req.query.command_type.trim() : null;
+
+  const result = await commandService.getQueueStatus(opdId, {
+    limit,
+    offset,
+    status,
+    search,
+    commandType,
+    all: isAll
+  });
+
+  const rows = Array.isArray(result) ? result : (result.rows || []);
+  const total = result.total !== undefined ? result.total : rows.length;
+
   res.json({
     success: true,
-    commands,
-    count: commands.length
+    commands: rows,
+    data: rows,
+    total,
+    count: rows.length,
+    limit: limit || rows.length,
+    offset
   });
 };
 
