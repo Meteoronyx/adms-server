@@ -126,7 +126,7 @@ export default function Fingerprint() {
                     : 'border-transparent text-slate-400 hover:text-slate-600 hover:border-slate-300'
                 }`}
               >
-                <Icon size={16} strokeWidth={active ? 2 : 1.7} />
+                <Icon size={16} strokeWidth={active ? 2 : 1.8} />
                 {t.label}
               </button>
             );
