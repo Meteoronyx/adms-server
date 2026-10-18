@@ -6,8 +6,6 @@ services:
     container_name: dbspot_app
     ports:
       - "${PORT:-3008}:${PORT:-3008}"
-    env_file:
-      - .env
     environment:
       - NODE_ENV=production
       - TZ=Asia/Jakarta
