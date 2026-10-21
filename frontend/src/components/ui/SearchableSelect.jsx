@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { ChevronDown, Search, Check } from 'lucide-react';
+import { ChevronDown, Search, Check, Loader2 } from 'lucide-react';
 
 export function SearchableSelect({ 
   value, 
@@ -11,12 +11,22 @@ export function SearchableSelect({
   className = "",
   size = "sm", // 'xs' | 'sm' | 'md'
   searchable,
+  onSearchChange,
+  loading = false,
+  searchPlaceholder = "Cari...",
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
   const dropdownRef = useRef(null);
 
-  const isSearchEnabled = searchable !== undefined ? searchable : options.length > 5;
+  const isSearchEnabled = searchable !== undefined ? searchable : (Boolean(onSearchChange) || options.length > 5);
+
+  const updateSearch = (val) => {
+    setSearch(val);
+    if (onSearchChange) {
+      onSearchChange(val);
+    }
+  };
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -55,8 +65,9 @@ export function SearchableSelect({
         }`}
         onClick={() => {
           if (disabled) return;
-          setIsOpen(!isOpen);
-          if (!isOpen) setSearch("");
+          const nextOpen = !isOpen;
+          setIsOpen(nextOpen);
+          if (nextOpen) updateSearch("");
         }}
       >
         <span className={`truncate pr-2 ${selectedOption ? "text-slate-900 dark:text-slate-100 font-medium" : "text-slate-500 dark:text-slate-400"}`}>
@@ -72,14 +83,18 @@ export function SearchableSelect({
         <div className="absolute z-50 w-full mt-1.5 bg-white dark:bg-[#18192d] border border-slate-200 dark:border-slate-700/80 rounded-xl shadow-xl overflow-hidden py-1">
           {isSearchEnabled && (
             <div className="p-2 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2 bg-slate-50/50 dark:bg-slate-800/40">
-              <Search size={13} className="text-slate-400 shrink-0" />
+              {loading ? (
+                <Loader2 size={13} className="text-indigo-500 shrink-0 animate-spin" />
+              ) : (
+                <Search size={13} className="text-slate-400 shrink-0" />
+              )}
               <input
                 type="text"
                 autoFocus
                 className="w-full text-xs outline-none placeholder:text-slate-400 bg-transparent text-slate-900 dark:text-slate-100"
-                placeholder="Cari..."
+                placeholder={searchPlaceholder}
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => updateSearch(e.target.value)}
                 onClick={(e) => e.stopPropagation()}
               />
             </div>
@@ -95,7 +110,7 @@ export function SearchableSelect({
                 onClick={() => {
                   onChange("");
                   setIsOpen(false);
-                  setSearch("");
+                  updateSearch("");
                 }}
               >
                 <span>{defaultOptionLabel}</span>
@@ -117,7 +132,7 @@ export function SearchableSelect({
                   onClick={() => {
                     onChange(opt.value);
                     setIsOpen(false);
-                    setSearch("");
+                    updateSearch("");
                   }}
                 >
                   <span className="truncate pr-2">{opt.label}</span>
@@ -129,7 +144,7 @@ export function SearchableSelect({
             })}
             {filteredOptions.length === 0 && (!defaultOptionLabel || !defaultOptionLabel.toLowerCase().includes(search.toLowerCase())) && (
               <div className="px-3 py-3 text-xs text-slate-400 dark:text-slate-500 text-center italic">
-                Tidak ada hasil ditemukan
+                {loading ? 'Mencari data...' : 'Tidak ada hasil ditemukan'}
               </div>
             )}
           </div>
