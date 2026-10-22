@@ -1,5 +1,5 @@
 # Stage 1: Build Frontend
-FROM node:22-alpine AS frontend-builder
+FROM node:22.23.4-alpine AS frontend-builder
 WORKDIR /app/frontend
 
 # Install dependencies first for better caching
@@ -11,7 +11,7 @@ COPY frontend/ ./
 RUN npm run build
 
 # Stage 2: Build Backend
-FROM node:22-alpine AS backend-builder
+FROM node:22.23.4-alpine AS backend-builder
 WORKDIR /app
 
 # Tell Puppeteer to skip downloading Chrome during npm ci (will use Alpine system Chromium)
@@ -25,7 +25,7 @@ RUN npm ci --omit=dev
 COPY . .
 
 # Stage 3: Production
-FROM node:22-alpine
+FROM node:22.23.4-alpine
 WORKDIR /app
 
 # Install Chromium and required fonts/libraries on Alpine
