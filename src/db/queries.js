@@ -241,7 +241,9 @@ const getAllDevices = async (opdId = null) => {
     params.push(opdId);
     query += ` WHERE opd_id = $1`;
   }
-  query += ` ORDER BY last_activity DESC`;
+  // Urutan sengaja statis (SN) agar baris tidak bergeser saat heartbeat
+  // perangkat memperbarui last_activity.
+  query += ` ORDER BY sn ASC`;
   const result = await db.query(query, params);
   return result.rows;
 };
@@ -258,7 +260,8 @@ const getOfflineDevices = async (opdId = null) => {
     params.push(opdId);
     query += ` AND opd_id = $1`;
   }
-  query += ` ORDER BY last_activity DESC`;
+  // Sama seperti getAllDevices: urutan statis supaya stabil di UI.
+  query += ` ORDER BY sn ASC`;
   const result = await db.query(query, params);
   return result.rows;
 };

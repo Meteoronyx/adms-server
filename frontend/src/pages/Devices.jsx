@@ -11,7 +11,6 @@ import {
   updateDeviceName,
 } from '../lib/api';
 import { useToast } from '../hooks/useToast';
-import { useSocket } from '../hooks/useSocket';
 import { useAuth } from '../hooks/useAuth';
 import StatusBadge from '../components/StatusBadge';
 import { DataTable } from '../components/ui/DataTable';
@@ -34,52 +33,34 @@ export default function Devices() {
   const [devices, setDevices] = useState([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastFetchedAt, setLastFetchedAt] = useState(null);
   const [editModal, setEditModal] = useState({ open: false, sn: '', currentName: '' });
   const { addToast } = useToast();
-  const { socket } = useSocket();
   const { hasPermission } = useAuth();
   const canWrite = hasPermission('devices:write');
   const canCommand = hasPermission('devices:command');
 
-  const fetchDevices = async () => {
+  // Data diambil sekali saat halaman dibuka. Tidak ada Socket.io / auto-refresh
+  // di sini supaya urutan baris tidak bergeser ketika perangkat melakukan
+  // getrequest (heartbeat). Update hanya lewat tombol Refresh.
+  const fetchDevices = useCallback(async ({ manual = false } = {}) => {
+    if (manual) setRefreshing(true);
     try {
       const data = await listDevices();
       setDevices(data.devices || []);
-    } catch {
-      addToast('Failed to load devices', 'error');
+      setLastFetchedAt(new Date());
+    } catch (err) {
+      addToast(err.message || 'Failed to load devices', 'error');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  };
+  }, [addToast]);
 
   useEffect(() => {
     fetchDevices();
-  }, []);
-
-  useEffect(() => {
-    if (!socket) return;
-
-    const handleDeviceUpdate = (data) => {
-      if (!data || !data.sn) return;
-
-      setDevices(prevDevices => {
-        const deviceExists = prevDevices.some(d => d.sn === data.sn);
-
-        if (deviceExists) {
-          return prevDevices.map(device =>
-            device.sn === data.sn
-              ? { ...device, last_activity: new Date().toISOString(), status: 'online' }
-              : device
-          );
-        }
-        setTimeout(fetchDevices, 0);
-        return prevDevices;
-      });
-    };
-
-    socket.on('device_update', handleDeviceUpdate);
-    return () => socket.off('device_update', handleDeviceUpdate);
-  }, [socket]);
+  }, [fetchDevices]);
 
   const doAction = useCallback(async (fn, sn, successMsg) => {
     try {
@@ -89,7 +70,7 @@ export default function Devices() {
     } catch (err) {
       addToast(err.message || 'Action failed', 'error');
     }
-  }, [addToast]);
+  }, [addToast, fetchDevices]);
 
   const handleEditName = useCallback(async (e) => {
     e.preventDefault();
@@ -104,15 +85,27 @@ export default function Devices() {
     } catch (err) {
       addToast(err.message || 'Failed to update name', 'error');
     }
-  }, [editModal, addToast]);
+  }, [editModal, addToast, fetchDevices]);
 
+  // Urutan selalu SN ascending (numeric-aware) supaya baris tidak pernah
+  // bergeser hanya karena ada perangkat yang baru saja heartbeat.
   const filtered = useMemo(() => {
-    return devices.filter(
-      d =>
-        d.sn.toLowerCase().includes(search.toLowerCase()) ||
-        (d.name || '').toLowerCase().includes(search.toLowerCase()) ||
-        (d.device_name || '').toLowerCase().includes(search.toLowerCase()) ||
-        (d.ip_address || '').includes(search)
+    const query = search.trim().toLowerCase();
+    const list = query
+      ? devices.filter(
+          d =>
+            (d.sn || '').toLowerCase().includes(query) ||
+            (d.name || '').toLowerCase().includes(query) ||
+            (d.device_name || '').toLowerCase().includes(query) ||
+            (d.ip_address || '').includes(query)
+        )
+      : devices;
+
+    return [...list].sort((a, b) =>
+      String(a.sn || '').localeCompare(String(b.sn || ''), 'en', {
+        numeric: true,
+        sensitivity: 'base',
+      })
     );
   }, [devices, search]);
 
@@ -267,15 +260,37 @@ export default function Devices() {
           <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">Devices</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{devices.length} perangkat terdaftar</p>
         </div>
-        <div className="relative w-full sm:w-64">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search by SN, name, IP..."
-            className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-900/10 dark:focus:ring-slate-400 focus:border-slate-400 transition-shadow placeholder:text-slate-400"
-          />
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
+          <div className="flex items-center gap-2 sm:justify-end">
+            <span
+              className="text-xs text-slate-400 dark:text-slate-500 whitespace-nowrap"
+              title="Data tidak diperbarui otomatis. Klik Refresh untuk memuat kondisi terbaru."
+            >
+              {lastFetchedAt
+                ? `Diperbarui ${lastFetchedAt.toLocaleTimeString('id-ID')}`
+                : 'Belum dimuat'}
+            </span>
+            <button
+              type="button"
+              onClick={() => fetchDevices({ manual: true })}
+              disabled={refreshing || loading}
+              title="Muat ulang data perangkat"
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
+              Refresh
+            </button>
+          </div>
+          <div className="relative w-full sm:w-64">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search by SN, name, IP..."
+              className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-900/10 dark:focus:ring-slate-400 focus:border-slate-400 transition-shadow placeholder:text-slate-400"
+            />
+          </div>
         </div>
       </div>
 
