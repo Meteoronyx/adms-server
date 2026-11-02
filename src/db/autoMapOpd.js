@@ -32,11 +32,14 @@ async function autoMapOpdData() {
 
   const ALIASES = [
     { pattern: /bpbd/i, target: 'Badan Penanggulangan Bencana Daerah' },
-    { pattern: /rsud\s+kabupaten\s+tangerang/i, target: 'RSUD Kabupaten Tangerang' },
-    { pattern: /rsud\s+balaraja/i, target: 'RSUD Balaraja' },
-    { pattern: /rsud\s+pakuhaji/i, target: 'RSUD Pakuhaji' },
-    { pattern: /rsud\s+tigaraksa/i, target: 'RSUD Tigaraksa' },
-    { pattern: /dinas\s+perkim/i, target: 'Dinas Perumahan, Permukiman dan Pemakaman' }
+    { pattern: /rsud\s+kabupaten\s+tangerang/i, target: 'Rumah Sakit Umum Daerah Kabupaten Tangerang' },
+    { pattern: /rsud\s+balaraja/i, target: 'Rumah Sakit Umum Daerah Balaraja' },
+    { pattern: /rsud\s+pakuhaji/i, target: 'Rumah Sakit Umum Daerah Pakuhaji' },
+    { pattern: /rsud\s+tigaraksa/i, target: 'Rumah Sakit Umum Daerah Tigaraksa' },
+    { pattern: /dinas\s+perkim/i, target: 'Dinas Perumahan, Permukiman dan Pemakaman' },
+    { pattern: /pendopo\s+bupati/i, target: 'Sekretariat Daerah' },
+    { pattern: /bappeda|perencanaan\s+(dan\s+)?pembangunan/i, target: 'Badan Perencanaan Pembangunan Daerah' },
+    { pattern: /salembaran/i, target: 'Selembaran' }
   ];
 
   function cleanStr(str) {
@@ -94,6 +97,12 @@ async function autoMapOpdData() {
   let mappedDevices = 0;
 
   for (const d of devicesRes.rows) {
+    // MESIN MASTER (AEYU182460710) khusus Superadmin, dibiarkan NULL
+    if (d.sn === 'AEYU182460710' || (d.name && d.name.toUpperCase().includes('MESIN MASTER')) || (d.device_name && d.device_name.toUpperCase().includes('MESIN MASTER'))) {
+      logger.info(`Device '${d.name || d.sn}' adalah MESIN MASTER (khusus Superadmin), dilewati dari auto-mapping OPD.`);
+      continue;
+    }
+
     const nameToTest = d.device_name || d.name || '';
     const matchedOpd = findBestOpd(nameToTest);
 

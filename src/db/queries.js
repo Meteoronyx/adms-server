@@ -222,14 +222,29 @@ const unverifyDevice = async (sn) => {
   return db.query(query, [sn]);
 };
 
-// Update device name (admin-set label, works for unverified devices too)
-const updateDeviceName = async (sn, deviceName) => {
-  const query = `
-    UPDATE devices SET device_name = $1 WHERE sn = $2
-  `;
-  return db.query(query, [deviceName, sn]);
+// Update device details (name and/or OPD mapping)
+const updateDeviceDetails = async (sn, { deviceName, opdId }) => {
+  const updates = [];
+  const params = [];
+  let idx = 1;
+  if (deviceName !== undefined) {
+    updates.push(`device_name = $${idx++}`);
+    params.push(deviceName ? deviceName.trim() : null);
+  }
+  if (opdId !== undefined) {
+    updates.push(`opd_id = $${idx++}`);
+    params.push(opdId || null);
+  }
+  if (updates.length === 0) return;
+  params.push(sn);
+  const query = `UPDATE devices SET ${updates.join(', ')} WHERE sn = $${idx}`;
+  return db.query(query, params);
 };
 
+// Update device name (admin-set label, works for unverified devices too)
+const updateDeviceName = async (sn, deviceName) => {
+  return updateDeviceDetails(sn, { deviceName });
+};
 // Get all devices (with optional OPD scoping filter)
 const getAllDevices = async (opdId = null) => {
   let query = `
@@ -1353,6 +1368,7 @@ module.exports = {
   verifyDevice,
   unverifyDevice,
   updateDeviceName,
+  updateDeviceDetails,
   getAllDevices,
   getOfflineDevices,
   insertCommand,

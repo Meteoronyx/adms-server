@@ -176,8 +176,11 @@ export const updateUser = (sn, { pin, privilege, passwd }) =>
 export const deleteUser = (sn, pin) =>
   fetchJSON(`/admin/user/${sn}/${pin}`, { method: 'DELETE' });
 
+export const updateDeviceDetails = (sn, { device_name, opd_id }) =>
+  fetchJSON(`/admin/devices/${sn}`, { method: 'PATCH', body: JSON.stringify({ device_name, opd_id }) });
+
 export const updateDeviceName = (sn, device_name) =>
-  fetchJSON(`/admin/devices/${sn}`, { method: 'PATCH', body: JSON.stringify({ device_name }) });
+  updateDeviceDetails(sn, { device_name });
 
 export const getAdminUsers = () =>
   fetchJSON('/admin/users');

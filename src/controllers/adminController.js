@@ -61,11 +61,18 @@ exports.verifyDevice = async (req, res) => {
   const { sn } = req.params;
   const device = req.device;
 
-  // Validasi: pastikan device_name sudah diisi sebelum verifikasi
+  // Validasi: pastikan device_name dan opd_id sudah diisi sebelum verifikasi
   if (!device.device_name || !device.device_name.trim()) {
     return res.status(400).json({
       success: false,
       message: 'Nama perangkat wajib diisi terlebih dahulu sebelum melakukan verifikasi'
+    });
+  }
+
+  if (!device.opd_id) {
+    return res.status(400).json({
+      success: false,
+      message: 'Unit Kerja (OPD) wajib dipilih terlebih dahulu sebelum melakukan verifikasi'
     });
   }
 
@@ -127,7 +134,7 @@ exports.listDevices = async (req, res) => {
 
 exports.updateDeviceName = async (req, res) => {
   const { sn } = req.params;
-  const { device_name } = req.body;
+  const { device_name, opd_id } = req.body;
 
   // Check device exists
   const device = await queries.getDeviceInfo(sn);
@@ -150,12 +157,20 @@ exports.updateDeviceName = async (req, res) => {
     }
   }
 
-  if (device_name && device_name.trim()) {
-    await queries.updateDeviceName(sn, device_name.trim());
+  const updatePayload = {};
+  if (device_name !== undefined) {
+    updatePayload.deviceName = device_name.trim();
+  }
+  if (opd_id !== undefined && isSystemAdmin) {
+    updatePayload.opdId = opd_id || null;
+  }
+
+  if (Object.keys(updatePayload).length > 0) {
+    await queries.updateDeviceDetails(sn, updatePayload);
   }
 
   const updatedDevice = await queries.getDeviceInfo(sn);
-  logger.info('Device details updated via API', { sn, device_name, ip: req.ip });
+  logger.info('Device details updated via API', { sn, device_name, opd_id, ip: req.ip });
 
   res.json({
     success: true,
