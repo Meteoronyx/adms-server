@@ -7,6 +7,10 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 3005,
     proxy: {
+      '/auth': {
+        target: process.env.VITE_API_TARGET || 'http://localhost:3000',
+        changeOrigin: true,
+      },
       '/admin': {
         target: process.env.VITE_API_TARGET || 'http://localhost:3000',
         changeOrigin: true,
@@ -22,4 +26,3 @@ export default defineConfig({
     },
   },
 })
-

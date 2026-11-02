@@ -12,7 +12,8 @@ import {
 } from '../lib/api';
 import { useToast } from '../hooks/useToast';
 import { SearchableSelect } from '../components/ui/SearchableSelect';
-import { Search, ArrowRight, PlusCircle, ScanFace, Fingerprint as FpIcon, Layers } from 'lucide-react';
+import { Tabs } from '../components/ui/Tabs';
+import { ScanFace, Fingerprint as FpIcon, Layers } from 'lucide-react';
 
 export default function Fingerprint() {
   const [tab, setTab] = useState('check');
@@ -23,10 +24,10 @@ export default function Fingerprint() {
   const [devicesLoading, setDevicesLoading] = useState(false);
 
   const [initialPegawai, setInitialPegawai] = useState([]);
-  const [searchedPegawai, setSearchedPegawai] = useState(null); // null when no active search query
-  const [pegawaiCache, setPegawaiCache] = useState({}); // pin -> pegawai object
+  const [searchedPegawai, setSearchedPegawai] = useState(null);
+  const [pegawaiCache, setPegawaiCache] = useState({});
   const [pegawaiLoading, setPegawaiLoading] = useState(false);
-  const [pegawaiDeviceMappings, setPegawaiDeviceMappings] = useState({}); // pin -> array of device mappings from getPegawai(pin)
+  const [pegawaiDeviceMappings, setPegawaiDeviceMappings] = useState({});
   const searchTimerRef = useRef(null);
 
   // Check state
@@ -50,7 +51,6 @@ export default function Fingerprint() {
   const [enOverwrite, setEnOverwrite] = useState(0);
   const [enLoading, setEnLoading] = useState(false);
 
-  // Load initial devices & pegawai list
   useEffect(() => {
     setDevicesLoading(true);
     listDevices()
@@ -85,7 +85,6 @@ export default function Fingerprint() {
       });
   }, [addToast]);
 
-  // Debounced server-side pegawai search by name or PIN
   const handlePegawaiSearch = useCallback((query) => {
     if (searchTimerRef.current) {
       clearTimeout(searchTimerRef.current);
@@ -119,7 +118,6 @@ export default function Fingerprint() {
     }, 300);
   }, []);
 
-  // Fetch pegawai's per-device biometric counts when a PIN is selected
   const ensurePegawaiDeviceMapping = useCallback(async (pin) => {
     if (!pin || pegawaiDeviceMappings[pin]) return;
     try {
@@ -131,7 +129,7 @@ export default function Fingerprint() {
         }));
       }
     } catch {
-      // Ignore if pegawai detail cannot be fetched
+      // Ignore
     }
   }, [pegawaiDeviceMappings]);
 
@@ -143,13 +141,11 @@ export default function Fingerprint() {
     if (tfPin) ensurePegawaiDeviceMapping(tfPin);
   }, [tfPin, ensurePegawaiDeviceMapping]);
 
-  // Build pegawai options ensuring selected PINs are always present in options
   const pegawaiOptions = useMemo(() => {
     const activeList = searchedPegawai !== null ? searchedPegawai : initialPegawai;
     const seen = new Set();
     const list = [];
 
-    // Ensure currently selected PINs remain in the option list so their label stays visible
     [checkPin, tfPin, enPin].forEach((pin) => {
       if (pin && pegawaiCache[String(pin)] && !seen.has(String(pin))) {
         seen.add(String(pin));
@@ -171,7 +167,6 @@ export default function Fingerprint() {
     }));
   }, [initialPegawai, searchedPegawai, pegawaiCache, checkPin, tfPin, enPin]);
 
-  // Helper to build device options (optionally enriched with biometric counts for a selected PIN)
   const buildDeviceOptions = useCallback(
     (pinForBiometricHint = '', excludeSn = '') => {
       const mappings = pinForBiometricHint ? pegawaiDeviceMappings[pinForBiometricHint] || [] : [];
@@ -292,7 +287,7 @@ export default function Fingerprint() {
     setEnLoading(true);
     try {
       await enrollFingerprint(enSn, { pin: enPin, fid: enFid, retry: enRetry, overwrite: enOverwrite });
-      addToast('Enroll command queued');
+      addToast('Perintah enroll berhasil diantrekan');
     } catch (err) {
       addToast(err.message || 'Enroll failed', 'error');
     } finally {
@@ -300,52 +295,35 @@ export default function Fingerprint() {
     }
   };
 
-  const tabs = [
-    { key: 'check', label: 'Check', icon: Search },
-    { key: 'transfer', label: 'Transfer', icon: ArrowRight },
-    { key: 'enroll', label: 'Enroll', icon: PlusCircle },
+  const tabItems = [
+    { key: 'check', label: 'Periksa Biometrik' },
+    { key: 'transfer', label: 'Transfer Lintas Perangkat' },
+    { key: 'enroll', label: 'Enroll Sidik Jari' },
   ];
 
   return (
-    <div className="space-y-6 fade-in pb-8">
+    <div className="space-y-5 fade-in pb-8">
       {/* Page Header */}
       <div>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">Biometrik (Sidik Jari & Wajah)</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Cek, transfer lintas perangkat (Sidik Jari & 12 Segmen Wajah ADMS), dan enroll sidik jari baru</p>
+        <h1 className="text-[20px] font-semibold text-ink tracking-[-0.015em]">
+          Biometrik (Sidik Jari & Wajah)
+        </h1>
+        <p className="text-[13px] text-muted mt-0.5">
+          Periksa template, transfer lintas perangkat (Sidik Jari & 12 Segmen Wajah ADMS), dan enroll sidik jari baru
+        </p>
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-slate-200 dark:border-slate-800">
-        <div className="flex items-center gap-0">
-          {tabs.map(t => {
-            const Icon = t.icon;
-            const active = tab === t.key;
-            return (
-              <button
-                key={t.key}
-                onClick={() => setTab(t.key)}
-                className={`flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 transition-all ${
-                  active
-                    ? 'border-slate-900 dark:border-slate-100 text-slate-900 dark:text-slate-100'
-                    : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:border-slate-300'
-                }`}
-              >
-                <Icon size={16} strokeWidth={active ? 2 : 1.8} />
-                {t.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      <Tabs items={tabItems} value={tab} onChange={setTab} />
 
       {/* Check Tab */}
       {tab === 'check' && (
         <div className="space-y-4">
-          <div className="bg-white dark:bg-[#18192d] rounded-xl border border-slate-200/60 dark:border-slate-800 shadow-sm p-5">
+          <div className="bg-surface rounded-xl border border-border p-5">
             <form onSubmit={handleCheck} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">Pegawai (PIN)</label>
+                  <label className="block text-xs font-medium text-muted mb-1.5">Pegawai (PIN)</label>
                   <SearchableSelect
                     value={checkPin}
                     onChange={setCheckPin}
@@ -359,7 +337,7 @@ export default function Fingerprint() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">Device SN</label>
+                  <label className="block text-xs font-medium text-muted mb-1.5">Device SN</label>
                   <SearchableSelect
                     value={checkSn}
                     onChange={setCheckSn}
@@ -375,9 +353,9 @@ export default function Fingerprint() {
                   <button
                     type="submit"
                     disabled={checkLoading || !checkPin || !checkSn}
-                    className="w-full px-4 py-2 text-sm font-medium rounded-xl bg-slate-900 dark:bg-indigo-600 text-white hover:bg-slate-800 dark:hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors active:scale-[0.98] min-h-[38px]"
+                    className="w-full px-4 py-2 text-xs font-medium rounded-lg bg-ink text-white hover:bg-ink/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors min-h-[38px]"
                   >
-                    {checkLoading ? 'Checking...' : 'Cek Biometrik'}
+                    {checkLoading ? 'Memeriksa...' : 'Cek Biometrik'}
                   </button>
                 </div>
               </div>
@@ -385,27 +363,27 @@ export default function Fingerprint() {
           </div>
 
           {checkResult && (
-            <div className="bg-white dark:bg-[#18192d] rounded-xl border border-slate-200/60 dark:border-slate-800 shadow-sm overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2">
+            <div className="bg-surface rounded-xl border border-border overflow-hidden">
+              <div className="px-5 py-3.5 border-b border-border flex flex-wrap items-center justify-between gap-2 bg-raised/40">
                 <div>
-                  <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Hasil Pemeriksaan Biometrik</h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  <h3 className="text-sm font-semibold text-ink">Hasil Pemeriksaan Biometrik</h3>
+                  <p className="text-xs text-muted mt-0.5">
                     {checkResult.pegawaiName && (
-                      <span className="font-semibold text-slate-700 dark:text-slate-200">{checkResult.pegawaiName} </span>
+                      <span className="font-medium text-ink">{checkResult.pegawaiName} </span>
                     )}
-                    (PIN <span className="font-mono font-semibold text-slate-700 dark:text-slate-200">{checkResult.pin}</span>) pada perangkat{' '}
+                    (PIN <span className="font-mono font-medium text-ink">{checkResult.pin}</span>) pada perangkat{' '} {/* taste-skill-ignore */}
                     {checkResult.deviceName && (
-                      <span className="font-semibold text-slate-700 dark:text-slate-200">{checkResult.deviceName} </span>
+                      <span className="font-medium text-ink">{checkResult.deviceName} </span>
                     )}
-                    (<span className="font-mono font-semibold text-slate-700 dark:text-slate-200">{checkResult.sn}</span>)
+                    (<span className="font-mono font-medium text-ink">{checkResult.sn}</span>) {/* taste-skill-ignore */}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 text-xs">
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-semibold">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-accent-soft text-accent font-medium border border-[#c3dde5] num">
                     <FpIcon size={13} />
                     {checkResult.fpCount} Sidik Jari
                   </span>
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-semibold">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#eaf6f0] text-positive font-medium border border-[#bde3cf] num">
                     <ScanFace size={13} />
                     {checkResult.faceCount}/12 Segmen Wajah
                   </span>
@@ -415,18 +393,18 @@ export default function Fingerprint() {
                 <div className="overflow-x-auto">
                   <table className="min-w-full text-sm">
                     <thead>
-                      <tr className="bg-slate-50/50 dark:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800">
-                        <th className="text-left px-6 py-2.5 font-semibold text-slate-500 text-xs tracking-wider uppercase">Finger ID</th>
-                        <th className="text-left px-6 py-2.5 font-semibold text-slate-500 text-xs tracking-wider uppercase">Template (preview)</th>
-                        <th className="text-left px-6 py-2.5 font-semibold text-slate-500 text-xs tracking-wider uppercase">Synced At</th>
+                      <tr className="bg-raised/60 border-b border-border">
+                        <th className="text-left px-5 py-2.5 font-medium text-muted text-xs">Finger ID</th>
+                        <th className="text-left px-5 py-2.5 font-medium text-muted text-xs">Template (Pratinjau)</th>
+                        <th className="text-left px-5 py-2.5 font-medium text-muted text-xs">Disinkronkan Pada</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                      {checkResult.fingerprints.map(fp => (
-                        <tr key={fp.finger_id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
-                          <td className="px-6 py-3.5 font-mono text-slate-700 dark:text-slate-200">{fp.finger_id}</td>
-                          <td className="px-6 py-3.5 text-slate-400 font-mono text-xs truncate max-w-xs">{fp.template?.slice(0, 40)}...</td>
-                          <td className="px-6 py-3.5 text-slate-500 text-xs">{fp.synced_at ? new Date(fp.synced_at).toLocaleString('id-ID') : '-'}</td>
+                    <tbody className="divide-y divide-rule">
+                      {checkResult.fingerprints.map((fp) => (
+                        <tr key={fp.finger_id} className="hover:bg-raised/70 transition-colors">
+                          <td className="px-5 py-3 font-mono text-ink text-xs num">#{fp.finger_id}</td> {/* taste-skill-ignore */}
+                          <td className="px-5 py-3 text-muted font-mono text-xs truncate max-w-xs">{fp.template?.slice(0, 40)}...</td> {/* taste-skill-ignore */}
+                          <td className="px-5 py-3 text-muted text-xs num">{fp.synced_at ? new Date(fp.synced_at).toLocaleString('id-ID') : '-'}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -434,15 +412,15 @@ export default function Fingerprint() {
                 </div>
               )}
               {checkResult.faces?.length > 0 && (
-                <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/20">
-                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                <div className="px-5 py-3.5 border-t border-border bg-raised/30">
+                  <p className="text-xs font-medium text-muted mb-2">
                     Segmen Wajah Tersimpan (ZKFace v7)
                   </p>
                   <div className="flex flex-wrap gap-1.5">
                     {checkResult.faces.map((fc) => (
                       <span
                         key={fc.face_id}
-                        className="px-2 py-1 rounded-md text-[11px] font-mono bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60"
+                        className="px-2 py-0.5 rounded text-[11px] font-mono bg-[#eaf6f0] text-positive border border-[#bde3cf] num" /* taste-skill-ignore */
                       >
                         FID #{fc.face_id} ({fc.size}B)
                       </span>
@@ -458,15 +436,17 @@ export default function Fingerprint() {
       {/* Transfer Tab */}
       {tab === 'transfer' && (
         <div className="max-w-lg">
-          <div className="bg-white dark:bg-[#18192d] rounded-xl border border-slate-200/60 dark:border-slate-800 shadow-sm p-6">
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-1">Transfer Biometrik Lintas Perangkat</h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-5">Transfer data User, Sidik Jari, dan/atau 12 Segmen Wajah dari perangkat sumber ke perangkat tujuan</p>
+          <div className="bg-surface rounded-xl border border-border p-5">
+            <h3 className="text-sm font-semibold text-ink mb-1">Transfer Biometrik Lintas Perangkat</h3>
+            <p className="text-xs text-muted mb-4">
+              Transfer data pengguna, sidik jari, dan/atau 12 segmen wajah dari perangkat sumber ke perangkat tujuan
+            </p>
             <form onSubmit={handleTransfer} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">Mode Transfer</label>
+                <label className="block text-xs font-medium text-muted mb-1.5">Mode Transfer</label>
                 <div className="grid grid-cols-3 gap-2">
                   {[
-                    { id: 'all', label: 'Semua (FP + Face)', icon: Layers },
+                    { id: 'all', label: 'Semua (FP + Wajah)', icon: Layers },
                     { id: 'fp', label: 'Sidik Jari Saja', icon: FpIcon },
                     { id: 'face', label: 'Wajah Saja (12 FID)', icon: ScanFace },
                   ].map((mode) => {
@@ -477,10 +457,10 @@ export default function Fingerprint() {
                         key={mode.id}
                         type="button"
                         onClick={() => setTfMode(mode.id)}
-                        className={`flex flex-col items-center justify-center gap-1 p-2.5 rounded-xl border text-xs font-medium transition-all ${
+                        className={`flex flex-col items-center justify-center gap-1 p-2.5 rounded-lg border text-xs font-medium transition-colors ${
                           active
-                            ? 'bg-slate-900 dark:bg-indigo-600 text-white border-slate-900 dark:border-indigo-600 shadow-xs'
-                            : 'bg-slate-50 dark:bg-slate-800/70 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-slate-300'
+                            ? 'bg-ink text-white border-ink'
+                            : 'bg-raised/60 text-muted border-border hover:text-ink hover:border-control'
                         }`}
                       >
                         <Icon size={15} />
@@ -491,7 +471,7 @@ export default function Fingerprint() {
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">Pegawai (PIN)</label>
+                <label className="block text-xs font-medium text-muted mb-1.5">Pegawai (PIN)</label>
                 <SearchableSelect
                   value={tfPin}
                   onChange={setTfPin}
@@ -505,7 +485,7 @@ export default function Fingerprint() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">Source Device SN</label>
+                <label className="block text-xs font-medium text-muted mb-1.5">Perangkat Sumber (Source SN)</label>
                 <SearchableSelect
                   value={tfSource}
                   onChange={(val) => {
@@ -523,7 +503,7 @@ export default function Fingerprint() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">Target Device SN</label>
+                <label className="block text-xs font-medium text-muted mb-1.5">Perangkat Tujuan (Target SN)</label>
                 <SearchableSelect
                   value={tfTarget}
                   onChange={setTfTarget}
@@ -538,9 +518,9 @@ export default function Fingerprint() {
               <button
                 type="submit"
                 disabled={tfLoading || !tfPin || !tfSource || !tfTarget}
-                className="w-full px-4 py-2 text-sm font-medium rounded-xl bg-slate-900 dark:bg-indigo-600 text-white hover:bg-slate-800 dark:hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors active:scale-[0.98]"
+                className="w-full px-4 py-2 text-xs font-medium rounded-lg bg-ink text-white hover:bg-ink/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {tfLoading ? 'Queueing...' : 'Queue Transfer'}
+                {tfLoading ? 'Mengantrekan...' : 'Antrekan Transfer'}
               </button>
             </form>
           </div>
@@ -550,12 +530,12 @@ export default function Fingerprint() {
       {/* Enroll Tab */}
       {tab === 'enroll' && (
         <div className="max-w-lg">
-          <div className="bg-white dark:bg-[#18192d] rounded-xl border border-slate-200/60 dark:border-slate-800 shadow-sm p-6">
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-1">Enroll Fingerprint</h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-5">Daftarkan fingerprint baru pada perangkat</p>
+          <div className="bg-surface rounded-xl border border-border p-5">
+            <h3 className="text-sm font-semibold text-ink mb-1">Enroll Sidik Jari</h3>
+            <p className="text-xs text-muted mb-4">Daftarkan sidik jari baru langsung melalui perintah ke perangkat</p>
             <form onSubmit={handleEnroll} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">Device SN</label>
+                <label className="block text-xs font-medium text-muted mb-1.5">Device SN</label>
                 <SearchableSelect
                   value={enSn}
                   onChange={setEnSn}
@@ -568,7 +548,7 @@ export default function Fingerprint() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">Pegawai (PIN)</label>
+                <label className="block text-xs font-medium text-muted mb-1.5">Pegawai (PIN)</label>
                 <SearchableSelect
                   value={enPin}
                   onChange={setEnPin}
@@ -583,11 +563,11 @@ export default function Fingerprint() {
               </div>
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">Finger ID</label>
+                  <label className="block text-xs font-medium text-muted mb-1.5">Finger ID</label>
                   <select
                     value={enFid}
-                    onChange={e => setEnFid(Number(e.target.value))}
-                    className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700/80 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-slate-50 dark:bg-slate-800/80 text-slate-900 dark:text-slate-100"
+                    onChange={(e) => setEnFid(Number(e.target.value))}
+                    className="w-full px-3 py-2 text-xs rounded-lg border border-border focus:outline-none focus:border-accent bg-surface text-ink"
                   >
                     {[...Array(10).keys()].map((i) => (
                       <option key={i} value={i}>
@@ -597,34 +577,34 @@ export default function Fingerprint() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">Retry</label>
+                  <label className="block text-xs font-medium text-muted mb-1.5">Retry</label>
                   <input
                     type="number"
                     min={1}
                     max={10}
                     value={enRetry}
-                    onChange={e => setEnRetry(Number(e.target.value))}
-                    className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700/80 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-slate-50 dark:bg-slate-800/80 text-slate-900 dark:text-slate-100"
+                    onChange={(e) => setEnRetry(Number(e.target.value))}
+                    className="w-full px-3 py-2 text-xs rounded-lg border border-border focus:outline-none focus:border-accent bg-surface text-ink num"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">Overwrite</label>
+                  <label className="block text-xs font-medium text-muted mb-1.5">Timpa (Overwrite)</label>
                   <select
                     value={enOverwrite}
-                    onChange={e => setEnOverwrite(Number(e.target.value))}
-                    className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700/80 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-slate-50 dark:bg-slate-800/80 text-slate-900 dark:text-slate-100"
+                    onChange={(e) => setEnOverwrite(Number(e.target.value))}
+                    className="w-full px-3 py-2 text-xs rounded-lg border border-border focus:outline-none focus:border-accent bg-surface text-ink"
                   >
-                    <option value={0}>No</option>
-                    <option value={1}>Yes</option>
+                    <option value={0}>Tidak</option>
+                    <option value={1}>Ya</option>
                   </select>
                 </div>
               </div>
               <button
                 type="submit"
                 disabled={enLoading || !enSn || !enPin}
-                className="w-full px-4 py-2 text-sm font-medium rounded-xl bg-slate-900 dark:bg-indigo-600 text-white hover:bg-slate-800 dark:hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors active:scale-[0.98]"
+                className="w-full px-4 py-2 text-xs font-medium rounded-lg bg-ink text-white hover:bg-ink/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {enLoading ? 'Queueing...' : 'Queue Enroll'}
+                {enLoading ? 'Mengantrekan...' : 'Antrekan Enroll'}
               </button>
             </form>
           </div>

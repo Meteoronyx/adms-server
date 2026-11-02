@@ -3,7 +3,11 @@ node_modules
 logs
 uploads
 .agents
-
+/data/
+rencana_upload/
+/docs/
+.claude/
+.github/
 # Data & CSV files
 src/db/data/*.csv
 *.csv

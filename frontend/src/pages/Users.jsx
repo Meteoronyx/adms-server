@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { Tabs } from '../components/ui/Tabs';
-import { UsersIcon, ShieldCheck } from 'lucide-react';
 
 import { useUsers } from '../features/users/hooks/useUsers';
 import { useRoles } from '../features/users/hooks/useRoles';
@@ -26,25 +25,23 @@ export default function Users() {
   const modalsHook = useUserModals();
 
   const tabOptions = [
-    { id: 'users', label: 'Kelola Pengguna', icon: UsersIcon, badge: usersHook.users.length },
-    { id: 'roles', label: 'Role & Hak Akses', icon: ShieldCheck, badge: rolesHook.roles.length },
+    { key: 'users', label: 'Kelola Pengguna', count: usersHook.users.length },
+    { key: 'roles', label: 'Role & Hak Akses', count: rolesHook.roles.length },
   ];
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      {/* Header & Tabs */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200/80 dark:border-slate-800/80 pb-5">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
-            Manajemen Pengguna & Pengaturan Akses
-          </h1>
-          {/* <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Kelola akun administrator, staf operasional, dan konfigurasi hak akses berbasis role (RBAC)
-          </p> */}
-        </div>
-
-        <Tabs tabs={tabOptions} activeTab={activeTab} onChange={setActiveTab} />
+    <div className="space-y-5 fade-in pb-8">
+      {/* Header */}
+      <div>
+        <h1 className="text-[20px] font-semibold text-ink tracking-[-0.015em]">
+          Manajemen Pengguna & Hak Akses
+        </h1>
+        <p className="text-[13px] text-muted mt-0.5">
+          Kelola akun administrator, operator unit kerja, dan konfigurasi hak akses berbasis role (RBAC)
+        </p>
       </div>
+
+      <Tabs items={tabOptions} value={activeTab} onChange={setActiveTab} />
 
       {/* Main Tab Content */}
       {activeTab === 'users' && (

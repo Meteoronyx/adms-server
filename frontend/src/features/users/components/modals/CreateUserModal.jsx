@@ -66,7 +66,7 @@ export function CreateUserModal({
             type="button"
             onClick={onClose}
             disabled={submitting}
-            className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
+            className="px-3.5 py-1.5 text-xs font-medium text-muted hover:text-ink hover:bg-raised rounded-lg border border-border transition-colors"
           >
             Batal
           </button>
@@ -74,9 +74,9 @@ export function CreateUserModal({
             type="submit"
             form="create-user-form"
             disabled={submitting}
-            className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 rounded-xl shadow-sm transition-all disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium text-white bg-ink hover:bg-ink/90 rounded-lg transition-colors disabled:opacity-50"
           >
-            <UserPlus size={14} />
+            <UserPlus size={13} />
             {submitting ? 'Menyimpan…' : 'Simpan Pengguna'}
           </button>
         </>
@@ -84,36 +84,36 @@ export function CreateUserModal({
     >
       <form id="create-user-form" onSubmit={handleSubmit} className="space-y-4 py-1">
         <div>
-          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-            Username <span className="text-rose-500">*</span>
+          <label className="block text-xs font-medium text-ink mb-1">
+            Username <span className="text-negative">*</span>
           </label>
           <input
             type="text"
             required
             value={formData.username}
             onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-            placeholder="misal: john_doe"
-            className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:text-slate-100 transition-colors"
+            placeholder="misal: budi_santoso"
+            className="w-full px-3 py-2 text-xs font-mono bg-surface border border-border rounded-lg focus:outline-none focus:border-accent text-ink transition-colors" /* taste-skill-ignore */
           />
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-            Nama Lengkap <span className="text-rose-500">*</span>
+          <label className="block text-xs font-medium text-ink mb-1">
+            Nama Lengkap <span className="text-negative">*</span>
           </label>
           <input
             type="text"
             required
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            placeholder="misal: John Doe"
-            className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:text-slate-100 transition-colors"
+            placeholder="misal: Budi Santoso"
+            className="w-full px-3 py-2 text-xs bg-surface border border-border rounded-lg focus:outline-none focus:border-accent text-ink transition-colors"
           />
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-            Password <span className="text-rose-500">*</span>
+          <label className="block text-xs font-medium text-ink mb-1">
+            Password <span className="text-negative">*</span>
           </label>
           <input
             type="password"
@@ -121,19 +121,19 @@ export function CreateUserModal({
             value={formData.password}
             onChange={(e) => setFormData({ ...formData, password: e.target.value })}
             placeholder="Minimal 6 karakter"
-            className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:text-slate-100 transition-colors"
+            className="w-full px-3 py-2 text-xs bg-surface border border-border rounded-lg focus:outline-none focus:border-accent text-ink transition-colors"
           />
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+          <label className="block text-xs font-medium text-ink mb-1">
             Role Akses
           </label>
           <div className="relative">
             <select
               value={formData.role_id}
               onChange={(e) => setFormData({ ...formData, role_id: e.target.value })}
-              className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:text-slate-100 transition-colors appearance-none cursor-pointer pr-8"
+              className="w-full px-3 py-2 text-xs bg-surface border border-border rounded-lg focus:outline-none focus:border-accent text-ink transition-colors appearance-none cursor-pointer pr-8"
             >
               <option value="">-- Tanpa Role --</option>
               {roles.map((r) => (
@@ -142,14 +142,14 @@ export function CreateUserModal({
                 </option>
               ))}
             </select>
-            <Shield className="absolute right-3 top-2.5 w-4 h-4 text-slate-400 pointer-events-none" />
+            <Shield className="absolute right-3 top-2.5 w-3.5 h-3.5 text-faint pointer-events-none" />
           </div>
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+          <label className="block text-xs font-medium text-ink mb-1">
             Induk Unit Kerja (OPD)
-            {!isAdminRole && <span className="text-rose-500"> *</span>}
+            {!isAdminRole && <span className="text-negative"> *</span>}
           </label>
           <SearchableSelect
             value={formData.opd_id || ''}
@@ -162,11 +162,11 @@ export function CreateUserModal({
             placeholder={isAdminRole ? '-- Global / Seluruh OPD (Admin System) --' : '-- Pilih Induk Unit Kerja (wajib) --'}
           />
           {!isAdminRole && (
-            <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">
+            <p className="text-[11px] text-muted mt-1">
               Wajib dipilih agar pengguna hanya melihat data unit kerjanya sendiri
             </p>
           )}
-          {error && <p className="text-[11px] text-rose-600 dark:text-rose-400 mt-1">{error}</p>}
+          {error && <p className="text-[11px] text-negative mt-1">{error}</p>}
         </div>
       </form>
     </Modal>

@@ -17,7 +17,21 @@ export function ToastProvider({ children }) {
   return (
     <ToastContext.Provider value={{ addToast }}>
       {children}
-      <Toaster position="top-right" />
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          style: {
+            background: '#ffffff',
+            color: '#131416',
+            border: '1px solid #e4e7eb',
+            borderRadius: '10px',
+            fontSize: '12.5px',
+            fontWeight: 500,
+            padding: '10px 14px',
+            boxShadow: '0 4px 12px rgba(19, 20, 22, 0.06)',
+          },
+        }}
+      />
     </ToastContext.Provider>
   );
 }

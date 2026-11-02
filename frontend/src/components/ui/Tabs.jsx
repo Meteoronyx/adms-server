@@ -2,35 +2,54 @@ import React from 'react';
 
 export function Tabs({ tabs, activeTab, onChange, className = '' }) {
   return (
-    <div className={`flex items-center gap-1.5 p-1 bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-xl border border-slate-200/60 dark:border-slate-700/60 select-none ${className}`}>
+    <div
+      className={`flex items-center gap-6 border-b border-border overflow-x-auto select-none ${className}`}
+      role="tablist"
+    >
       {tabs.map((tab) => {
-        const isActive = activeTab === tab.id;
+        const tabKey = tab.id ?? tab.key;
+        const isActive = activeTab === tabKey;
         const Icon = tab.icon;
 
         return (
           <button
-            key={tab.id}
+            key={tabKey}
             type="button"
-            onClick={() => onChange(tab.id)}
-            className={`relative flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all duration-200 ${
+            role="tab"
+            aria-selected={isActive}
+            onClick={() => onChange(tabKey)}
+            className={`relative flex items-center gap-2 pb-2.5 pt-1 text-sm whitespace-nowrap transition-colors duration-150 ${
               isActive
-                ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/40 dark:hover:bg-slate-700/40'
+                ? 'text-ink font-semibold'
+                : 'text-muted hover:text-ink font-normal'
             }`}
           >
-            {Icon && <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-indigo-600 dark:text-indigo-400' : ''}`} />}
+            {Icon && (
+              <Icon
+                size={15}
+                strokeWidth={1.7}
+                className={isActive ? 'text-accent' : 'text-muted'}
+              />
+            )}
             <span>{tab.label}</span>
             {tab.badge !== undefined && (
               <span
-                className={`ml-1 px-1.5 py-0.2 rounded-md text-[10px] font-bold ${
+                className={`ml-0.5 px-1.5 h-5 inline-flex items-center rounded-[4px] text-xs num ${
                   isActive
-                    ? 'bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400'
-                    : 'bg-slate-200/60 dark:bg-slate-700/60 text-slate-500 dark:text-slate-400'
+                    ? 'bg-accent-soft text-accent-ink font-medium'
+                    : 'bg-raised text-muted font-normal'
                 }`}
               >
                 {tab.badge}
               </span>
             )}
+            <span
+              className={`
+                absolute left-0 right-0 bottom-0 h-[2px] bg-accent
+                transition-[transform,opacity] duration-150 ease-out
+                ${isActive ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-75'}
+              `}
+            />
           </button>
         );
       })}

@@ -1,20 +1,26 @@
 import { useEffect, useState, useRef } from 'react';
 
-export default function AnimatedNumber({ value, duration = 1000 }) {
+export default function AnimatedNumber({ value, duration = 600 }) {
   const [displayValue, setDisplayValue] = useState(value);
   const startValueRef = useRef(value);
 
   useEffect(() => {
-    // Treat string values that are numbers as numbers
     const numValue = typeof value === 'string' ? Number(value) : value;
-    
+
     if (numValue === undefined || numValue === null || isNaN(numValue)) {
-       setDisplayValue(value);
-       return;
+      setDisplayValue(value);
+      return;
     }
-    
-    // First time render, set without animation
-    if (startValueRef.current === undefined || startValueRef.current === null) {
+
+    const prefersReducedMotion =
+      typeof window !== 'undefined' &&
+      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+    if (
+      prefersReducedMotion ||
+      startValueRef.current === undefined ||
+      startValueRef.current === null
+    ) {
       setDisplayValue(numValue);
       startValueRef.current = numValue;
       return;
@@ -31,13 +37,10 @@ export default function AnimatedNumber({ value, duration = 1000 }) {
     const step = (timestamp) => {
       if (!startTimestamp) startTimestamp = timestamp;
       const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-      
-      // easeOutQuart
       const easeProgress = 1 - Math.pow(1 - progress, 4);
-      
       const current = Math.floor(easeProgress * (end - start) + start);
       setDisplayValue(current);
-      
+
       if (progress < 1) {
         animationFrameId = window.requestAnimationFrame(step);
       } else {
@@ -45,7 +48,7 @@ export default function AnimatedNumber({ value, duration = 1000 }) {
         startValueRef.current = end;
       }
     };
-    
+
     animationFrameId = window.requestAnimationFrame(step);
 
     return () => {
@@ -55,7 +58,9 @@ export default function AnimatedNumber({ value, duration = 1000 }) {
     };
   }, [value, duration]);
 
-  if (displayValue === undefined || displayValue === null || isNaN(displayValue)) return value ?? '—';
-  
-  return Number(displayValue).toLocaleString('id-ID');
+  if (displayValue === undefined || displayValue === null || isNaN(displayValue)) {
+    return <span className="num">{value ?? '—'}</span>;
+  }
+
+  return <span className="num">{Number(displayValue).toLocaleString('id-ID')}</span>;
 }

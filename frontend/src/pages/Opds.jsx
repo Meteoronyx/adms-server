@@ -29,14 +29,14 @@ export default function Opds() {
   const totalPages = Math.ceil(hook.total / hook.limit) || 1;
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-5 fade-in pb-8">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200/80 dark:border-slate-800/80 pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
+          <h1 className="text-[20px] font-semibold text-ink tracking-[-0.015em]">
             Manajemen Unit Kerja (OPD)
           </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-[13px] text-muted mt-0.5">
             Master data OPD, koordinat geofencing, dan IP publik perangkat
           </p>
         </div>
@@ -44,19 +44,21 @@ export default function Opds() {
         <div className="flex items-center gap-2">
           {canWrite && (
             <button
+              type="button"
               onClick={() => hook.autoMap()}
               disabled={hook.submitting}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-all disabled:opacity-50 flex-shrink-0"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-ink bg-surface border border-border hover:bg-raised rounded-lg transition-colors disabled:opacity-50 shrink-0"
               title="Peta ulang perangkat, pengguna, dan pegawai ke OPD berdasarkan nama"
             >
-              <RefreshCw size={14} className={hook.submitting ? 'animate-spin' : ''} />
-              Auto-Map
+              <RefreshCw size={13} className={hook.submitting ? 'animate-spin' : ''} />
+              <span>Auto-Map</span>
             </button>
           )}
           {canWrite && (
             <button
+              type="button"
               onClick={() => setModal({ type: 'create', opd: null })}
-              className="flex items-center justify-center gap-2 px-3.5 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 rounded-xl shadow-sm transition-all flex-shrink-0"
+              className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-ink hover:bg-ink/90 rounded-lg transition-colors shrink-0"
             >
               <Plus size={14} />
               <span>Tambah OPD</span>
@@ -65,107 +67,109 @@ export default function Opds() {
         </div>
       </div>
 
-      {/* Toolbar */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white dark:bg-[#18192d] p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-sm">
-        <div className="relative w-full sm:w-72">
-          <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
-          <input
-            type="text"
-            value={hook.searchInput}
-            onChange={(e) => hook.setSearchInput(e.target.value)}
-            placeholder="Cari kdunker atau nama OPD..."
-            className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-slate-900 dark:text-slate-100 placeholder-slate-400 transition-colors"
-          />
+      {/* Table Card */}
+      <div className="bg-surface border border-border rounded-xl overflow-hidden">
+        {/* Toolbar */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 px-4 py-3 border-b border-border bg-raised/40">
+          <div className="relative w-full sm:w-72">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-faint" />
+            <input
+              type="text"
+              value={hook.searchInput}
+              onChange={(e) => hook.setSearchInput(e.target.value)}
+              placeholder="Cari kode unker atau nama OPD..."
+              className="w-full pl-8 pr-3 py-1.5 text-xs bg-surface border border-border rounded-lg focus:outline-none focus:border-accent text-ink placeholder-faint transition-colors"
+            />
+          </div>
+          <span className="text-xs text-muted num">
+            {hook.total.toLocaleString('id-ID')} unit kerja
+          </span>
         </div>
-        <span className="text-xs text-slate-400">
-          {hook.total.toLocaleString('id-ID')} unit kerja
-        </span>
-      </div>
 
-      {/* Table */}
-      <div className="bg-white dark:bg-[#18192d] border border-slate-200/80 dark:border-slate-800/80 rounded-2xl shadow-sm overflow-hidden">
         {hook.loading ? (
-          <div className="p-8 text-center text-slate-500 dark:text-slate-400 text-xs">
+          <div className="p-8 text-center text-muted text-xs">
             Memuat data OPD...
           </div>
         ) : hook.opds.length === 0 ? (
-          <div className="p-12 text-center text-slate-400 dark:text-slate-500">
-            <Building2 className="w-10 h-10 mx-auto mb-2 opacity-50" />
-            <p className="text-sm font-semibold">Tidak ada OPD ditemukan</p>
-            <p className="text-xs text-slate-400 mt-1">Coba ubah kata kunci pencarian.</p>
+          <div className="p-12 text-center text-muted">
+            <Building2 className="w-7 h-7 mx-auto mb-2 text-faint" strokeWidth={1.5} />
+            <p className="text-sm font-medium text-ink">Tidak ada OPD ditemukan</p>
+            <p className="text-xs text-muted mt-0.5">Coba ubah kata kunci pencarian.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50/80 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 font-semibold border-b border-slate-200/60 dark:border-slate-800/60 uppercase tracking-wider text-[10px]">
+              <thead className="bg-raised/60 text-muted font-medium border-b border-border">
                 <tr>
-                  <th className="px-4 py-3">Kode</th>
-                  <th className="px-4 py-3">Nama Unit Kerja (OPD)</th>
-                  <th className="px-4 py-3">Koordinat</th>
-                  <th className="px-4 py-3">Radius</th>
-                  <th className="px-4 py-3">IP Publik</th>
-                  <th className="px-4 py-3 text-right">Aksi</th>
+                  <th className="px-4 py-2.5">Kode</th>
+                  <th className="px-4 py-2.5">Nama Unit Kerja (OPD)</th>
+                  <th className="px-4 py-2.5">Koordinat</th>
+                  <th className="px-4 py-2.5">Radius</th>
+                  <th className="px-4 py-2.5">IP Publik</th>
+                  <th className="px-4 py-2.5 text-right">Aksi</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-slate-700 dark:text-slate-300">
+              <tbody className="divide-y divide-rule text-ink">
                 {hook.opds.map((o) => (
-                  <tr key={o.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                  <tr key={o.id} className="hover:bg-raised/70 transition-colors">
                     <td className="px-4 py-3">
-                      <Badge variant="indigo">{o.kdunker}</Badge>
+                      <Badge variant="info" className="font-mono">{o.kdunker}</Badge> {/* taste-skill-ignore */}
                     </td>
-                    <td className="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">
+                    <td className="px-4 py-3 font-medium text-ink">
                       {o.nama_opd}
                     </td>
-                    <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
+                    <td className="px-4 py-3 text-muted">
                       {o.latitude != null && o.longitude != null ? (
-                        <span className="flex items-center gap-1">
-                          <MapPin size={12} className="text-slate-400 flex-shrink-0" />
-                          <span className="font-mono text-[11px]">
+                        <span className="inline-flex items-center gap-1">
+                          <MapPin size={12} className="text-faint shrink-0" />
+                          <span className="font-mono text-[11px] num"> {/* taste-skill-ignore */}
                             {o.latitude}, {o.longitude}
                           </span>
                         </span>
                       ) : (
-                        <span className="text-slate-400 italic">-</span>
+                        <span className="text-faint">-</span>
                       )}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 num">
                       {o.radius != null ? (
-                        <span className="flex items-center gap-1">
-                          <Radius size={12} className="text-slate-400" />
+                        <span className="inline-flex items-center gap-1 text-muted">
+                          <Radius size={12} className="text-faint" />
                           {o.radius} m
                         </span>
                       ) : (
-                        <span className="text-slate-400 italic">-</span>
+                        <span className="text-faint">-</span>
                       )}
                     </td>
                     <td className="px-4 py-3">
                       {o.ip_public ? (
-                        <span className="flex items-center gap-1 font-mono text-[11px]">
-                          <Globe size={12} className="text-slate-400" />
+                        <span className="inline-flex items-center gap-1 font-mono text-[11px] text-ink num"> {/* taste-skill-ignore */}
+                          <Globe size={12} className="text-faint" />
                           {o.ip_public}
                         </span>
                       ) : (
-                        <span className="text-slate-400 italic">-</span>
+                        <span className="text-faint">-</span>
                       )}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1">
                         {canWrite && (
                           <button
+                            type="button"
                             onClick={() => setModal({ type: 'edit', opd: o })}
                             title="Edit OPD"
-                            className="p-1.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 rounded-lg transition-colors"
+                            className="p-1.5 text-muted hover:text-ink hover:bg-raised rounded-md transition-colors"
                           >
-                            <Pencil size={15} />
+                            <Pencil size={14} />
                           </button>
                         )}
                         {canDelete && (
                           <button
+                            type="button"
                             onClick={() => setModal({ type: 'delete', opd: o })}
                             title="Hapus OPD"
-                            className="p-1.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/60 rounded-lg transition-colors"
+                            className="p-1.5 text-muted hover:text-negative hover:bg-[#fdeded] rounded-md transition-colors"
                           >
-                            <Trash2 size={15} />
+                            <Trash2 size={14} />
                           </button>
                         )}
                       </div>
@@ -176,32 +180,34 @@ export default function Opds() {
             </table>
           </div>
         )}
-      </div>
 
-      {/* Pagination */}
-      {!hook.loading && totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-slate-500 dark:text-slate-400">
-            Halaman {hook.page} dari {totalPages} ({hook.total.toLocaleString('id-ID')} data)
-          </span>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => hook.setPage(Math.max(1, hook.page - 1))}
-              disabled={hook.page === 1}
-              className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-            >
-              <ChevronLeft size={16} />
-            </button>
-            <button
-              onClick={() => hook.setPage(Math.min(totalPages, hook.page + 1))}
-              disabled={hook.page === totalPages}
-              className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-            >
-              <ChevronRight size={16} />
-            </button>
+        {/* Pagination */}
+        {!hook.loading && totalPages > 1 && (
+          <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-raised/40 text-xs">
+            <span className="text-muted num">
+              Halaman {hook.page} dari {totalPages} ({hook.total.toLocaleString('id-ID')} data)
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => hook.setPage(Math.max(1, hook.page - 1))}
+                disabled={hook.page === 1}
+                className="inline-flex items-center justify-center w-7 h-7 rounded-lg border border-border bg-surface text-ink hover:bg-raised disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronLeft size={14} />
+              </button>
+              <button
+                type="button"
+                onClick={() => hook.setPage(Math.min(totalPages, hook.page + 1))}
+                disabled={hook.page === totalPages}
+                className="inline-flex items-center justify-center w-7 h-7 rounded-lg border border-border bg-surface text-ink hover:bg-raised disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronRight size={14} />
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Modals */}
       <OpdModal

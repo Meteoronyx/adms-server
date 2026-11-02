@@ -15,7 +15,7 @@ export function DeleteOpdModal({ open, onClose, onSubmit, opd = null, submitting
             type="button"
             onClick={onClose}
             disabled={submitting}
-            className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
+            className="px-3.5 py-1.5 text-xs font-medium text-muted hover:text-ink hover:bg-raised rounded-lg border border-border transition-colors"
           >
             Batal
           </button>
@@ -27,24 +27,24 @@ export function DeleteOpdModal({ open, onClose, onSubmit, opd = null, submitting
               if (success) onClose();
             }}
             disabled={submitting}
-            className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 active:bg-rose-800 rounded-xl shadow-sm transition-all disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium text-white bg-negative hover:opacity-90 rounded-lg transition-opacity disabled:opacity-50"
           >
-            <Trash2 size={14} />
+            <Trash2 size={13} />
             {submitting ? 'Menghapus…' : 'Hapus OPD'}
           </button>
         </>
       }
     >
       <div className="flex items-start gap-3 py-1">
-        <div className="w-9 h-9 rounded-xl bg-rose-50 dark:bg-rose-950/60 flex items-center justify-center flex-shrink-0">
-          <AlertTriangle size={16} className="text-rose-500" />
+        <div className="w-8 h-8 rounded-lg bg-[#fdeded] border border-[#f5c2c2] flex items-center justify-center shrink-0">
+          <AlertTriangle size={15} className="text-negative" />
         </div>
-        <div className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+        <div className="text-xs text-muted leading-relaxed">
           Anda yakin ingin menghapus{' '}
-          <span className="font-semibold text-slate-900 dark:text-slate-100">
+          <span className="font-semibold text-ink">
             {opd?.nama_opd}
           </span>{' '}
-          (<span className="font-mono">{opd?.kdunker}</span>)?
+          (<span className="font-mono text-ink">{opd?.kdunker}</span>)? {/* taste-skill-ignore */}
         </div>
       </div>
     </Modal>

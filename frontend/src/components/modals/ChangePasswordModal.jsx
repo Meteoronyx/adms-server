@@ -31,7 +31,6 @@ export function ChangePasswordModal({ open, onClose }) {
     }
   }, [open]);
 
-  // Real-time validation checks
   const isLengthValid = newPassword.length >= 8;
   const isDifferentFromOld = !oldPassword || !newPassword || oldPassword !== newPassword;
   const isMatch = newPassword && confirmPassword && newPassword === confirmPassword;
@@ -72,7 +71,7 @@ export function ChangePasswordModal({ open, onClose }) {
             type="button"
             onClick={onClose}
             disabled={submitting}
-            className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-50"
+            className="h-8 px-3.5 text-xs font-medium text-ink bg-surface border border-control hover:bg-raised rounded-[6px] transition-colors disabled:opacity-50"
           >
             Batal
           </button>
@@ -80,9 +79,9 @@ export function ChangePasswordModal({ open, onClose }) {
             type="submit"
             form="change-own-password-form"
             disabled={!canSubmit}
-            className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 rounded-xl shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1.5 h-8 px-3.5 text-xs font-medium text-white bg-ink hover:bg-ink/90 rounded-[6px] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <KeyRound size={14} />
+            <KeyRound size={13} />
             {submitting ? 'Menyimpan…' : 'Simpan Password'}
           </button>
         </>
@@ -90,16 +89,15 @@ export function ChangePasswordModal({ open, onClose }) {
     >
       <form id="change-own-password-form" onSubmit={handleSubmit} className="space-y-4 py-1">
         {errorMessage && (
-          <div className="flex items-center gap-2 p-3 text-xs text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 rounded-xl">
-            <AlertCircle size={15} className="flex-shrink-0 text-rose-500" />
+          <div className="flex items-center gap-2 p-3 text-xs text-negative-ink bg-negative-bg border border-[#f9c6c0] rounded-[6px]">
+            <AlertCircle size={15} className="flex-shrink-0 text-negative" />
             <span>{errorMessage}</span>
           </div>
         )}
 
-        {/* Password Lama */}
         <div>
-          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-            Password Lama <span className="text-rose-500">*</span>
+          <label className="block text-sm font-medium text-ink mb-2">
+            Password Lama <span className="text-negative">*</span>
           </label>
           <div className="relative">
             <input
@@ -108,12 +106,12 @@ export function ChangePasswordModal({ open, onClose }) {
               value={oldPassword}
               onChange={(e) => setOldPassword(e.target.value)}
               placeholder="Masukkan password saat ini"
-              className="w-full pl-3.5 pr-10 py-2 text-sm bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:text-slate-100 placeholder-slate-400 transition-colors"
+              className="w-full h-[38px] pl-3 pr-10 text-sm bg-surface border border-control rounded-[6px] focus:outline-none focus:border-accent text-ink placeholder:text-faint transition-colors"
             />
             <button
               type="button"
               onClick={() => setShowOld(!showOld)}
-              className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+              className="absolute right-3 top-2.5 text-muted hover:text-ink transition-colors"
               aria-label={showOld ? 'Sembunyikan password' : 'Lihat password'}
             >
               {showOld ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -121,20 +119,21 @@ export function ChangePasswordModal({ open, onClose }) {
           </div>
         </div>
 
-        {/* Password Baru */}
         <div>
-          <div className="flex items-center justify-between mb-1.5">
-            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-              Password Baru <span className="text-rose-500">*</span>
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-sm font-medium text-ink">
+              Password Baru <span className="text-negative">*</span>
             </label>
-            <span className={`text-[11px] font-medium transition-colors ${
-              newPassword.length === 0
-                ? 'text-slate-400'
-                : isLengthValid
-                ? 'text-emerald-600 dark:text-emerald-400'
-                : 'text-amber-600 dark:text-amber-400'
-            }`}>
-              Min. 8 karakter
+            <span
+              className={`text-xs font-normal transition-colors ${
+                newPassword.length === 0
+                  ? 'text-muted'
+                  : isLengthValid
+                  ? 'text-positive'
+                  : 'text-warning'
+              }`}
+            >
+              Minimal 8 karakter
             </span>
           </div>
           <div className="relative">
@@ -145,38 +144,39 @@ export function ChangePasswordModal({ open, onClose }) {
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               placeholder="Minimal 8 karakter"
-              className={`w-full pl-3.5 pr-10 py-2 text-sm bg-slate-50 dark:bg-slate-800/80 border rounded-xl focus:outline-none focus:ring-2 transition-colors dark:text-slate-100 placeholder-slate-400 ${
+              className={`w-full h-[38px] pl-3 pr-10 text-sm bg-surface border rounded-[6px] focus:outline-none transition-colors text-ink placeholder:text-faint ${
                 newPassword && !isDifferentFromOld
-                  ? 'border-rose-300 dark:border-rose-700 focus:ring-rose-500/20 focus:border-rose-500'
-                  : 'border-slate-200 dark:border-slate-700/80 focus:ring-indigo-500/20 focus:border-indigo-500'
+                  ? 'border-negative focus:border-negative'
+                  : 'border-control focus:border-accent'
               }`}
             />
             <button
               type="button"
               onClick={() => setShowNew(!showNew)}
-              className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+              className="absolute right-3 top-2.5 text-muted hover:text-ink transition-colors"
               aria-label={showNew ? 'Sembunyikan password' : 'Lihat password'}
             >
               {showNew ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
           </div>
           {newPassword && !isDifferentFromOld && (
-            <p className="text-[11px] text-rose-500 mt-1">
-              Password baru tidak boleh sama dengan password lama
+            <p className="text-xs text-negative mt-1">
+              Password baru tidak boleh sama dengan password lama.
             </p>
           )}
         </div>
 
-        {/* Konfirmasi Password Baru */}
         <div>
-          <div className="flex items-center justify-between mb-1.5">
-            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-              Konfirmasi Password Baru <span className="text-rose-500">*</span>
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-sm font-medium text-ink">
+              Konfirmasi Password Baru <span className="text-negative">*</span>
             </label>
             {confirmPassword && (
-              <span className={`flex items-center gap-1 text-[11px] font-medium ${
-                isMatch ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'
-              }`}>
+              <span
+                className={`flex items-center gap-1 text-xs font-medium ${
+                  isMatch ? 'text-positive' : 'text-negative'
+                }`}
+              >
                 {isMatch ? (
                   <>
                     <Check size={12} /> Cocok
@@ -195,16 +195,16 @@ export function ChangePasswordModal({ open, onClose }) {
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="Ketik ulang password baru"
-              className={`w-full pl-3.5 pr-10 py-2 text-sm bg-slate-50 dark:bg-slate-800/80 border rounded-xl focus:outline-none focus:ring-2 transition-colors dark:text-slate-100 placeholder-slate-400 ${
+              className={`w-full h-[38px] pl-3 pr-10 text-sm bg-surface border rounded-[6px] focus:outline-none transition-colors text-ink placeholder:text-faint ${
                 confirmPassword && !isMatch
-                  ? 'border-rose-300 dark:border-rose-700 focus:ring-rose-500/20 focus:border-rose-500'
-                  : 'border-slate-200 dark:border-slate-700/80 focus:ring-indigo-500/20 focus:border-indigo-500'
+                  ? 'border-negative focus:border-negative'
+                  : 'border-control focus:border-accent'
               }`}
             />
             <button
               type="button"
               onClick={() => setShowConfirm(!showConfirm)}
-              className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+              className="absolute right-3 top-2.5 text-muted hover:text-ink transition-colors"
               aria-label={showConfirm ? 'Sembunyikan password' : 'Lihat password'}
             >
               {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}

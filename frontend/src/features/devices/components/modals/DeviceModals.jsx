@@ -18,30 +18,30 @@ export function EditDeviceNameModal({ open, onClose, onSubmit, currentName }) {
       open={open}
       onOpenChange={(val) => !val && onClose()}
       title="Ubah Nama Perangkat"
-      description="Berikan nama pengenal untuk memudahkan manajemen lokasi mesin"
+      description="Berikan nama pengenal untuk memudahkan manajemen lokasi mesin."
       size="sm"
       footer={
         <>
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
+            className="h-8 px-3.5 text-xs font-medium text-ink bg-surface border border-control hover:bg-raised rounded-[6px] transition-colors"
           >
             Batal
           </button>
           <button
             type="submit"
             form="edit-dev-name-form"
-            className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 rounded-xl shadow-sm transition-all"
+            className="inline-flex items-center gap-1.5 h-8 px-3.5 text-xs font-medium text-white bg-ink hover:bg-ink/90 rounded-[6px] transition-colors"
           >
-            <Pencil size={14} />
+            <Pencil size={13} />
             Simpan Nama
           </button>
         </>
       }
     >
       <form id="edit-dev-name-form" onSubmit={handleSubmit} className="py-1">
-        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+        <label className="block text-sm font-medium text-ink mb-2">
           Nama Perangkat
         </label>
         <input
@@ -49,8 +49,8 @@ export function EditDeviceNameModal({ open, onClose, onSubmit, currentName }) {
           required
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="misal: Mesin Absensi Lantai 1"
-          className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:text-slate-100 transition-colors"
+          placeholder="Contoh: Mesin Absensi Lantai 1"
+          className="w-full h-[38px] px-3 text-sm bg-surface border border-control rounded-[6px] focus:outline-none focus:border-accent text-ink placeholder:text-faint transition-colors"
         />
       </form>
     </Modal>
@@ -76,24 +76,24 @@ export function UpdateUserModal({ open, onClose, onSubmit, targetUser }) {
     <Modal
       open={open}
       onOpenChange={(val) => !val && onClose()}
-      title={`Update User Mesin (PIN: ${targetUser?.pin || ''})`}
-      description="Kirim perintah pembaruan nama, hak akses, atau password ke perangkat"
+      title={`Ubah User Mesin (PIN: ${targetUser?.pin || ''})`}
+      description="Kirim perintah pembaruan nama, hak akses, atau password ke perangkat."
       size="md"
       footer={
         <>
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
+            className="h-8 px-3.5 text-xs font-medium text-ink bg-surface border border-control hover:bg-raised rounded-[6px] transition-colors"
           >
             Batal
           </button>
           <button
             type="submit"
             form="update-user-dev-form"
-            className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 rounded-xl shadow-sm transition-all"
+            className="inline-flex items-center gap-1.5 h-8 px-3.5 text-xs font-medium text-white bg-ink hover:bg-ink/90 rounded-[6px] transition-colors"
           >
-            <Edit size={14} />
+            <Edit size={13} />
             Kirim Perintah
           </button>
         </>
@@ -101,41 +101,41 @@ export function UpdateUserModal({ open, onClose, onSubmit, targetUser }) {
     >
       <form id="update-user-dev-form" onSubmit={handleSubmit} className="space-y-4 py-1">
         <div>
-          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+          <label className="block text-sm font-medium text-ink mb-2">
             Nama Pegawai
           </label>
           <input
             type="text"
             name="name"
             defaultValue={targetUser?.name || ''}
-            className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:text-slate-100 transition-colors"
+            className="w-full h-[38px] px-3 text-sm bg-surface border border-control rounded-[6px] focus:outline-none focus:border-accent text-ink transition-colors"
           />
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-            Privilege Mesin
+          <label className="block text-sm font-medium text-ink mb-2">
+            Hak Akses Mesin
           </label>
           <select
             name="privilege"
             defaultValue={targetUser?.privilege || '0'}
-            className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:text-slate-100 transition-colors"
+            className="w-full h-[38px] px-3 text-sm bg-surface border border-control rounded-[6px] focus:outline-none focus:border-accent text-ink transition-colors"
           >
-            <option value="0">0 - Normal User</option>
-            <option value="14">14 - Super Admin Mesin</option>
+            <option value="0">0 — Pengguna Normal</option>
+            <option value="14">14 — Admin Mesin</option>
           </select>
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-            Password (Opsional)
+          <label className="block text-sm font-medium text-ink mb-2">
+            Password Mesin (Opsional)
           </label>
           <input
             type="text"
             name="passwd"
             defaultValue=""
             placeholder="Kosongkan jika tidak diubah"
-            className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:text-slate-100 transition-colors"
+            className="w-full h-[38px] px-3 text-sm bg-surface border border-control rounded-[6px] focus:outline-none focus:border-accent text-ink placeholder:text-faint transition-colors"
           />
         </div>
       </form>
@@ -163,23 +163,23 @@ export function EnrollFingerprintModal({ open, onClose, onSubmit, targetUser }) 
       open={open}
       onOpenChange={(val) => !val && onClose()}
       title={`Enroll Sidik Jari (PIN: ${targetUser?.pin || ''})`}
-      description="Kirim perintah perekaman jari pengguna secara jarak jauh"
+      description="Kirim perintah perekaman sidik jari jarak jauh ke perangkat."
       size="md"
       footer={
         <>
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
+            className="h-8 px-3.5 text-xs font-medium text-ink bg-surface border border-control hover:bg-raised rounded-[6px] transition-colors"
           >
             Batal
           </button>
           <button
             type="submit"
             form="enroll-fp-dev-form"
-            className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 rounded-xl shadow-sm transition-all"
+            className="inline-flex items-center gap-1.5 h-8 px-3.5 text-xs font-medium text-white bg-ink hover:bg-ink/90 rounded-[6px] transition-colors"
           >
-            <Fingerprint size={14} />
+            <Fingerprint size={13} />
             Kirim Perintah Enroll
           </button>
         </>
@@ -187,25 +187,25 @@ export function EnrollFingerprintModal({ open, onClose, onSubmit, targetUser }) 
     >
       <form id="enroll-fp-dev-form" onSubmit={handleSubmit} className="space-y-4 py-1">
         <div>
-          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-            Finger ID (0-9)
+          <label className="block text-sm font-medium text-ink mb-2">
+            Indeks Jari (0–9)
           </label>
           <select
             name="fid"
             defaultValue="0"
-            className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:text-slate-100 transition-colors"
+            className="w-full h-[38px] px-3 text-sm bg-surface border border-control rounded-[6px] focus:outline-none focus:border-accent text-ink transition-colors"
           >
             {[...Array(10).keys()].map((i) => (
               <option key={i} value={i}>
-                Jari #{i} {i === 0 ? '(Jempol Kanan Default)' : ''}
+                Jari #{i} {i === 0 ? '(Jempol Kanan — Default)' : ''}
               </option>
             ))}
           </select>
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-            Jumlah Retry Perekaman
+          <label className="block text-sm font-medium text-ink mb-2">
+            Jumlah Percobaan Perekaman
           </label>
           <input
             type="number"
@@ -213,21 +213,21 @@ export function EnrollFingerprintModal({ open, onClose, onSubmit, targetUser }) 
             defaultValue="3"
             min="1"
             max="10"
-            className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:text-slate-100 transition-colors"
+            className="w-full h-[38px] px-3 text-sm bg-surface border border-control rounded-[6px] focus:outline-none focus:border-accent text-ink num transition-colors"
           />
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-            Mode Overwrite
+          <label className="block text-sm font-medium text-ink mb-2">
+            Mode Timpa (Overwrite)
           </label>
           <select
             name="overwrite"
             defaultValue="1"
-            className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:text-slate-100 transition-colors"
+            className="w-full h-[38px] px-3 text-sm bg-surface border border-control rounded-[6px] focus:outline-none focus:border-accent text-ink transition-colors"
           >
-            <option value="1">1 - Timpa jika sidik jari sudah ada</option>
-            <option value="0">0 - Jangan timpa</option>
+            <option value="1">1 — Timpa jika template jari sudah ada</option>
+            <option value="0">0 — Jangan timpa</option>
           </select>
         </div>
       </form>

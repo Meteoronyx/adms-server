@@ -7,15 +7,9 @@ import { Skeleton } from '../components/ui/Skeleton';
 import { ExportPegawaiModal } from '../features/attendance/components/ExportPegawaiModal';
 import { PegawaiDetailModal } from '../features/pegawai/components/PegawaiDetailModal';
 import {
-  Users,
-  User,
   Search,
-  Building2,
-  Fingerprint,
-  HardDrive,
   FileDown,
   Eye,
-  Filter,
   ChevronLeft,
   ChevronRight,
   X,
@@ -27,27 +21,23 @@ export default function Pegawai() {
   const isAdmin = user?.role === 'admin';
   const { addToast } = useToast();
 
-  // Table Data State
   const [pegawaiList, setPegawaiList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [limit, setLimit] = useState(25);
   const [offset, setOffset] = useState(0);
 
-  // Filters State
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [opdId, setOpdId] = useState('');
   const [opdOptions, setOpdOptions] = useState([]);
 
-  // Modals State
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [exportPegawai, setExportPegawai] = useState(null);
 
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [detailPin, setDetailPin] = useState(null);
 
-  // Debounce search input
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
@@ -56,7 +46,6 @@ export default function Pegawai() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  // Load OPD options for admin filter
   useEffect(() => {
     if (isAdmin) {
       listOpds({ all: true })
@@ -64,11 +53,10 @@ export default function Pegawai() {
           const list = res.data || res.opds || [];
           setOpdOptions(list);
         })
-        .catch(() => { });
+        .catch(() => {});
     }
   }, [isAdmin]);
 
-  // Fetch Pegawai list
   const fetchPegawai = useCallback(async () => {
     setLoading(true);
     try {
@@ -114,86 +102,61 @@ export default function Pegawai() {
   const currentPage = Math.floor(offset / limit) + 1;
 
   return (
-    <div className="space-y-6 fade-in pb-10">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-6 pb-4">
+      {/* Page Title Row */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-2.5">
-            <Users className="text-indigo-600 dark:text-indigo-400" size={26} />
-            <span>Data Pegawai</span>
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+          <h1 className="text-[22px] font-semibold text-ink leading-tight">Pegawai</h1>
+          <p className="text-sm text-muted mt-1">
             {isAdmin
-              ? 'Kelola data seluruh pegawai, unit kerja, dan cetak rekap presensi per pegawai.'
+              ? 'Daftar identitas pegawai, pemetaan unit kerja, dan rekapitulasi biometrik.'
               : user?.nama_opd
-                ? `Data pegawai di lingkungan ${user.nama_opd}.`
-                : 'Data pegawai unit kerja Anda.'}
+              ? `Daftar pegawai di lingkungan ${user.nama_opd}.`
+              : 'Daftar pegawai pada unit kerja Anda.'}
           </p>
         </div>
 
-        {/* <div className="flex items-center gap-3">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 text-xs text-slate-600 dark:text-slate-300 shadow-xs">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="font-semibold">{total.toLocaleString('id-ID')}</span>
-            <span className="text-slate-400">Total Pegawai</span>
-          </div>
-        </div> */}
+        <div className="text-xs text-muted num self-start sm:self-auto">
+          Total <span className="font-medium text-ink">{total.toLocaleString('id-ID')}</span> pegawai
+        </div>
       </div>
 
-      {/* Filter Card */}
-      <div className="bg-white dark:bg-slate-800/90 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs p-4 sm:p-5 space-y-3.5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-            <Filter size={14} className="text-indigo-500" />
-            <span>Filter Pencarian</span>
-          </div>
-
-          {hasActiveFilters && (
-            <button
-              type="button"
-              onClick={handleResetFilters}
-              className="inline-flex items-center gap-1 text-xs text-rose-600 dark:text-rose-400 hover:underline font-medium"
-            >
-              <X size={13} />
-              <span>Reset Filter</span>
-            </button>
-          )}
-        </div>
-
-        <div className="flex flex-col sm:flex-row gap-3.5 items-end">
-          {/* Search Input */}
+      {/* Filter Bar */}
+      <div className="bg-surface rounded-[8px] border border-border p-4">
+        <div className="flex flex-col sm:flex-row gap-3 items-end">
           <div className="flex-1 w-full min-w-0">
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-              Cari Nama / PIN
+            <label className="block text-xs font-medium text-muted mb-1.5">
+              Cari Nama atau PIN
             </label>
             <div className="relative">
-              <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Ketik nama atau PIN pegawai..."
-                className="w-full pl-9 pr-9 py-2 text-xs bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-700/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-slate-900 dark:text-slate-100 placeholder-slate-400 transition-colors"
+                placeholder="Ketik nama atau PIN pegawai…"
+                className="w-full h-8 pl-8 pr-8 text-xs bg-surface border border-control rounded-[6px] focus:outline-none focus:border-accent text-ink placeholder:text-faint transition-colors"
               />
               {search && (
                 <button
                   type="button"
                   onClick={() => setSearch('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-muted hover:text-ink"
+                  aria-label="Hapus pencarian"
                 >
-                  <X size={14} />
+                  <X size={13} />
                 </button>
               )}
             </div>
           </div>
 
-          {/* OPD Filter (Admin Only) */}
           {isAdmin && (
-            <div className="w-full sm:w-64 md:w-72 lg:w-80 shrink-0">
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+            <div className="w-full sm:w-64 lg:w-72 shrink-0">
+              <label className="block text-xs font-medium text-muted mb-1.5">
                 Unit Kerja (OPD)
               </label>
               <SearchableSelect
+                size="xs"
                 value={opdId}
                 onChange={(val) => {
                   setOpdId(val);
@@ -209,157 +172,151 @@ export default function Pegawai() {
             </div>
           )}
 
-          {/* Limit per page */}
           <div className="w-full sm:w-36 shrink-0">
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-              Baris / Halaman
+            <label className="block text-xs font-medium text-muted mb-1.5">
+              Baris per Halaman
             </label>
             <SearchableSelect
+              size="xs"
               value={limit}
               onChange={(val) => {
                 setLimit(Number(val));
                 setOffset(0);
               }}
               options={[
-                { value: 10, label: '10 data' },
-                { value: 25, label: '25 data' },
-                { value: 50, label: '50 data' },
-                { value: 100, label: '100 data' },
+                { value: 10, label: '10 baris' },
+                { value: 25, label: '25 baris' },
+                { value: 50, label: '50 baris' },
+                { value: 100, label: '100 baris' },
               ]}
               defaultOptionLabel=""
               searchable={false}
             />
           </div>
+
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={handleResetFilters}
+              className="h-8 px-3 text-xs font-medium text-muted hover:text-ink bg-raised hover:bg-active rounded-[6px] transition-colors shrink-0"
+            >
+              Atur Ulang
+            </button>
+          )}
         </div>
       </div>
 
       {/* Pegawai Data Table */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-xs overflow-hidden">
+      <div className="bg-surface border border-border rounded-[8px] overflow-hidden">
         {loading && pegawaiList.length === 0 ? (
-          <div className="p-6 space-y-4">
-            <Skeleton className="h-10 w-full rounded-xl" />
-            <Skeleton className="h-14 w-full rounded-xl" />
-            <Skeleton className="h-14 w-full rounded-xl" />
-            <Skeleton className="h-14 w-full rounded-xl" />
-            <Skeleton className="h-14 w-full rounded-xl" />
+          <div className="p-5 space-y-3">
+            <Skeleton className="h-9 w-full" />
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
           </div>
         ) : pegawaiList.length === 0 ? (
-          <div className="py-16 text-center space-y-3">
-            <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mx-auto text-slate-400">
-              <Users size={22} />
-            </div>
-            <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-              Tidak ada data pegawai ditemukan
+          <div className="py-12 px-4 text-center space-y-2">
+            <p className="text-sm font-medium text-ink">
+              Tidak ada data pegawai ditemukan.
             </p>
-            <p className="text-xs text-slate-400 max-w-xs mx-auto">
-              Coba sesuaikan kata kunci pencarian atau filter OPD yang Anda gunakan.
+            <p className="text-xs text-muted max-w-xs mx-auto">
+              Sesuaikan kata kunci pencarian atau filter Unit Kerja yang Anda gunakan.
             </p>
             {hasActiveFilters && (
               <button
                 type="button"
                 onClick={handleResetFilters}
-                className="mt-2 inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-xl transition-colors"
+                className="mt-2 inline-flex items-center gap-1.5 h-8 px-3 text-xs font-medium bg-surface border border-control hover:bg-raised text-ink rounded-[6px] transition-colors"
               >
-                <RefreshCw size={13} />
+                <RefreshCw size={12} />
                 <span>Bersihkan Filter</span>
               </button>
             )}
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-xs divide-y divide-slate-100 dark:divide-slate-800/80">
-              <thead className="bg-slate-50/80 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider text-[11px]">
-                <tr>
-                  <th className="px-5 py-3.5">PIN</th>
-                  <th className="px-5 py-3.5">Nama Pegawai</th>
-                  <th className="px-5 py-3.5">Unit Kerja / OPD</th>
-                  <th className="px-5 py-3.5 text-center">Biometrik & Mesin</th>
-                  <th className="px-5 py-3.5 text-right">Aksi</th>
+            <table className="min-w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="h-9 px-4 font-normal text-muted text-xs">PIN</th>
+                  <th className="h-9 px-4 font-normal text-muted text-xs">Nama Pegawai</th>
+                  <th className="h-9 px-4 font-normal text-muted text-xs">Unit Kerja (OPD)</th>
+                  <th className="h-9 px-4 font-normal text-muted text-xs text-right">Sidik Jari</th>
+                  <th className="h-9 px-4 font-normal text-muted text-xs text-right">Wajah</th>
+                  <th className="h-9 px-4 font-normal text-muted text-xs text-right">Perangkat</th>
+                  <th className="h-9 px-4 font-normal text-muted text-xs text-right">Tindakan</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+              <tbody className="divide-y divide-rule">
                 {pegawaiList.map((p) => (
                   <tr
                     key={p.pin}
-                    className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors group"
+                    className="h-12 hover:bg-raised/70 transition-colors"
                   >
-                    {/* PIN Column */}
-                    <td className="px-5 py-3.5 whitespace-nowrap">
-                      <span className="font-mono font-semibold text-slate-900 dark:text-slate-100 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-md">
-                        {p.pin}
+                    <td className="px-4 py-2.5 whitespace-nowrap font-mono text-xs font-medium text-ink"> {/* taste-skill-ignore */}
+                      {p.pin}
+                    </td>
+
+                    <td className="px-4 py-2.5">
+                      <span className="font-medium text-ink text-sm">
+                        {p.name || `Pegawai ${p.pin}`}
                       </span>
                     </td>
 
-                    {/* Nama Pegawai Column */}
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center justify-center shrink-0 group-hover:bg-indigo-50 dark:group-hover:bg-indigo-950/60 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                          <User size={16} />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="font-semibold text-slate-900 dark:text-slate-100 truncate text-xs sm:text-sm">
-                            {p.name || `Pegawai ${p.pin}`}
-                          </p>
-                        </div>
-                      </div>
-                    </td>
-
-                    {/* OPD Column */}
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
-                        <Building2 size={13} className="shrink-0 text-slate-400" />
-                        <span className="font-medium truncate max-w-xs">
-                          {p.nama_opd || <span className="text-slate-400 italic">Belum terikat OPD</span>}
+                    <td className="px-4 py-2.5">
+                      <div className="flex items-center gap-2 text-ink text-xs">
+                        <span className="truncate max-w-xs">
+                          {p.nama_opd || <span className="text-muted">Belum dipetakan</span>}
                         </span>
                         {p.kdunker && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 font-mono">
+                          <span className="text-xs px-1.5 py-0.5 rounded-[4px] bg-raised text-muted font-mono"> {/* taste-skill-ignore */}
                             {p.kdunker}
                           </span>
                         )}
                       </div>
                     </td>
 
-                    {/* Biometric & Device Column */}
-                    <td className="px-5 py-3.5 text-center whitespace-nowrap">
-                      <div className="inline-flex items-center gap-1.5">
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                          <Fingerprint size={12} className="text-slate-400" />
-                          <span>{p.total_fingerprints ?? 0} FP</span>
-                        </span>
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300">
-                          <span>{p.total_faces ?? 0} Wajah</span>
-                        </span>
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                          <HardDrive size={12} className="text-slate-400" />
-                          <span>{p.total_devices ?? 0} Mesin</span>
-                        </span>
-                      </div>
+                    <td className="px-4 py-2.5 text-right whitespace-nowrap num text-sm">
+                      <span className={p.total_fingerprints > 0 ? 'text-ink font-medium' : 'text-muted'}>
+                        {p.total_fingerprints ?? 0}
+                      </span>
+                      <span className="text-xs text-muted ml-1">jari</span>
                     </td>
 
-                    {/* Action Column */}
-                    <td className="px-5 py-3.5 text-right whitespace-nowrap">
+                    <td className="px-4 py-2.5 text-right whitespace-nowrap num text-sm">
+                      <span className={p.total_faces > 0 ? 'text-ink font-medium' : 'text-muted'}>
+                        {p.total_faces ?? 0}
+                      </span>
+                      <span className="text-xs text-muted ml-1">wajah</span>
+                    </td>
+
+                    <td className="px-4 py-2.5 text-right whitespace-nowrap num text-sm">
+                      <span className="text-ink font-medium">{p.total_devices ?? 0}</span>
+                      <span className="text-xs text-muted ml-1">unit</span>
+                    </td>
+
+                    <td className="px-4 py-2.5 text-right whitespace-nowrap">
                       <div className="flex items-center justify-end gap-1.5">
-                        {/* Row Export Button */}
                         {hasPermission('attendance:export') && (
                           <button
                             type="button"
                             onClick={() => handleOpenExport(p)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 border border-indigo-200/60 dark:border-indigo-800/60 rounded-lg transition-colors active:scale-95"
+                            className="inline-flex items-center gap-1 h-7 px-2.5 text-xs font-medium text-accent-ink bg-accent-soft hover:bg-[#d1e8ed] rounded-[6px] transition-colors"
                             title="Cetak Rekap Presensi Pegawai"
                           >
-                            <FileDown size={13} />
+                            <FileDown size={12} />
                             <span>Ekspor</span>
                           </button>
                         )}
 
-                        {/* View Detail Button */}
                         <button
                           type="button"
                           onClick={() => handleOpenDetail(p.pin)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 rounded-lg transition-colors active:scale-95"
+                          className="inline-flex items-center gap-1 h-7 px-2.5 text-xs font-medium text-ink bg-surface hover:bg-raised border border-control rounded-[6px] transition-colors"
                           title="Lihat Detail Pegawai"
                         >
-                          <Eye size={13} />
+                          <Eye size={12} />
                           <span>Detail</span>
                         </button>
                       </div>
@@ -371,15 +328,14 @@ export default function Pegawai() {
           </div>
         )}
 
-        {/* Server-Side Pagination Footer */}
         {!loading && total > limit && (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-3.5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 text-xs">
-            <div className="text-slate-500 dark:text-slate-400">
-              Menampilkan <span className="font-semibold text-slate-900 dark:text-slate-100">{offset + 1}</span> -{' '}
-              <span className="font-semibold text-slate-900 dark:text-slate-100">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-rule bg-raised/40 text-xs">
+            <div className="text-muted num">
+              Menampilkan <span className="font-medium text-ink">{offset + 1}</span>–
+              <span className="font-medium text-ink">
                 {Math.min(offset + limit, total)}
               </span>{' '}
-              dari <span className="font-semibold text-slate-900 dark:text-slate-100">{total.toLocaleString('id-ID')}</span> pegawai
+              dari <span className="font-medium text-ink">{total.toLocaleString('id-ID')}</span> pegawai
             </div>
 
             <div className="flex items-center gap-2">
@@ -387,13 +343,13 @@ export default function Pegawai() {
                 type="button"
                 onClick={() => setOffset(Math.max(0, offset - limit))}
                 disabled={offset === 0}
-                className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="inline-flex items-center justify-center w-8 h-8 rounded-[6px] border border-control bg-surface text-ink hover:bg-raised disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 title="Halaman Sebelumnya"
               >
                 <ChevronLeft size={15} />
               </button>
 
-              <span className="text-slate-500 dark:text-slate-400 px-1 font-medium">
+              <span className="text-muted px-1 num">
                 Halaman {currentPage} dari {totalPages}
               </span>
 
@@ -401,7 +357,7 @@ export default function Pegawai() {
                 type="button"
                 onClick={() => setOffset(offset + limit)}
                 disabled={offset + limit >= total}
-                className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="inline-flex items-center justify-center w-8 h-8 rounded-[6px] border border-control bg-surface text-ink hover:bg-raised disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 title="Halaman Berikutnya"
               >
                 <ChevronRight size={15} />
@@ -411,14 +367,12 @@ export default function Pegawai() {
         )}
       </div>
 
-      {/* Modal Ekspor Presensi Pegawai */}
       <ExportPegawaiModal
         open={exportModalOpen}
         onOpenChange={setExportModalOpen}
         initialPegawai={exportPegawai}
       />
 
-      {/* Modal Detail Pegawai */}
       <PegawaiDetailModal
         open={detailModalOpen}
         onOpenChange={setDetailModalOpen}

@@ -25,18 +25,18 @@ export function DataTable({
   })
 
   return (
-    <div className="space-y-4">
-      <div className="bg-white rounded-xl border border-slate-200/60 shadow-sm overflow-hidden">
+    <div className="space-y-3">
+      <div className="bg-surface rounded-[8px] border border-border overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               {table.getHeaderGroups().map((headerGroup) => (
-                <tr key={headerGroup.id} className="border-b border-slate-100">
+                <tr key={headerGroup.id} className="border-b border-border">
                   {headerGroup.headers.map((header) => {
                     return (
                       <th
                         key={header.id}
-                        className="h-11 px-5 text-left align-middle font-semibold text-slate-500 text-xs tracking-wider uppercase bg-slate-50/50"
+                        className="h-9 px-4 text-left align-middle font-normal text-muted text-xs"
                       >
                         {header.isPlaceholder
                           ? null
@@ -50,15 +50,15 @@ export function DataTable({
                 </tr>
               ))}
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-rule">
               {table.getRowModel().rows?.length ? (
-                table.getRowModel().rows.map((row, i) => (
+                table.getRowModel().rows.map((row) => (
                   <tr
                     key={row.id}
-                    className="transition-colors hover:bg-slate-50/80"
+                    className="h-12 transition-colors hover:bg-raised/70"
                   >
                     {row.getVisibleCells().map((cell) => (
-                      <td key={cell.id} className="px-5 py-3.5 align-middle text-slate-700 text-sm">
+                      <td key={cell.id} className="px-4 py-2.5 align-middle text-ink text-sm">
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </td>
                     ))}
@@ -66,11 +66,8 @@ export function DataTable({
                 ))
               ) : (
                 <tr>
-                  <td colSpan={columns.length} className="h-32 text-center text-slate-400 text-sm">
-                    <div className="flex flex-col items-center gap-1">
-                      <span className="font-medium">No results</span>
-                      <span className="text-xs">Try adjusting your search or filters</span>
-                    </div>
+                  <td colSpan={columns.length} className="h-28 text-center text-muted text-sm">
+                    Tidak ada data yang cocok dengan filter saat ini.
                   </td>
                 </tr>
               )}
@@ -78,27 +75,31 @@ export function DataTable({
           </table>
         </div>
       </div>
-      
+
       {pagination && table.getPageCount() > 1 && (
-        <div className="flex items-center justify-between px-2">
-          <div className="text-xs text-slate-400">
-            Page {table.getState().pagination.pageIndex + 1} of{" "}
+        <div className="flex items-center justify-between px-1">
+          <div className="text-xs text-muted num">
+            Halaman {table.getState().pagination.pageIndex + 1} dari{" "}
             {table.getPageCount()}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <button
-              className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              type="button"
+              className="inline-flex items-center justify-center w-8 h-8 rounded-[6px] border border-control bg-surface text-ink hover:bg-raised disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               onClick={() => table.previousPage()}
               disabled={!table.getCanPreviousPage()}
+              aria-label="Halaman sebelumnya"
             >
-              <ChevronLeft size={16} />
+              <ChevronLeft size={15} />
             </button>
             <button
-              className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              type="button"
+              className="inline-flex items-center justify-center w-8 h-8 rounded-[6px] border border-control bg-surface text-ink hover:bg-raised disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               onClick={() => table.nextPage()}
               disabled={!table.getCanNextPage()}
+              aria-label="Halaman berikutnya"
             >
-              <ChevronRight size={16} />
+              <ChevronRight size={15} />
             </button>
           </div>
         </div>

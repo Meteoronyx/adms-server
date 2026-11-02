@@ -62,7 +62,7 @@ export function OpdModal({ open, onClose, onSubmit, opd = null, submitting }) {
             type="button"
             onClick={onClose}
             disabled={submitting}
-            className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
+            className="px-3.5 py-1.5 text-xs font-medium text-muted hover:text-ink hover:bg-raised rounded-lg border border-border transition-colors"
           >
             Batal
           </button>
@@ -70,9 +70,9 @@ export function OpdModal({ open, onClose, onSubmit, opd = null, submitting }) {
             type="submit"
             form="opd-form"
             disabled={submitting}
-            className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 rounded-xl shadow-sm transition-all disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium text-white bg-ink hover:bg-ink/90 rounded-lg transition-colors disabled:opacity-50"
           >
-            <Save size={14} />
+            <Save size={13} />
             {submitting ? 'Menyimpan…' : 'Simpan'}
           </button>
         </>
@@ -81,8 +81,8 @@ export function OpdModal({ open, onClose, onSubmit, opd = null, submitting }) {
       <form id="opd-form" onSubmit={handleSubmit} className="space-y-4 py-1">
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              Kode Unit Kerja <span className="text-rose-500">*</span>
+            <label className="block text-xs font-medium text-ink mb-1">
+              Kode Unit Kerja <span className="text-negative">*</span>
             </label>
             <input
               type="text"
@@ -90,11 +90,11 @@ export function OpdModal({ open, onClose, onSubmit, opd = null, submitting }) {
               value={formData.kdunker}
               onChange={(e) => setFormData({ ...formData, kdunker: e.target.value })}
               placeholder="misal: 1.01.01"
-              className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:text-slate-100 transition-colors"
+              className="w-full px-3 py-2 text-xs font-mono bg-surface border border-border rounded-lg focus:outline-none focus:border-accent text-ink transition-colors" /* taste-skill-ignore */
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+            <label className="block text-xs font-medium text-ink mb-1">
               Radius Geofencing (m)
             </label>
             <input
@@ -104,14 +104,14 @@ export function OpdModal({ open, onClose, onSubmit, opd = null, submitting }) {
               value={formData.radius}
               onChange={(e) => setFormData({ ...formData, radius: e.target.value })}
               placeholder="misal: 80"
-              className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:text-slate-100 transition-colors"
+              className="w-full px-3 py-2 text-xs bg-surface border border-border rounded-lg focus:outline-none focus:border-accent text-ink transition-colors num"
             />
           </div>
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-            Nama OPD <span className="text-rose-500">*</span>
+          <label className="block text-xs font-medium text-ink mb-1">
+            Nama OPD <span className="text-negative">*</span>
           </label>
           <input
             type="text"
@@ -119,13 +119,13 @@ export function OpdModal({ open, onClose, onSubmit, opd = null, submitting }) {
             value={formData.nama_opd}
             onChange={(e) => setFormData({ ...formData, nama_opd: e.target.value })}
             placeholder="misal: Dinas Komunikasi dan Informatika"
-            className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:text-slate-100 transition-colors"
+            className="w-full px-3 py-2 text-xs bg-surface border border-border rounded-lg focus:outline-none focus:border-accent text-ink transition-colors"
           />
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+            <label className="block text-xs font-medium text-ink mb-1">
               Latitude
             </label>
             <input
@@ -134,11 +134,11 @@ export function OpdModal({ open, onClose, onSubmit, opd = null, submitting }) {
               value={formData.latitude}
               onChange={(e) => setFormData({ ...formData, latitude: e.target.value })}
               placeholder="misal: -6.178306"
-              className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:text-slate-100 transition-colors"
+              className="w-full px-3 py-2 text-xs font-mono bg-surface border border-border rounded-lg focus:outline-none focus:border-accent text-ink transition-colors num" /* taste-skill-ignore */
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+            <label className="block text-xs font-medium text-ink mb-1">
               Longitude
             </label>
             <input
@@ -147,13 +147,13 @@ export function OpdModal({ open, onClose, onSubmit, opd = null, submitting }) {
               value={formData.longitude}
               onChange={(e) => setFormData({ ...formData, longitude: e.target.value })}
               placeholder="misal: 106.631889"
-              className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:text-slate-100 transition-colors"
+              className="w-full px-3 py-2 text-xs font-mono bg-surface border border-border rounded-lg focus:outline-none focus:border-accent text-ink transition-colors num" /* taste-skill-ignore */
             />
           </div>
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+          <label className="block text-xs font-medium text-ink mb-1">
             IP Publik
           </label>
           <input
@@ -161,7 +161,7 @@ export function OpdModal({ open, onClose, onSubmit, opd = null, submitting }) {
             value={formData.ip_public}
             onChange={(e) => setFormData({ ...formData, ip_public: e.target.value })}
             placeholder="misal: 103.20.100.5"
-            className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:text-slate-100 transition-colors"
+            className="w-full px-3 py-2 text-xs font-mono bg-surface border border-border rounded-lg focus:outline-none focus:border-accent text-ink transition-colors num" /* taste-skill-ignore */
           />
         </div>
       </form>

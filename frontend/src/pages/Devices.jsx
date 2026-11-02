@@ -29,7 +29,6 @@ import {
   Search,
   Pencil,
   MoreHorizontal,
-  Building2,
 } from "lucide-react";
 
 export default function Devices() {
@@ -51,7 +50,6 @@ export default function Devices() {
   const canWrite = hasPermission("devices:write");
   const canCommand = hasPermission("devices:command");
 
-  // Fetch OPDs for mapping (only needed for admin)
   useEffect(() => {
     if (isSystemAdmin) {
       listOpds({ all: true })
@@ -60,7 +58,6 @@ export default function Devices() {
     }
   }, [isSystemAdmin]);
 
-  // Data diambil sekali saat halaman dibuka. Update hanya lewat tombol Refresh.
   const fetchDevices = useCallback(
     async ({ manual = false } = {}) => {
       if (manual) setRefreshing(true);
@@ -69,7 +66,7 @@ export default function Devices() {
         setDevices(data.devices || []);
         setLastFetchedAt(new Date());
       } catch (err) {
-        addToast(err.message || "Failed to load devices", "error");
+        addToast(err.message || "Gagal memuat perangkat", "error");
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -89,7 +86,7 @@ export default function Devices() {
         addToast(successMsg);
         await fetchDevices();
       } catch (err) {
-        addToast(err.message || "Action failed", "error");
+        addToast(err.message || "Tindakan gagal", "error");
       }
     },
     [addToast, fetchDevices],
@@ -129,8 +126,6 @@ export default function Devices() {
     [editModal, isSystemAdmin, addToast, fetchDevices],
   );
 
-  // Urutan selalu SN ascending (numeric-aware) supaya baris tidak pernah
-  // bergeser hanya karena ada perangkat yang baru saja heartbeat.
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
     const list = query
@@ -157,38 +152,38 @@ export default function Devices() {
     () => [
       {
         accessorKey: "sn",
-        header: "SN",
+        header: "Serial Number",
         cell: ({ row }) => (
           <Link
             to={`/devices/${row.original.sn}`}
-            className="font-mono text-sm text-slate-700 dark:text-slate-200 hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline font-medium"
+            className="font-mono text-xs text-accent hover:underline font-medium" // taste-skill-ignore
           >
             {row.original.sn}
           </Link>
         ),
       },
       {
-        accessorKey: "name",
-        header: "Name",
-        cell: ({ row }) => (
-          <span className="text-slate-600 dark:text-slate-400">
-            {row.original.name || "-"}
-          </span>
-        ),
-      },
-      {
         accessorKey: "device_name",
-        header: "Device Name",
+        header: "Nama / Lokasi Perangkat",
         cell: ({ row }) => (
           <div className="flex items-center gap-1.5 group">
-            <span className="font-medium text-slate-700 dark:text-slate-300">
-              {row.original.device_name || (
-                <span className="text-slate-400 italic">Belum diisi</span>
-              )}
-            </span>
+            <div>
+              <span className="font-medium text-ink block">
+                {row.original.device_name || (
+                  <span className="text-muted">Belum diberi nama</span>
+                )}
+              </span>
+              {row.original.name &&
+                row.original.name !== row.original.device_name && (
+                  <span className="text-xs text-muted block">
+                    {row.original.name}
+                  </span>
+                )}
+            </div>
             {canWrite && (
               <button
-                title="Edit nama dan unit kerja perangkat"
+                type="button"
+                title="Ubah nama dan unit kerja perangkat"
                 onClick={() =>
                   setEditModal({
                     open: true,
@@ -197,7 +192,7 @@ export default function Devices() {
                     currentOpdId: row.original.opd_id || "",
                   })
                 }
-                className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+                className="opacity-0 group-hover:opacity-100 p-1 rounded-[4px] text-muted hover:text-ink hover:bg-raised transition-opacity"
               >
                 <Pencil size={12} />
               </button>
@@ -213,21 +208,23 @@ export default function Devices() {
           const kdunker = row.original.kdunker;
           if (!opdName) {
             return (
-              <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/60">
-                Belum Dipetakan
+              <span className="inline-flex items-center px-2 h-5 rounded-[4px] text-xs font-medium bg-warning-bg text-warning-ink whitespace-nowrap">
+                Belum dipetakan
               </span>
             );
           }
           return (
             <div className="flex flex-col max-w-xs">
               <span
-                className="text-xs font-medium text-slate-800 dark:text-slate-200 truncate"
+                className="text-xs font-medium text-ink truncate"
                 title={opdName}
               >
                 {opdName}
               </span>
               {kdunker && (
-                <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500">
+                <span className="text-xs font-mono text-muted">
+                  {" "}
+                  {/* taste-skill-ignore */}
                   {kdunker}
                 </span>
               )}
@@ -237,21 +234,23 @@ export default function Devices() {
       },
       {
         accessorKey: "ip_address",
-        header: "IP Address",
+        header: "Alamat IP",
         cell: ({ row }) => (
-          <span className="font-mono text-xs text-slate-400">
-            {row.original.ip_address || "-"}
+          <span className="font-mono text-xs text-muted num">
+            {" "}
+            {/* taste-skill-ignore */}
+            {row.original.ip_address || "—"}
           </span>
         ),
       },
       {
         accessorKey: "last_activity",
-        header: "Last Activity",
+        header: "Aktivitas Terakhir",
         cell: ({ row }) => (
-          <span className="text-slate-500 text-xs">
+          <span className="text-muted text-xs num">
             {row.original.last_activity
               ? new Date(row.original.last_activity).toLocaleString("id-ID")
-              : "-"}
+              : "—"}
           </span>
         ),
       },
@@ -262,30 +261,30 @@ export default function Devices() {
       },
       {
         accessorKey: "verified",
-        header: "Verified",
+        header: "Verifikasi",
         cell: ({ row }) =>
           row.original.verified ? (
-            <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
-              <CheckCircle2 size={14} strokeWidth={2} />
-              <span className="text-xs font-medium">Yes</span>
+            <div className="flex items-center gap-1.5 text-positive">
+              <CheckCircle2 size={14} strokeWidth={1.8} />
+              <span className="text-xs font-medium">Terverifikasi</span>
             </div>
           ) : (
-            <div className="flex items-center gap-1.5 text-slate-400">
+            <div className="flex items-center gap-1.5 text-muted">
               <XCircle size={14} strokeWidth={1.5} />
-              <span className="text-xs font-medium">No</span>
+              <span className="text-xs font-normal">Belum</span>
             </div>
           ),
       },
       {
         id: "actions",
-        header: "Actions",
+        header: "",
         cell: ({ row }) => {
           const d = row.original;
 
           const actionItems = [];
           if (canWrite) {
             actionItems.push({
-              label: "Edit Device & OPD",
+              label: "Ubah Nama & OPD",
               icon: Pencil,
               onClick: () =>
                 setEditModal({
@@ -300,13 +299,17 @@ export default function Devices() {
             actionItems.push(
               d.verified
                 ? {
-                    label: "Unverify Device",
+                    label: "Batalkan Verifikasi",
                     icon: XCircle,
                     onClick: () =>
-                      doAction(unverifyDevice, d.sn, `Unverified ${d.sn}`),
+                      doAction(
+                        unverifyDevice,
+                        d.sn,
+                        `Verifikasi ${d.sn} dibatalkan`,
+                      ),
                   }
                 : {
-                    label: "Verify Device",
+                    label: "Verifikasi Perangkat",
                     icon: CheckCircle2,
                     onClick: () => {
                       if (
@@ -326,7 +329,11 @@ export default function Devices() {
                         });
                         return;
                       }
-                      doAction(verifyDevice, d.sn, `Verified ${d.sn}`);
+                      doAction(
+                        verifyDevice,
+                        d.sn,
+                        `Perangkat ${d.sn} terverifikasi`,
+                      );
                     },
                   },
             );
@@ -334,29 +341,45 @@ export default function Devices() {
           if (canCommand) {
             actionItems.push(
               {
-                label: "Reupload Attendance",
+                label: "Tarik Ulang Log Presensi",
                 icon: RefreshCw,
                 onClick: () =>
-                  doAction(reuploadDevice, d.sn, `Reupload queued for ${d.sn}`),
+                  doAction(
+                    reuploadDevice,
+                    d.sn,
+                    `Perintah reupload dikirim ke ${d.sn}`,
+                  ),
               },
               {
-                label: "Request Device Info",
+                label: "Minta Info Perangkat",
                 icon: Info,
                 onClick: () =>
-                  doAction(infoDevice, d.sn, `Info queued for ${d.sn}`),
+                  doAction(
+                    infoDevice,
+                    d.sn,
+                    `Perintah info dikirim ke ${d.sn}`,
+                  ),
               },
               {
-                label: "Reboot Device",
+                label: "Mulai Ulang (Reboot)",
                 icon: Power,
                 onClick: () =>
-                  doAction(rebootDevice, d.sn, `Reboot queued for ${d.sn}`),
+                  doAction(
+                    rebootDevice,
+                    d.sn,
+                    `Perintah reboot dikirim ke ${d.sn}`,
+                  ),
               },
               {
-                label: "Clear Log",
+                label: "Bersihkan Log Mesin",
                 icon: Trash2,
                 variant: "danger",
                 onClick: () =>
-                  doAction(clearLog, d.sn, `Clear log queued for ${d.sn}`),
+                  doAction(
+                    clearLog,
+                    d.sn,
+                    `Perintah hapus log dikirim ke ${d.sn}`,
+                  ),
               },
             );
           }
@@ -364,19 +387,21 @@ export default function Devices() {
           if (actionItems.length === 0) return null;
 
           return (
-            <DropdownMenu
-              trigger={
-                <button
-                  type="button"
-                  className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                  title="Aksi Perangkat"
-                >
-                  <MoreHorizontal size={16} />
-                </button>
-              }
-              items={actionItems}
-              align="end"
-            />
+            <div className="flex justify-end">
+              <DropdownMenu
+                trigger={
+                  <button
+                    type="button"
+                    className="p-1.5 rounded-[6px] text-muted hover:text-ink hover:bg-raised transition-colors"
+                    aria-label="Tindakan perangkat"
+                  >
+                    <MoreHorizontal size={16} />
+                  </button>
+                }
+                items={actionItems}
+                align="end"
+              />
+            </div>
           );
         },
       },
@@ -385,55 +410,54 @@ export default function Devices() {
   );
 
   return (
-    <div className="p-8 space-y-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-6 pb-4">
+      {/* Page Title Row */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-            Perangkat
+          <h1 className="text-[22px] font-semibold text-ink leading-tight">
+            Manajemen Perangkat
           </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Pantau dan kelola seluruh mesin absensi yang terdaftar.
-          </p>
+          {/* <p className="text-sm text-muted mt-1">
+            Pantau status koneksi, pemetaan OPD, dan perintah jarak jauh mesin
+            presensi ADMS.
+          </p>*/}
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 self-start sm:self-auto">
           {lastFetchedAt && (
-            <span className="text-xs text-slate-400 dark:text-slate-500 hidden sm:inline">
-              Data: {lastFetchedAt.toLocaleTimeString("id-ID")}
+            <span className="text-xs text-muted num hidden sm:inline">
+              Diperbarui {lastFetchedAt.toLocaleTimeString("id-ID")}
             </span>
           )}
           <button
+            type="button"
             onClick={() => fetchDevices({ manual: true })}
             disabled={refreshing}
-            className="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-medium rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-colors disabled:opacity-50 shadow-sm"
-            title="Muat ulang daftar perangkat"
+            className="inline-flex items-center gap-1.5 h-8 px-3 text-xs font-medium rounded-[6px] border border-control bg-surface text-ink hover:bg-raised transition-colors disabled:opacity-50"
           >
-            <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
-            <span>Refresh</span>
+            <RefreshCw size={13} className={refreshing ? "animate-spin" : ""} />
+            <span>Perbarui</span>
           </button>
         </div>
       </div>
 
       {/* Filter / Search Bar */}
-      <div className="flex items-center justify-between gap-4">
-        <div className="relative flex-1 max-w-md">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="relative w-full sm:w-[316px]">
           <Search
-            size={16}
-            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+            size={14}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none"
           />
           <input
             type="text"
-            placeholder="Cari SN, nama mesin, unit kerja OPD, atau IP..."
+            placeholder="Cari SN, nama lokasi, OPD, atau IP…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 shadow-sm transition-colors"
+            className="w-full h-8 pl-8 pr-3 text-xs rounded-[6px] border border-control bg-surface text-ink placeholder:text-faint focus:outline-none focus:border-accent transition-colors"
           />
         </div>
-        <div className="text-xs text-slate-400 dark:text-slate-500">
-          Total:{" "}
-          <span className="font-semibold text-slate-700 dark:text-slate-300">
-            {filtered.length}
-          </span>{" "}
+        <div className="text-xs text-muted num">
+          Menampilkan{" "}
+          <span className="font-medium text-ink">{filtered.length}</span>{" "}
           perangkat
         </div>
       </div>
@@ -441,7 +465,7 @@ export default function Devices() {
       {/* Table */}
       {loading ? (
         <div className="space-y-3">
-          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-9 w-full" />
           <Skeleton className="h-64 w-full" />
         </div>
       ) : (
@@ -465,8 +489,8 @@ export default function Devices() {
               currentOpdId: "",
             });
         }}
-        title="Edit Informasi Perangkat"
-        description={`SN: ${editModal.sn}`}
+        title="Ubah Informasi Perangkat"
+        description={`Serial Number: ${editModal.sn}`}
         size="md"
         footer={
           <>
@@ -480,16 +504,16 @@ export default function Devices() {
                   currentOpdId: "",
                 })
               }
-              className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+              className="h-8 px-3.5 text-xs font-medium text-ink bg-surface border border-control hover:bg-raised rounded-[6px] transition-colors"
             >
               Batal
             </button>
             <button
               form="edit-device-form"
               type="submit"
-              className="px-4 py-2 text-sm font-medium bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-white rounded-lg transition-colors"
+              className="h-8 px-3.5 text-xs font-medium bg-ink text-white hover:bg-ink/90 rounded-[6px] transition-colors"
             >
-              Simpan
+              Simpan Perubahan
             </button>
           </>
         }
@@ -500,8 +524,8 @@ export default function Devices() {
           className="space-y-4 py-1"
         >
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-              Nama / Lokasi Perangkat <span className="text-rose-500">*</span>
+            <label className="block text-sm font-medium text-ink mb-2">
+              Nama / Lokasi Perangkat <span className="text-negative">*</span>
             </label>
             <input
               type="text"
@@ -510,14 +534,14 @@ export default function Devices() {
               placeholder="Contoh: Kantor Kecamatan Kresek"
               autoFocus
               required
-              className="w-full text-sm rounded-xl border border-slate-200 dark:border-slate-800 px-3 py-2 bg-slate-50 dark:bg-slate-800/80 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 placeholder:text-slate-400 transition-colors"
+              className="w-full h-[38px] text-sm rounded-[6px] border border-control px-3 bg-surface text-ink focus:outline-none focus:border-accent placeholder:text-faint transition-colors"
             />
           </div>
 
           {isSystemAdmin && (
             <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                Unit Kerja (OPD) <span className="text-rose-500">*</span>
+              <label className="block text-sm font-medium text-ink mb-2">
+                Unit Kerja (OPD) <span className="text-negative">*</span>
               </label>
               <SearchableSelect
                 value={editModal.currentOpdId || ""}
@@ -526,13 +550,14 @@ export default function Devices() {
                 }
                 options={opds.map((o) => ({
                   value: o.id,
-                  label: `${o.nama_opd} (${o.kdunker || "-"})`,
+                  label: `${o.nama_opd} (${o.kdunker || "—"})`,
                 }))}
-                placeholder="-- Cari dan Pilih Unit Kerja (OPD) --"
+                placeholder="Pilih Unit Kerja (OPD)…"
+                defaultOptionLabel=""
               />
-              <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
-                Perangkat hanya akan muncul pada akun pengguna yang terdaftar di
-                Unit Kerja ini.
+              <p className="text-xs text-muted mt-1.5">
+                Perangkat ini akan terhubung dengan daftar pegawai pada Unit
+                Kerja yang dipilih.
               </p>
             </div>
           )}

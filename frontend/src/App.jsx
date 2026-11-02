@@ -2,7 +2,6 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { ToastProvider } from './hooks/useToast';
 import { SocketProvider } from './hooks/useSocket';
-import { ThemeProvider } from './hooks/useTheme';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -20,10 +19,10 @@ function PrivateRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="flex items-center gap-3 text-slate-500">
-          <div className="animate-spin rounded-full h-5 w-5 border-2 border-slate-300 border-t-slate-900" />
-          <span className="text-sm">Checking session…</span>
+      <div className="min-h-screen flex items-center justify-center bg-ground text-ink">
+        <div className="flex items-center gap-2.5 text-muted">
+          <div className="animate-spin rounded-full h-4 w-4 border-2 border-control border-t-ink" />
+          <span className="text-sm">Memeriksa sesi…</span>
         </div>
       </div>
     );
@@ -155,15 +154,13 @@ function AppRoutes() {
 export default function App() {
   return (
     <BrowserRouter>
-      <ThemeProvider>
-        <AuthProvider>
-          <SocketProvider>
-            <ToastProvider>
-              <AppRoutes />
-            </ToastProvider>
-          </SocketProvider>
-        </AuthProvider>
-      </ThemeProvider>
+      <AuthProvider>
+        <SocketProvider>
+          <ToastProvider>
+            <AppRoutes />
+          </ToastProvider>
+        </SocketProvider>
+      </AuthProvider>
     </BrowserRouter>
   );
 }

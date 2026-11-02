@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getAttendanceLogs, getAttendancePhotoUrl } from '../lib/api';
+import { getAttendanceLogs, getAttendancePhotoUrl, listDevices } from '../lib/api';
 import { DataTable } from '../components/ui/DataTable';
 import { Skeleton } from '../components/ui/Skeleton';
 import { SearchableSelect } from '../components/ui/SearchableSelect';
@@ -8,13 +8,13 @@ import { format } from 'date-fns';
 import { useToast } from '../hooks/useToast';
 import { useSocket } from '../hooks/useSocket';
 import { useAuth } from '../hooks/useAuth';
-import { Calendar, Filter, ChevronLeft, ChevronRight, ClipboardList, Camera } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Camera } from 'lucide-react';
 
 export default function AttendanceLogs() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
-  const [limit, setLimit] = useState(50);
+  const [limit] = useState(50);
   const [offset, setOffset] = useState(0);
   const [selectedPhoto, setSelectedPhoto] = useState(null);
   const { addToast } = useToast();
@@ -25,13 +25,16 @@ export default function AttendanceLogs() {
   const columns = [
     {
       accessorKey: 'photo_id',
-      header: 'Snapshot',
+      header: 'Foto',
       cell: ({ row }) => {
         const photoId = row.original.photo_id;
         if (!photoId) {
           return (
-            <div className="w-9 h-9 rounded-lg bg-slate-100 border border-slate-200/70 flex items-center justify-center text-slate-300" title="Tidak ada foto snapshot">
-              <Camera size={14} />
+            <div
+              className="w-8 h-8 rounded-[4px] bg-raised border border-border flex items-center justify-center text-muted"
+              title="Tidak ada tangkapan foto"
+            >
+              <Camera size={13} />
             </div>
           );
         }
@@ -39,84 +42,106 @@ export default function AttendanceLogs() {
           <button
             type="button"
             onClick={() => setSelectedPhoto(row.original)}
-            className="group relative w-9 h-9 rounded-lg overflow-hidden border border-slate-200 hover:border-indigo-500 transition-all shadow-2xs"
-            title="Klik untuk memperbesar foto absensi"
+            className="group relative w-8 h-8 rounded-[4px] overflow-hidden border border-border hover:border-accent transition-colors"
+            title="Lihat tangkapan foto absensi"
           >
             <img
               src={getAttendancePhotoUrl(photoId)}
               alt={row.original.user_pin}
-              className="w-full h-full object-cover group-hover:scale-110 transition-transform"
+              className="w-full h-full object-cover"
             />
           </button>
         );
-      }
+      },
     },
     {
       accessorKey: 'pegawai_name',
-      header: 'Pegawai Name',
-      cell: ({ row }) => row.original.pegawai_name || <span className="text-slate-400">-</span>
+      header: 'Nama Pegawai',
+      cell: ({ row }) => (
+        <span className="font-medium text-ink">
+          {row.original.pegawai_name || <span className="text-muted font-normal">—</span>}
+        </span>
+      ),
     },
     {
       accessorKey: 'user_pin',
       header: 'PIN',
-      cell: ({ row }) => <span className="font-mono text-slate-700">{row.original.user_pin}</span>
+      cell: ({ row }) => (
+        <span className="font-mono text-xs text-ink"> {/* taste-skill-ignore */}
+          {row.original.user_pin}
+        </span>
+      ),
     },
     {
       accessorKey: 'check_time',
-      header: 'Check Time',
+      header: 'Waktu Presensi',
       cell: ({ row }) => {
         try {
-          return <span className="text-slate-700">{format(new Date(row.original.check_time), 'dd MMM yyyy HH:mm:ss')}</span>;
+          return (
+            <span className="text-ink text-xs num">
+              {format(new Date(row.original.check_time), 'dd MMM yyyy · HH:mm:ss')}
+            </span>
+          );
         } catch {
-          return <span className="text-slate-400">{row.original.check_time}</span>;
+          return <span className="text-muted text-xs num">{row.original.check_time}</span>;
         }
-      }
+      },
     },
     {
       accessorKey: 'nama_opd',
-      header: 'OPD',
-      cell: ({ row }) => row.original.nama_opd || <span className="text-slate-400">-</span>
+      header: 'Unit Kerja (OPD)',
+      cell: ({ row }) => (
+        <span className="text-xs text-ink">
+          {row.original.nama_opd || <span className="text-muted">—</span>}
+        </span>
+      ),
     },
     {
       accessorKey: 'device_name',
-      header: 'Lokasi',
-      cell: ({ row }) => row.original.device_name || row.original.device_sn
+      header: 'Lokasi Perangkat',
+      cell: ({ row }) => (
+        <span className="text-xs text-ink">
+          {row.original.device_name || row.original.device_sn}
+        </span>
+      ),
     },
     {
       accessorKey: 'verify_mode',
-      header: 'Verify Mode',
+      header: 'Metode',
       cell: ({ row }) => (
-        <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-md bg-slate-100 text-slate-600">
-          {row.original.verify_mode || '-'}
+        <span className="inline-flex items-center px-2 h-5 text-xs font-medium rounded-[4px] bg-raised text-ink">
+          {row.original.verify_mode || '—'}
         </span>
-      )
+      ),
     },
     {
       accessorKey: 'received_at',
-      header: 'Received At',
+      header: 'Diterima Server',
       cell: ({ row }) => {
         try {
-          return row.original.received_at
-            ? <span className="text-slate-500 text-xs">{format(new Date(row.original.received_at), 'dd MMM yyyy HH:mm:ss')}</span>
-            : <span className="text-slate-400">-</span>;
+          return row.original.received_at ? (
+            <span className="text-muted text-xs num">
+              {format(new Date(row.original.received_at), 'dd MMM yyyy · HH:mm:ss')}
+            </span>
+          ) : (
+            <span className="text-muted">—</span>
+          );
         } catch {
-          return <span className="text-slate-400">-</span>;
+          return <span className="text-muted">—</span>;
         }
-      }
-    }
+      },
+    },
   ];
 
-  // Filters State
   const [filters, setFilters] = useState({
     year: new Date().getFullYear().toString(),
     month: (new Date().getMonth() + 1).toString().padStart(2, '0'),
     startDate: '',
     endDate: '',
     search: '',
-    sn: '' // device sn
+    sn: '',
   });
 
-  // Applied Filters State (used for querying and background updates)
   const [appliedFilters, setAppliedFilters] = useState(filters);
 
   const fetchLogs = useCallback(async () => {
@@ -135,10 +160,10 @@ export default function AttendanceLogs() {
       }
 
       const result = await getAttendanceLogs(params);
-      setLogs(result.data);
-      setTotal(result.total);
+      setLogs(result.data || []);
+      setTotal(result.total || 0);
     } catch (err) {
-      addToast(err.message || 'Failed to fetch attendance logs', 'error');
+      addToast(err.message || 'Gagal memuat log presensi', 'error');
     } finally {
       setLoading(false);
     }
@@ -164,14 +189,14 @@ export default function AttendanceLogs() {
   const [devices, setDevices] = useState([]);
 
   useEffect(() => {
-    import('../lib/api').then(({ listDevices }) => {
-      listDevices().then(res => setDevices(res.devices || [])).catch(() => { });
-    });
+    listDevices()
+      .then((res) => setDevices(res.devices || []))
+      .catch(() => {});
   }, []);
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
-    setFilters(prev => ({ ...prev, [name]: value }));
+    setFilters((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleApplyFilters = () => {
@@ -180,151 +205,168 @@ export default function AttendanceLogs() {
   };
 
   return (
-    <div className="space-y-6 fade-in pb-8">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-6 pb-4">
+      {/* Page Title Row */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Attendance Logs</h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <h1 className="text-[22px] font-semibold text-ink leading-tight">Log Absen</h1>
+          <p className="text-sm text-muted mt-1">
             {isAdmin
-              ? 'Log absensi dari seluruh perangkat'
+              ? 'Riwayat rekaman kehadiran pegawai secara langsung dari seluruh mesin ADMS.'
               : user?.nama_opd
-                ? `Log absensi ${user.nama_opd}`
-                : 'Log absensi OPD Anda'}
+              ? `Riwayat log absensi ${user.nama_opd}.`
+              : 'Riwayat log absensi unit kerja Anda.'}
           </p>
         </div>
-        <div className="flex items-center gap-2 text-xs text-slate-400">
-          <ClipboardList size={14} />
-          <span>{total.toLocaleString('id-ID')} total entries</span>
+        <div className="text-xs text-muted num self-start sm:self-auto">
+          Total <span className="font-medium text-ink">{total.toLocaleString('id-ID')}</span> rekaman
         </div>
       </div>
 
-      {/* Filters Card */}
-      <div className="bg-white rounded-xl border border-slate-200/60 shadow-sm p-5 space-y-4">
-        <div className="flex items-center gap-2">
-          <Filter size={14} className="text-slate-400" />
-          <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Filters</h2>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Filters Panel */}
+      <div className="bg-surface rounded-[8px] border border-border p-4 space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
           <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1.5">Search Name / PIN</label>
+            <label className="block text-xs font-medium text-muted mb-1.5">
+              Nama atau PIN
+            </label>
             <input
               type="text"
               name="search"
               value={filters.search}
               onChange={handleFilterChange}
-              placeholder="Search..."
-              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 transition-shadow placeholder:text-slate-400"
+              placeholder="Cari nama atau PIN…"
+              className="w-full h-8 px-3 bg-surface border border-control rounded-[6px] text-xs text-ink focus:outline-none focus:border-accent placeholder:text-faint transition-colors"
             />
           </div>
+
           <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1.5">Lokasi</label>
+            <label className="block text-xs font-medium text-muted mb-1.5">
+              Lokasi Perangkat
+            </label>
             <SearchableSelect
+              size="xs"
               value={filters.sn}
               onChange={(val) => handleFilterChange({ target: { name: 'sn', value: val } })}
-              options={devices.map(d => ({
+              options={devices.map((d) => ({
                 value: d.sn,
-                label: d.device_name || d.sn
+                label: d.device_name || d.sn,
               }))}
-              placeholder="All Devices"
-              defaultOptionLabel="All Devices"
+              placeholder="Semua Perangkat"
+              defaultOptionLabel="Semua Perangkat"
             />
           </div>
+
           <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1.5">Periode</label>
+            <label className="block text-xs font-medium text-muted mb-1.5">
+              Periode Bulan & Tahun
+            </label>
             <div className="flex gap-2">
               <select
                 name="month"
                 value={filters.month}
                 onChange={handleFilterChange}
-                disabled={!!(filters.startDate && filters.endDate)}
-                className="w-1/2 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 transition-shadow disabled:opacity-50 disabled:bg-slate-50"
+                disabled={Boolean(filters.startDate && filters.endDate)}
+                className="w-1/2 h-8 px-2.5 bg-surface border border-control rounded-[6px] text-xs text-ink focus:outline-none focus:border-accent disabled:opacity-50"
               >
-                <option value="">All</option>
+                <option value="">Semua</option>
                 {Array.from({ length: 12 }, (_, i) => {
                   const m = (i + 1).toString().padStart(2, '0');
-                  return <option key={m} value={m}>{format(new Date(2000, i, 1), 'MMMM')}</option>;
+                  return (
+                    <option key={m} value={m}>
+                      {format(new Date(2000, i, 1), 'MMMM')}
+                    </option>
+                  );
                 })}
               </select>
               <select
                 name="year"
                 value={filters.year}
                 onChange={handleFilterChange}
-                disabled={!!(filters.startDate && filters.endDate)}
-                className="w-1/2 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 transition-shadow disabled:opacity-50 disabled:bg-slate-50"
+                disabled={Boolean(filters.startDate && filters.endDate)}
+                className="w-1/2 h-8 px-2.5 bg-surface border border-control rounded-[6px] text-xs text-ink num focus:outline-none focus:border-accent disabled:opacity-50"
               >
-                <option value="">All</option>
+                <option value="">Semua</option>
                 {Array.from({ length: 5 }, (_, i) => {
                   const y = new Date().getFullYear() - i;
-                  return <option key={y} value={y}>{y}</option>;
+                  return (
+                    <option key={y} value={y}>
+                      {y}
+                    </option>
+                  );
                 })}
               </select>
             </div>
           </div>
+
           <div className="lg:col-span-2">
-            <label className="block text-xs font-medium text-slate-500 mb-1.5">Date Range (Overrides Periode)</label>
+            <label className="block text-xs font-medium text-muted mb-1.5">
+              Rentang Tanggal Spesifik
+            </label>
             <div className="flex gap-2 items-center">
               <input
                 type="date"
                 name="startDate"
                 value={filters.startDate}
                 onChange={handleFilterChange}
-                className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 transition-shadow"
+                className="flex-1 h-8 px-2.5 bg-surface border border-control rounded-[6px] text-xs text-ink num focus:outline-none focus:border-accent"
               />
-              <span className="text-slate-400 text-xs whitespace-nowrap">to</span>
+              <span className="text-muted text-xs">s/d</span>
               <input
                 type="date"
                 name="endDate"
                 value={filters.endDate}
                 onChange={handleFilterChange}
-                className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 transition-shadow"
+                className="flex-1 h-8 px-2.5 bg-surface border border-control rounded-[6px] text-xs text-ink num focus:outline-none focus:border-accent"
               />
+              <button
+                type="button"
+                onClick={handleApplyFilters}
+                className="h-8 px-3.5 bg-ink hover:bg-ink/90 text-white text-xs font-medium rounded-[6px] transition-colors shrink-0"
+              >
+                Terapkan
+              </button>
             </div>
           </div>
-        </div>
-        <div className="flex justify-end items-center gap-3">
-          <button
-            onClick={handleApplyFilters}
-            className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-sm font-medium rounded-lg transition-colors active:scale-[0.98]"
-          >
-            Apply Filters
-          </button>
         </div>
       </div>
 
       {/* Data Table */}
       {loading && logs.length === 0 ? (
-        <div className="space-y-4">
-          <Skeleton className="h-10 w-full rounded-lg" />
-          <Skeleton className="h-[400px] w-full rounded-lg" />
+        <div className="space-y-3">
+          <Skeleton className="h-9 w-full" />
+          <Skeleton className="h-[360px] w-full" />
         </div>
       ) : (
         <DataTable columns={columns} data={logs} pagination={false} />
       )}
 
-      {/* Manual Pagination Controls for Server-Side Pagination */}
+      {/* Server-Side Pagination */}
       {!loading && total > limit && (
-        <div className="flex items-center justify-between">
-          <div className="text-xs text-slate-500">
-            Showing {offset + 1} to {Math.min(offset + limit, total)} of {total.toLocaleString('id-ID')} entries
+        <div className="flex items-center justify-between px-1">
+          <div className="text-xs text-muted num">
+            Menampilkan {offset + 1}–{Math.min(offset + limit, total)} dari{' '}
+            {total.toLocaleString('id-ID')} rekaman
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <button
+              type="button"
               onClick={() => setOffset(Math.max(0, offset - limit))}
               disabled={offset === 0}
-              className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="inline-flex items-center justify-center w-8 h-8 rounded-[6px] border border-control bg-surface text-ink hover:bg-raised disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
-              <ChevronLeft size={16} />
+              <ChevronLeft size={15} />
             </button>
-            <span className="text-xs text-slate-400 px-1">
-              Page {Math.floor(offset / limit) + 1} of {Math.ceil(total / limit)}
+            <span className="text-xs text-muted px-1.5 num">
+              Halaman {Math.floor(offset / limit) + 1} dari {Math.ceil(total / limit)}
             </span>
             <button
+              type="button"
               onClick={() => setOffset(offset + limit)}
               disabled={offset + limit >= total}
-              className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="inline-flex items-center justify-center w-8 h-8 rounded-[6px] border border-control bg-surface text-ink hover:bg-raised disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
-              <ChevronRight size={16} />
+              <ChevronRight size={15} />
             </button>
           </div>
         </div>

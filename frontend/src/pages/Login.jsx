@@ -2,9 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
-import { useTheme } from '../hooks/useTheme';
 import { login as apiLogin } from '../lib/api';
-import { Moon, Sun } from 'lucide-react';
 
 export default function Login() {
   const [username, setUsername] = useState('');
@@ -12,7 +10,6 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const { addToast } = useToast();
-  const { dark, toggle } = useTheme();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -21,68 +18,68 @@ export default function Login() {
     try {
       const res = await apiLogin(username, password);
       login(res?.user);
-      addToast('Login successful');
+      addToast('Berhasil masuk');
       navigate('/');
     } catch (err) {
-      addToast(err.message || 'Login failed', 'error');
+      addToast(err.message || 'Gagal masuk', 'error');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
-      {/* Subtle background decoration */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-accent-500/5 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-accent-500/5 rounded-full blur-3xl" />
-      </div>
-
-        <div className="w-full max-w-sm scale-in">
-          <div className="text-center mb-8 relative">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">DBSpot</h1>
-            <p className="text-sm text-slate-500 mt-1.5">Diskominfo Kabupaten Tangerang 2026</p>
-            <button
-              onClick={toggle}
-              className="absolute -right-2 top-0 p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
-              title={dark ? 'Light Mode' : 'Dark Mode'}
-            >
-              {dark ? <Sun size={16} /> : <Moon size={16} />}
-            </button>
+    <div className="min-h-screen flex items-center justify-center px-4 bg-ground text-ink">
+      <div className="w-full max-w-[380px] scale-in">
+        <div className="mb-6 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-[6px] bg-accent text-white flex items-center justify-center p-1.5 shrink-0">
+            <img src="/favicon.svg" alt="DBSpot" className="w-full h-full object-contain filter invert" />
           </div>
+          <div>
+            <h1 className="text-[22px] font-semibold text-ink leading-tight">DBSpot</h1>
+            <p className="text-xs text-muted mt-0.5">Konsol Biometrik & Perangkat — Diskominfo Kab. Tangerang</p>
+          </div>
+        </div>
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-slate-200/60 p-7 shadow-sm">
-          <div className="space-y-5">
+        <form onSubmit={handleSubmit} className="bg-surface rounded-[8px] border border-border p-6">
+          <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Username</label>
+              <label htmlFor="login-username" className="block text-sm font-medium text-ink mb-2">
+                Username
+              </label>
               <input
+                id="login-username"
                 type="text"
                 value={username}
                 onChange={e => setUsername(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 transition-shadow placeholder:text-slate-400"
-                placeholder="username"
+                className="w-full h-[38px] rounded-[6px] border border-control px-3 text-sm bg-surface text-ink focus:outline-none focus:border-accent placeholder:text-faint transition-colors"
+                placeholder="Masukkan username"
                 required
                 autoFocus
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Password</label>
+              <label htmlFor="login-password" className="block text-sm font-medium text-ink mb-2">
+                Password
+              </label>
               <input
+                id="login-password"
                 type="password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 transition-shadow placeholder:text-slate-400"
-                placeholder="••••••••"
+                className="w-full h-[38px] rounded-[6px] border border-control px-3 text-sm bg-surface text-ink focus:outline-none focus:border-accent placeholder:text-faint transition-colors"
+                placeholder="Masukkan password"
                 required
               />
             </div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
-            >
-              {loading ? 'Signing in...' : 'Sign In'}
-            </button>
+            <div className="pt-1">
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full h-[38px] rounded-[6px] bg-ink px-4 text-sm font-medium text-white hover:bg-ink/90 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed transition-colors active:translate-y-[0.5px]"
+              >
+                {loading ? 'Memproses…' : 'Masuk ke Konsol'}
+              </button>
+            </div>
           </div>
         </form>
       </div>

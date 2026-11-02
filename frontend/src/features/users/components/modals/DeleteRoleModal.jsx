@@ -29,7 +29,7 @@ export function DeleteRoleModal({
             type="button"
             onClick={onClose}
             disabled={submitting}
-            className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
+            className="px-3.5 py-1.5 text-xs font-medium text-muted hover:text-ink hover:bg-raised rounded-lg border border-border transition-colors"
           >
             Batal
           </button>
@@ -37,17 +37,17 @@ export function DeleteRoleModal({
             type="button"
             onClick={handleDelete}
             disabled={submitting}
-            className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 active:bg-rose-800 rounded-xl shadow-sm transition-all disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium text-white bg-negative hover:opacity-90 rounded-lg transition-opacity disabled:opacity-50"
           >
-            <Trash2 size={14} />
+            <Trash2 size={13} />
             {submitting ? 'Menghapus…' : 'Hapus Role'}
           </button>
         </>
       }
     >
-      <div className="py-2 text-sm text-slate-600 dark:text-slate-300">
+      <div className="py-1 text-xs text-muted leading-relaxed">
         Apakah Anda yakin ingin menghapus role{' '}
-        <span className="font-semibold text-slate-900 dark:text-slate-100">
+        <span className="font-semibold text-ink">
           "{role?.name}"
         </span>
         ? Pengguna yang terikat dengan role ini tidak akan lagi memiliki hak akses terkait.

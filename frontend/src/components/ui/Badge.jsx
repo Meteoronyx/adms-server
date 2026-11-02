@@ -1,18 +1,19 @@
 import React from 'react';
 
 const variantStyles = {
-  default: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200/60 dark:border-slate-700/60',
-  indigo: 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border-indigo-200/80 dark:border-indigo-800/60',
-  success: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200/80 dark:border-emerald-800/60',
-  warning: 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200/80 dark:border-amber-800/60',
-  danger: 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border-rose-200/80 dark:border-rose-800/60',
-  neutral: 'bg-slate-50 text-slate-600 dark:bg-slate-900 dark:text-slate-400 border-slate-200/40 dark:border-slate-800/60',
+  default: 'bg-[#e8eaed] text-[#353736] border-border',
+  accent: 'bg-[#e3f1f4] text-[#124957] border-[#b8dce4]',
+  indigo: 'bg-[#e3f1f4] text-[#124957] border-[#b8dce4]',
+  success: 'bg-[#dcfae5] text-[#04250e] border-[#a7ebb9]',
+  warning: 'bg-[#fffbeb] text-[#92400e] border-[#fde68a]',
+  danger: 'bg-[#ffedea] text-[#831c1e] border-[#f9c6c0]',
+  neutral: 'bg-raised text-muted border-border',
 };
 
 const sizeStyles = {
-  sm: 'text-[11px] px-2 py-0.5 font-medium',
-  md: 'text-xs px-2.5 py-1 font-semibold',
-  lg: 'text-sm px-3 py-1.5 font-semibold',
+  sm: 'text-xs px-2 h-5 font-medium',
+  md: 'text-xs px-2.5 h-6 font-medium',
+  lg: 'text-sm px-3 h-7 font-medium',
 };
 
 export function Badge({
@@ -23,7 +24,7 @@ export function Badge({
   className = '',
   ...props
 }) {
-  const baseStyle = 'inline-flex items-center gap-1.5 rounded-lg border transition-colors select-none';
+  const baseStyle = 'inline-flex items-center gap-1.5 rounded-[4px] border transition-colors select-none whitespace-nowrap flex-none';
   const variantStyle = variantStyles[variant] || variantStyles.default;
   const sizeStyle = sizeStyles[size] || sizeStyles.sm;
 

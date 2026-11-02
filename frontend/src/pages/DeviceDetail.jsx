@@ -24,8 +24,7 @@ export default function DeviceDetail() {
   const dev = useDeviceDetail(sn);
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      {/* Header Info (read-only: status, last activity, IP, pegawai count) */}
+    <div className="space-y-6 pb-4">
       <DeviceDetailHeader
         device={dev.device}
         sn={sn}
@@ -33,7 +32,6 @@ export default function DeviceDetail() {
         onBack={() => navigate('/devices')}
       />
 
-      {/* Pegawai List Table */}
       <DevicePegawaiTable
         pegawai={dev.pegawai}
         totalCount={dev.totalCount}
@@ -55,7 +53,6 @@ export default function DeviceDetail() {
         canExport={canExport}
       />
 
-      {/* Modals */}
       <UpdateUserModal
         open={dev.updateUserModal.open}
         onClose={() => dev.setUpdateUserModal({ open: false, data: null })}
@@ -70,7 +67,6 @@ export default function DeviceDetail() {
         targetUser={dev.enrollModal.data}
       />
 
-      {/* Modal Ekspor Presensi Pegawai */}
       <ExportPegawaiModal
         open={exportModalOpen}
         onOpenChange={setExportModalOpen}
