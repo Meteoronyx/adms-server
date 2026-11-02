@@ -7,7 +7,7 @@ export function CreateUserModal({
   open,
   onClose,
   onSubmit,
-  roles,
+  roles = [],
   opds = [],
   submitting,
 }) {
@@ -20,7 +20,7 @@ export function CreateUserModal({
   });
   const [error, setError] = useState('');
 
-  const selectedRole = roles.find((r) => String(r.id) === String(formData.role_id));
+  const selectedRole = roles?.find((r) => String(r.id) === String(formData.role_id));
   const isAdminRole = selectedRole?.slug === 'admin';
 
   useEffect(() => {

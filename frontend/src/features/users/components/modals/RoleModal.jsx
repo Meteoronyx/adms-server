@@ -7,7 +7,7 @@ export function RoleModal({
   onClose,
   onSubmit,
   role,
-  permissionCategories,
+  permissionCategories = {},
   submitting,
 }) {
   const isEditing = Boolean(role);

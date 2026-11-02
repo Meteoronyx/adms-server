@@ -314,7 +314,7 @@ export default function Fingerprint() {
       </div>
 
       {/* Tabs */}
-      <Tabs items={tabItems} value={tab} onChange={setTab} />
+      <Tabs tabs={tabItems} activeTab={tab} onChange={setTab} />
 
       {/* Check Tab */}
       {tab === 'check' && (

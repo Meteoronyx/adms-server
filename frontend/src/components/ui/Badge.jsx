@@ -1,5 +1,3 @@
-import React from 'react';
-
 const variantStyles = {
   default: 'bg-[#e8eaed] text-[#353736] border-border',
   accent: 'bg-[#e3f1f4] text-[#124957] border-[#b8dce4]',

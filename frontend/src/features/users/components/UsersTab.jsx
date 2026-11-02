@@ -13,8 +13,8 @@ import {
 } from 'lucide-react';
 
 export function UsersTab({
-  users,
-  roles,
+  users = [],
+  roles = [],
   opds = [],
   loading,
   search,

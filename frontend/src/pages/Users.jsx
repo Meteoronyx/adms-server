@@ -25,8 +25,8 @@ export default function Users() {
   const modalsHook = useUserModals();
 
   const tabOptions = [
-    { key: 'users', label: 'Kelola Pengguna', count: usersHook.users.length },
-    { key: 'roles', label: 'Role & Hak Akses', count: rolesHook.roles.length },
+    { key: 'users', label: 'Kelola Pengguna', count: usersHook.users?.length || 0 },
+    { key: 'roles', label: 'Role & Hak Akses', count: rolesHook.roles?.length || 0 },
   ];
 
   return (
@@ -41,7 +41,7 @@ export default function Users() {
         </p>
       </div>
 
-      <Tabs items={tabOptions} value={activeTab} onChange={setActiveTab} />
+      <Tabs tabs={tabOptions} activeTab={activeTab} onChange={setActiveTab} />
 
       {/* Main Tab Content */}
       {activeTab === 'users' && (

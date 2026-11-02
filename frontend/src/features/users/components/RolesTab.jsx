@@ -2,7 +2,7 @@ import { Badge } from '../../../components/ui/Badge';
 import { Plus, Pencil, Trash2, ShieldCheck, FolderKey } from 'lucide-react';
 
 export function RolesTab({
-  roles,
+  roles = [],
   loading,
   hasPermission,
   onOpenCreateRole,

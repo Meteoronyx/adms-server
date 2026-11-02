@@ -1,15 +1,24 @@
-import React from 'react';
+export function Tabs({
+  tabs,
+  items,
+  activeTab,
+  value,
+  onChange,
+  className = '',
+}) {
+  const tabList = tabs || items || [];
+  const currentTab = activeTab !== undefined ? activeTab : value;
 
-export function Tabs({ tabs, activeTab, onChange, className = '' }) {
   return (
     <div
       className={`flex items-center gap-6 border-b border-border overflow-x-auto select-none ${className}`}
       role="tablist"
     >
-      {tabs.map((tab) => {
-        const tabKey = tab.id ?? tab.key;
-        const isActive = activeTab === tabKey;
+      {tabList.map((tab, idx) => {
+        const tabKey = tab.id ?? tab.key ?? tab.value ?? idx;
+        const isActive = currentTab === tabKey;
         const Icon = tab.icon;
+        const badgeValue = tab.badge !== undefined ? tab.badge : tab.count;
 
         return (
           <button
@@ -17,7 +26,7 @@ export function Tabs({ tabs, activeTab, onChange, className = '' }) {
             type="button"
             role="tab"
             aria-selected={isActive}
-            onClick={() => onChange(tabKey)}
+            onClick={() => onChange?.(tabKey)}
             className={`relative flex items-center gap-2 pb-2.5 pt-1 text-sm whitespace-nowrap transition-colors duration-150 ${
               isActive
                 ? 'text-ink font-semibold'
@@ -32,7 +41,7 @@ export function Tabs({ tabs, activeTab, onChange, className = '' }) {
               />
             )}
             <span>{tab.label}</span>
-            {tab.badge !== undefined && (
+            {badgeValue !== undefined && (
               <span
                 className={`ml-0.5 px-1.5 h-5 inline-flex items-center rounded-[4px] text-xs num ${
                   isActive
@@ -40,7 +49,7 @@ export function Tabs({ tabs, activeTab, onChange, className = '' }) {
                     : 'bg-raised text-muted font-normal'
                 }`}
               >
-                {tab.badge}
+                {badgeValue}
               </span>
             )}
             <span
@@ -56,3 +65,4 @@ export function Tabs({ tabs, activeTab, onChange, className = '' }) {
     </div>
   );
 }
+

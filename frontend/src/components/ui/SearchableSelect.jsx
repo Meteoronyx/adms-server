@@ -12,6 +12,7 @@ export function SearchableSelect({
   size = 'sm', // 'xs' | 'sm' | 'md'
   searchable,
   onSearchChange,
+  onSearch,
   loading = false,
   searchPlaceholder = 'Cari…',
 }) {
@@ -19,13 +20,16 @@ export function SearchableSelect({
   const [search, setSearch] = useState('');
   const dropdownRef = useRef(null);
 
+  const handleSearch = onSearchChange || onSearch;
+  const safeOptions = Array.isArray(options) ? options : [];
+
   const isSearchEnabled =
-    searchable !== undefined ? searchable : Boolean(onSearchChange) || options.length > 5;
+    searchable !== undefined ? searchable : Boolean(handleSearch) || safeOptions.length > 5;
 
   const updateSearch = (val) => {
     setSearch(val);
-    if (onSearchChange) {
-      onSearchChange(val);
+    if (handleSearch) {
+      handleSearch(val);
     }
   };
 
@@ -48,11 +52,11 @@ export function SearchableSelect({
     };
   }, []);
 
-  const filteredOptions = options.filter((opt) =>
-    opt.label.toLowerCase().includes(search.toLowerCase())
+  const filteredOptions = safeOptions.filter((opt) =>
+    opt && opt.label ? String(opt.label).toLowerCase().includes((search || '').toLowerCase()) : false
   );
 
-  const selectedOption = options.find((opt) => String(opt.value) === String(value));
+  const selectedOption = safeOptions.find((opt) => opt && String(opt.value) === String(value));
   const isXs = size === 'xs';
 
   return (
@@ -130,11 +134,11 @@ export function SearchableSelect({
                   )}
                 </div>
               )}
-            {filteredOptions.map((opt) => {
+            {filteredOptions.map((opt, index) => {
               const isSelected = String(value) === String(opt.value);
               return (
                 <div
-                  key={opt.value}
+                  key={opt.value ?? index}
                   className={`px-3 ${
                     isXs ? 'py-1.5 text-xs' : 'py-2 text-sm'
                   } cursor-pointer transition-colors flex items-center justify-between ${

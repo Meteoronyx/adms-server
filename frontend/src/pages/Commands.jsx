@@ -163,8 +163,8 @@ export default function Commands() {
       <div className="bg-surface rounded-xl border border-border overflow-hidden">
         <div className="px-4 pt-2 bg-raised/40 flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-border">
           <Tabs
-            items={statusTabs}
-            value={status}
+            tabs={statusTabs}
+            activeTab={status}
             onChange={handleStatusChange}
             className="border-b-0"
           />
