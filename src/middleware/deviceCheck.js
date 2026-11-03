@@ -2,6 +2,7 @@
 
 const queries = require('../db/queries');
 const config = require('../config');
+const { canAccessOpd } = require('./apiKeyAuth');
 
 const validateDevice = async (req, res, next) => {
   const { sn } = req.params;
@@ -23,10 +24,10 @@ const validateDevice = async (req, res, next) => {
       });
     }
 
-    // Multi-tenant OPD scoping: non-admin hanya boleh mengakses perangkat milik OPD-nya
+    // Multi-tenant OPD scoping: non-admin boleh mengakses perangkat milik OPD-nya atau Sub-OPD di bawah naungannya
     const isSystemAdmin = req.user && req.user.role === 'admin';
     if (!isSystemAdmin) {
-      const owned = !!req.user.opd_id && device.opd_id === req.user.opd_id;
+      const owned = canAccessOpd(req.user, device.opd_id);
       if (!owned) {
         return res.status(403).json({
           success: false,

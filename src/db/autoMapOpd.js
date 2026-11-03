@@ -18,16 +18,80 @@ function normalizeName(str) {
     .trim();
 }
 
+async function ensureOpdHierarchySchema() {
+  try {
+    await query(`
+      ALTER TABLE opds
+        ADD COLUMN IF NOT EXISTS parent_id UUID REFERENCES opds(id) ON DELETE SET NULL;
+    `);
+    await query(`
+      CREATE INDEX IF NOT EXISTS idx_opds_parent_id ON opds(parent_id);
+    `);
+    const hierarchyRes = await query(`
+      UPDATE opds child
+      SET parent_id = parent.id,
+          updated_at = NOW()
+      FROM opds parent
+      WHERE parent.kdunker = SUBSTRING(child.kdunker FROM 1 FOR 4) || '00000000000'
+        AND parent.deleted_at IS NULL
+        AND child.deleted_at IS NULL
+        AND child.id != parent.id
+        AND child.parent_id IS NULL;
+    `);
+    await query(`
+      CREATE OR REPLACE VIEW devices_with_status AS
+      SELECT 
+        d.sn, 
+        d.name,
+        d.device_name,
+        d.mac,
+        d.user_count,
+        d.transaction_count,
+        d.main_time,
+        d.platform,
+        d.fw_version,
+        d.ip_address,
+        d.last_activity,
+        d.timezone,
+        CASE 
+          WHEN NOW() - d.last_activity < INTERVAL '10 minutes' THEN 'online'
+          ELSE 'offline' 
+        END AS status,
+        d.verified,
+        d.initial_sync_completed,
+        d.opd_id,
+        o.nama_opd,
+        o.kdunker,
+        o.parent_id AS parent_opd_id,
+        po.nama_opd AS parent_nama_opd
+      FROM devices d
+      LEFT JOIN opds o ON d.opd_id = o.id
+      LEFT JOIN opds po ON o.parent_id = po.id;
+    `);
+    const mappedParents = hierarchyRes.rowCount || 0;
+    if (mappedParents > 0) {
+      logger.info(`Auto-mapped parent_id untuk ${mappedParents} Sub-OPD berdasarkan kdunker.`);
+    }
+    return mappedParents;
+  } catch (err) {
+    logger.error('Gagal menginisialisasi skema hierarki OPD (parent_id)', { error: err.message });
+    return 0;
+  }
+}
+
 async function autoMapOpdData() {
-  logger.info('Mulai proses auto-mapping OPD untuk data eksisting (devices, users, pegawai)...');
+  logger.info('Mulai proses auto-mapping OPD untuk data eksisting (hierarki, devices, users, pegawai)...');
+
+  // 0. Pastikan relasi hierarki parent_id antar OPD Induk & Sub-OPD terpetakan
+  const mappedSubOpds = await ensureOpdHierarchySchema();
 
   // 1. Fetch OPDs
-  const opdsRes = await query('SELECT id, kdunker, nama_opd FROM opds WHERE deleted_at IS NULL');
+  const opdsRes = await query('SELECT id, kdunker, nama_opd, parent_id FROM opds WHERE deleted_at IS NULL');
   const opds = opdsRes.rows;
 
   if (opds.length === 0) {
     logger.warn('Tabel opds kosong. Silakan jalankan seedOpds terlebih dahulu.');
-    return { mappedDevices: 0, mappedUsers: 0, mappedPegawai: 0 };
+    return { mappedSubOpds: 0, mappedDevices: 0, mappedUsers: 0, mappedPegawai: 0 };
   }
 
   const ALIASES = [
@@ -140,9 +204,10 @@ async function autoMapOpdData() {
   `);
   const mappedPegawai = pegawaiMapRes.rowCount || 0;
 
-  logger.info(`Auto-mapping OPD selesai. Total Device: ${mappedDevices}, Users: ${mappedUsers}, Pegawai: ${mappedPegawai}`);
+  logger.info(`Auto-mapping OPD selesai. Sub-OPD: ${mappedSubOpds}, Device: ${mappedDevices}, Users: ${mappedUsers}, Pegawai: ${mappedPegawai}`);
 
   return {
+    mappedSubOpds,
     mappedDevices,
     mappedUsers,
     mappedPegawai
@@ -162,5 +227,6 @@ if (require.main === module) {
 }
 
 module.exports = {
-  autoMapOpdData
+  autoMapOpdData,
+  ensureOpdHierarchySchema
 };

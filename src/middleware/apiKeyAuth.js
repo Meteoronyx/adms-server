@@ -19,6 +19,91 @@ function clearAuthCookie(res) {
   res.clearCookie('token', { httpOnly: true, secure: IS_COOKIE_SECURE, sameSite: 'lax' });
 }
 
+/**
+ * Mengembalikan seluruh UUID OPD yang berada dalam cakupan akses sebuah OPD:
+ * - OPD itu sendiri
+ * - Seluruh Sub-OPD yang memiliki parent_id = opdId
+ * - Fallback otomatis berdasarkan 4 digit prefix kdunker apabila opdId adalah OPD Induk (XXXX00000000000)
+ */
+async function getAccessibleOpdIds(opdId, kdunker = null) {
+  if (!opdId) return [];
+  let resolvedKdunker = kdunker;
+  if (!resolvedKdunker) {
+    try {
+      const kRes = await query('SELECT kdunker FROM opds WHERE id = $1 AND deleted_at IS NULL', [opdId]);
+      resolvedKdunker = kRes.rows[0]?.kdunker || null;
+    } catch (_) {
+      resolvedKdunker = null;
+    }
+  }
+
+  const isIndukPattern = resolvedKdunker && resolvedKdunker.length === 15 && resolvedKdunker.endsWith('00000000000');
+  const prefix = isIndukPattern ? `${resolvedKdunker.substring(0, 4)}%` : null;
+
+  try {
+    const res = await query(
+      `SELECT id FROM opds
+       WHERE deleted_at IS NULL
+         AND (
+           id = $1
+           OR parent_id = $1
+           OR ($2::text IS NOT NULL AND kdunker LIKE $2)
+         )`,
+      [opdId, prefix]
+    );
+    return res.rows.length > 0 ? res.rows.map(r => r.id) : [opdId];
+  } catch (_) {
+    if (prefix) {
+      const fallbackRes = await query(
+        `SELECT id FROM opds WHERE deleted_at IS NULL AND (id = $1 OR kdunker LIKE $2)`,
+        [opdId, prefix]
+      );
+      return fallbackRes.rows.length > 0 ? fallbackRes.rows.map(r => r.id) : [opdId];
+    }
+    return [opdId];
+  }
+}
+
+/**
+ * Memeriksa apakah user memiliki akses ke targetOpdId (baik milik sendiri maupun Sub-OPD di bawah naungannya)
+ */
+function canAccessOpd(user, targetOpdId) {
+  if (!user) return false;
+  if (user.role === 'admin') return true;
+  if (!targetOpdId) return false;
+  if (Array.isArray(user.accessible_opd_ids) && user.accessible_opd_ids.length > 0) {
+    return user.accessible_opd_ids.includes(targetOpdId);
+  }
+  return Boolean(user.opd_id && user.opd_id === targetOpdId);
+}
+
+/**
+ * Menghasilkan daftar UUID OPD untuk query filtering:
+ * - null: Superadmin tanpa filter spesifik (lihat semua)
+ * - string[]: Daftar UUID yang diizinkan (bisa kosong [] jika tidak punya akses)
+ */
+async function resolveScopedOpdIds(user, requestedOpdId = null) {
+  if (!user) return [];
+  const cleanRequested = requestedOpdId ? String(requestedOpdId).trim() : null;
+
+  if (user.role === 'admin') {
+    if (!cleanRequested) return null;
+    return getAccessibleOpdIds(cleanRequested);
+  }
+
+  const allowedIds = Array.isArray(user.accessible_opd_ids) && user.accessible_opd_ids.length > 0
+    ? user.accessible_opd_ids
+    : (user.opd_id ? [user.opd_id] : []);
+
+  if (allowedIds.length === 0) return [];
+
+  if (cleanRequested) {
+    return allowedIds.includes(cleanRequested) ? [cleanRequested] : [];
+  }
+
+  return allowedIds;
+}
+
 async function getUserProfile(identifier) {
   if (!identifier) return null;
   const isObject = typeof identifier === 'object' && identifier !== null;
@@ -59,6 +144,9 @@ async function getUserProfile(identifier) {
 
   const isSystemAdmin = dbUser.role_slug === 'admin';
   const permissionsList = Array.isArray(dbUser.permissions) ? dbUser.permissions : [];
+  const accessibleOpdIds = !isSystemAdmin && dbUser.opd_id
+    ? await getAccessibleOpdIds(dbUser.opd_id, dbUser.kdunker)
+    : [];
 
   return {
     id: dbUser.id,
@@ -70,6 +158,8 @@ async function getUserProfile(identifier) {
     opd_id: dbUser.opd_id,
     nama_opd: dbUser.nama_opd,
     kdunker: dbUser.kdunker,
+    is_parent_opd: accessibleOpdIds.length > 1,
+    accessible_opd_ids: accessibleOpdIds,
     permissions: isSystemAdmin ? ['*', ...permissionsList] : permissionsList
   };
 }
@@ -142,3 +232,6 @@ module.exports = apiKeyAuth;
 module.exports.COOKIE_OPTIONS = COOKIE_OPTIONS;
 module.exports.clearAuthCookie = clearAuthCookie;
 module.exports.getUserProfile = getUserProfile;
+module.exports.getAccessibleOpdIds = getAccessibleOpdIds;
+module.exports.canAccessOpd = canAccessOpd;
+module.exports.resolveScopedOpdIds = resolveScopedOpdIds;

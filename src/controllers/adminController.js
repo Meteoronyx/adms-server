@@ -9,6 +9,7 @@ const photoService = require('../services/photoService');
 const queries = require('../db/queries');
 const pdfService = require('../services/pdfService');
 const logger = require('../utils/logger');
+const { canAccessOpd, resolveScopedOpdIds } = require('../middleware/apiKeyAuth');
 
 // Reupload Logic
 exports.reuploadDevice = async (req, res) => {
@@ -33,7 +34,7 @@ exports.reuploadDevice = async (req, res) => {
 exports.getReuploadQueue = async (req, res) => {
   const queue = reuploadService.getQueueStatus();
 
-  // Multi-tenant OPD scoping: non-admin hanya melihat antrian reupload perangkat OPD-nya
+  // Multi-tenant OPD scoping: non-admin melihat antrian reupload perangkat OPD-nya & Sub-OPD di bawahnya
   const isSystemAdmin = req.user.role === 'admin';
   if (!isSystemAdmin && !req.user.opd_id) {
     return res.json({ success: true, queue: {} });
@@ -43,7 +44,7 @@ exports.getReuploadQueue = async (req, res) => {
     const scopedQueue = {};
     for (const sn of sns) {
       const device = await queries.getDeviceInfo(sn);
-      if (device && device.opd_id === req.user.opd_id) {
+      if (device && canAccessOpd(req.user, device.opd_id)) {
         scopedQueue[sn] = queue[sn];
       }
     }
@@ -110,11 +111,10 @@ exports.unverifyDevice = async (req, res) => {
 };
 
 exports.listDevices = async (req, res) => {
-  const isSystemAdmin = req.user.role === 'admin';
-  const opdId = !isSystemAdmin ? req.user.opd_id : null;
+  const opdScope = await resolveScopedOpdIds(req.user, req.query.opd_id);
 
-  // Multi-tenant OPD scoping: non-admin tanpa OPD tidak melihat data apa pun
-  if (!isSystemAdmin && !opdId) {
+  // Multi-tenant OPD scoping: jika daftar akses kosong, kembalikan array kosong
+  if (Array.isArray(opdScope) && opdScope.length === 0) {
     return res.json({
       success: true,
       devices: [],
@@ -122,8 +122,8 @@ exports.listDevices = async (req, res) => {
     });
   }
 
-  const devices = await queries.getAllDevices(opdId);
-  const offlineDevices = await queries.getOfflineDevices(opdId);
+  const devices = await queries.getAllDevices(opdScope);
+  const offlineDevices = await queries.getOfflineDevices(opdScope);
 
   res.json({
     success: true,
@@ -145,10 +145,10 @@ exports.updateDeviceName = async (req, res) => {
     });
   }
 
-  // Multi-tenant OPD scoping: non-admin hanya boleh mengubah perangkat milik OPD-nya
+  // Multi-tenant OPD scoping: non-admin hanya boleh mengubah perangkat milik OPD-nya / Sub-OPD-nya
   const isSystemAdmin = req.user.role === 'admin';
   if (!isSystemAdmin) {
-    const owned = !!req.user.opd_id && device.opd_id === req.user.opd_id;
+    const owned = canAccessOpd(req.user, device.opd_id);
     if (!owned) {
       return res.status(403).json({
         success: false,
@@ -311,10 +311,6 @@ exports.deleteUser = async (req, res) => {
   });
   logger.info('Delete user command queued', { sn, pin, ip: req.ip });
 
-  // Optimistic DB update: soft-delete mapping & fingerprints immediately
-  // Queue command__ → kirim perintah hapus ke device (biar user di mesin kehapus)\
-  // Update DB langsung__ (biar status di database sesuai)\
-  // Kalau device sync balik__ → otomatis restore jika user ternyata masih ada
   await queries.softDeletePegawaiDeviceMapping(pin, sn);
   await queries.deletePegawaiFingerprints(pin, sn);
   logger.info('Optimistic soft-delete applied for pegawai device mapping', { pin, sn });
@@ -385,10 +381,9 @@ exports.enrollFingerprint = async (req, res) => {
 
 // Device Commands (getcommandqueue)
 exports.getCommandQueue = async (req, res) => {
-  const isSystemAdmin = req.user.role === 'admin';
-  const opdId = !isSystemAdmin ? req.user.opd_id : null;
+  const opdScope = await resolveScopedOpdIds(req.user, req.query.opd_id);
 
-  if (!isSystemAdmin && !opdId) {
+  if (Array.isArray(opdScope) && opdScope.length === 0) {
     if (req.query.count_only === 'true' || req.query.count === 'true') {
       return res.json({ success: true, count: 0 });
     }
@@ -396,7 +391,7 @@ exports.getCommandQueue = async (req, res) => {
   }
 
   if (req.query.count_only === 'true' || req.query.count === 'true') {
-    const count = await commandService.getQueueCount(opdId);
+    const count = await commandService.getQueueCount(opdScope);
     return res.json({ success: true, count });
   }
 
@@ -409,7 +404,7 @@ exports.getCommandQueue = async (req, res) => {
   const search = req.query.search ? req.query.search.trim() : null;
   const commandType = req.query.command_type ? req.query.command_type.trim() : null;
 
-  const result = await commandService.getQueueStatus(opdId, {
+  const result = await commandService.getQueueStatus(opdScope, {
     limit,
     offset,
     status,
@@ -433,14 +428,13 @@ exports.getCommandQueue = async (req, res) => {
 };
 
 exports.getPendingCommandsCount = async (req, res) => {
-  const isSystemAdmin = req.user.role === 'admin';
-  const opdId = !isSystemAdmin ? req.user.opd_id : null;
+  const opdScope = await resolveScopedOpdIds(req.user, req.query.opd_id);
 
-  if (!isSystemAdmin && !opdId) {
+  if (Array.isArray(opdScope) && opdScope.length === 0) {
     return res.json({ success: true, count: 0 });
   }
 
-  const count = await commandService.getQueueCount(opdId);
+  const count = await commandService.getQueueCount(opdScope);
   res.json({
     success: true,
     count
@@ -450,17 +444,16 @@ exports.getPendingCommandsCount = async (req, res) => {
 // Data Retrieval Routes (getpegawai)
 exports.getPegawai = async (req, res) => {
   const { pin } = req.params;
-  const isSystemAdmin = req.user.role === 'admin';
-  const opdId = !isSystemAdmin ? req.user.opd_id : null;
+  const opdScope = await resolveScopedOpdIds(req.user);
 
-  if (!isSystemAdmin && !opdId) {
+  if (Array.isArray(opdScope) && opdScope.length === 0) {
     return res.status(403).json({
       success: false,
       message: 'Akun Anda belum terikat ke unit kerja (OPD)'
     });
   }
 
-  const pegawai = await userService.getPegawaiWithFingerprints(pin, opdId);
+  const pegawai = await userService.getPegawaiWithFingerprints(pin, opdScope);
 
   if (!pegawai) {
     return res.status(404).json({
@@ -481,15 +474,9 @@ exports.listPegawai = async (req, res) => {
   const offset = Math.max(parseInt(req.query.offset) || 0, 0);
   const search = req.query.search ? req.query.search.trim() : null;
 
-  const isSystemAdmin = req.user.role === 'admin';
-  let opdId = null;
-  if (isSystemAdmin) {
-    opdId = req.query.opd_id ? req.query.opd_id.trim() : null;
-  } else {
-    opdId = req.user.opd_id || null;
-  }
+  const opdScope = await resolveScopedOpdIds(req.user, req.query.opd_id);
 
-  if (!isSystemAdmin && !opdId) {
+  if (Array.isArray(opdScope) && opdScope.length === 0) {
     return res.json({
       success: true,
       data: [],
@@ -499,7 +486,7 @@ exports.listPegawai = async (req, res) => {
     });
   }
 
-  const result = await queries.listPegawai({ limit, offset, search, opdId });
+  const result = await queries.listPegawai({ limit, offset, search, opdId: opdScope });
   res.json({
     success: true,
     data: result.rows,
@@ -520,10 +507,9 @@ exports.searchPegawai = async (req, res) => {
     });
   }
 
-  const isSystemAdmin = req.user.role === 'admin';
-  const opdId = !isSystemAdmin ? req.user.opd_id : null;
+  const opdScope = await resolveScopedOpdIds(req.user, req.query.opd_id);
 
-  if (!isSystemAdmin && !opdId) {
+  if (Array.isArray(opdScope) && opdScope.length === 0) {
     return res.json({
       success: true,
       query: q.trim(),
@@ -532,7 +518,7 @@ exports.searchPegawai = async (req, res) => {
     });
   }
 
-  const results = await queries.searchPegawaiByName(q.trim(), limit ? parseInt(limit) : 10, opdId);
+  const results = await queries.searchPegawaiByName(q.trim(), limit ? parseInt(limit) : 10, opdScope);
   res.json({
     success: true,
     query: q.trim(),
@@ -553,10 +539,9 @@ exports.getAttendanceLogs = async (req, res) => {
   const endDate = req.query.endDate || null;
   const search = req.query.search || null;
 
-  const isSystemAdmin = req.user.role === 'admin';
-  const opdId = !isSystemAdmin ? req.user.opd_id : null;
+  const opdScope = await resolveScopedOpdIds(req.user, req.query.opd_id);
 
-  if (!isSystemAdmin && !opdId) {
+  if (Array.isArray(opdScope) && opdScope.length === 0) {
     return res.json({
       success: true,
       data: [],
@@ -566,7 +551,7 @@ exports.getAttendanceLogs = async (req, res) => {
     });
   }
 
-  const result = await queries.getAttendanceLogs(limit, offset, sn, pin, year, month, startDate, endDate, search, opdId);
+  const result = await queries.getAttendanceLogs(limit, offset, sn, pin, year, month, startDate, endDate, search, opdScope);
   res.json({
     success: true,
     data: result.data,
@@ -578,10 +563,9 @@ exports.getAttendanceLogs = async (req, res) => {
 
 // Dashboard statistics
 exports.getDashboardStats = async (req, res) => {
-  const isSystemAdmin = req.user.role === 'admin';
-  const opdId = !isSystemAdmin ? req.user.opd_id : null;
+  const opdScope = await resolveScopedOpdIds(req.user, req.query.opd_id);
 
-  if (!isSystemAdmin && !opdId) {
+  if (Array.isArray(opdScope) && opdScope.length === 0) {
     return res.json({
       success: true,
       stats: {
@@ -596,7 +580,7 @@ exports.getDashboardStats = async (req, res) => {
     });
   }
 
-  const stats = await queries.getDashboardStats(opdId);
+  const stats = await queries.getDashboardStats(opdScope);
   res.json({
     success: true,
     stats
@@ -664,10 +648,10 @@ exports.checkFingerprintOnDevice = async (req, res) => {
     });
   }
 
-  // Multi-tenant OPD scoping: non-admin hanya boleh memeriksa perangkat OPD-nya
+  // Multi-tenant OPD scoping: non-admin boleh memeriksa perangkat OPD-nya atau Sub-OPD-nya
   const isSystemAdmin = req.user.role === 'admin';
   if (!isSystemAdmin) {
-    const owned = !!req.user.opd_id && device.opd_id === req.user.opd_id;
+    const owned = canAccessOpd(req.user, device.opd_id);
     if (!owned) {
       return res.status(403).json({
         success: false,
@@ -716,7 +700,7 @@ exports.checkFaceOnDevice = async (req, res) => {
 
   const isSystemAdmin = req.user.role === 'admin';
   if (!isSystemAdmin) {
-    const owned = !!req.user.opd_id && device.opd_id === req.user.opd_id;
+    const owned = canAccessOpd(req.user, device.opd_id);
     if (!owned) {
       return res.status(403).json({
         success: false,
@@ -763,7 +747,7 @@ exports.transferFingerprint = async (req, res) => {
     });
   }
 
-  // Multi-tenant OPD scoping: non-admin hanya boleh transfer dari perangkat OPD-nya
+  // Multi-tenant OPD scoping: non-admin boleh transfer dari perangkat OPD-nya / Sub-OPD-nya
   const isSystemAdmin = req.user.role === 'admin';
   if (!isSystemAdmin) {
     const sourceDevice = await queries.getDeviceInfo(source_sn);
@@ -773,7 +757,7 @@ exports.transferFingerprint = async (req, res) => {
         message: `${config.RESPONSE.ADMIN.DEVICE_NOT_FOUND}: ${source_sn}`
       });
     }
-    const owned = !!req.user.opd_id && sourceDevice.opd_id === req.user.opd_id;
+    const owned = canAccessOpd(req.user, sourceDevice.opd_id);
     if (!owned) {
       return res.status(403).json({
         success: false,
@@ -865,7 +849,7 @@ exports.transferFace = async (req, res) => {
         message: `${config.RESPONSE.ADMIN.DEVICE_NOT_FOUND}: ${source_sn}`
       });
     }
-    const owned = !!req.user.opd_id && sourceDevice.opd_id === req.user.opd_id;
+    const owned = canAccessOpd(req.user, sourceDevice.opd_id);
     if (!owned) {
       return res.status(403).json({
         success: false,
@@ -959,7 +943,7 @@ exports.transferAllBiometrics = async (req, res) => {
         message: `${config.RESPONSE.ADMIN.DEVICE_NOT_FOUND}: ${source_sn}`
       });
     }
-    const owned = !!req.user.opd_id && sourceDevice.opd_id === req.user.opd_id;
+    const owned = canAccessOpd(req.user, sourceDevice.opd_id);
     if (!owned) {
       return res.status(403).json({
         success: false,
@@ -1070,11 +1054,10 @@ exports.exportAttendancePdf = async (req, res) => {
     });
   }
 
-  const isSystemAdmin = req.user.role === 'admin';
-  const opdId = !isSystemAdmin ? req.user.opd_id : null;
+  const opdScope = await resolveScopedOpdIds(req.user);
 
   // Non-admin without OPD cannot export
-  if (!isSystemAdmin && !opdId) {
+  if (Array.isArray(opdScope) && opdScope.length === 0) {
     return res.status(403).json({
       success: false,
       message: 'Akun Anda tidak terikat dengan OPD mana pun'
@@ -1082,7 +1065,7 @@ exports.exportAttendancePdf = async (req, res) => {
   }
 
   // Get Pegawai info with OPD scoping check
-  const pegawai = await queries.getPegawaiProfileForExport(pin, opdId);
+  const pegawai = await queries.getPegawaiProfileForExport(pin, opdScope);
   if (!pegawai) {
     return res.status(404).json({
       success: false,
@@ -1101,7 +1084,7 @@ exports.exportAttendancePdf = async (req, res) => {
   const endStr = `${nextY}-${String(nextM).padStart(2, '0')}-01 00:00:00`;
 
   // Fetch monthly attendance logs
-  const logs = await queries.getMonthlyLogsForPegawai(pin, startStr, endStr, opdId);
+  const logs = await queries.getMonthlyLogsForPegawai(pin, startStr, endStr, opdScope);
 
   // Generate PDF buffer
   const pdfBuffer = await pdfService.generateAttendancePdf({
@@ -1133,17 +1116,16 @@ exports.exportAttendancePdf = async (req, res) => {
 exports.getRecentAttendancePhotos = async (req, res) => {
   const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 8, 1), 30);
   const sn = req.query.sn || null;
-  const isSystemAdmin = req.user.role === 'admin';
-  const opdId = !isSystemAdmin ? req.user.opd_id : (req.query.opd_id || null);
+  const opdScope = await resolveScopedOpdIds(req.user, req.query.opd_id);
 
-  if (!isSystemAdmin && !opdId) {
+  if (Array.isArray(opdScope) && opdScope.length === 0) {
     return res.json({
       success: true,
       photos: []
     });
   }
 
-  const rows = await queries.getRecentAttendancePhotos({ limit, opdId, sn });
+  const rows = await queries.getRecentAttendancePhotos({ limit, opdId: opdScope, sn });
   const photos = rows.map(r => ({
     ...r,
     photo_url: `/admin/attendance-photos/${r.id}`
@@ -1174,11 +1156,7 @@ exports.getAttendancePhotoFile = async (req, res) => {
 
   const isSystemAdmin = req.user.role === 'admin';
   if (!isSystemAdmin) {
-    const userOpdId = req.user.opd_id;
-    const allowed = Boolean(
-      userOpdId &&
-      (photo.device_opd_id === userOpdId || photo.pegawai_opd_id === userOpdId)
-    );
+    const allowed = canAccessOpd(req.user, photo.device_opd_id) || canAccessOpd(req.user, photo.pegawai_opd_id);
     if (!allowed) {
       return res.status(403).json({
         success: false,
@@ -1215,10 +1193,9 @@ exports.listBroadcastMessages = async (req, res) => {
   const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
   const activeOnly = req.query.active === 'true' || req.query.active === '1';
 
-  const isSystemAdmin = req.user.role === 'admin';
-  const opdId = !isSystemAdmin ? req.user.opd_id : (req.query.opd_id || null);
+  const opdScope = await resolveScopedOpdIds(req.user, req.query.opd_id);
 
-  if (!isSystemAdmin && !opdId) {
+  if (Array.isArray(opdScope) && opdScope.length === 0) {
     return res.json({
       success: true,
       messages: [],
@@ -1229,7 +1206,7 @@ exports.listBroadcastMessages = async (req, res) => {
   }
 
   const result = await queries.listBroadcastMessages({
-    opdId,
+    opdId: opdScope,
     activeOnly,
     limit,
     offset
@@ -1272,7 +1249,14 @@ exports.createBroadcastMessage = async (req, res) => {
     });
   }
 
-  const effectiveOpdId = isSystemAdmin ? (opd_id || null) : req.user.opd_id;
+  const effectiveOpdScope = await resolveScopedOpdIds(req.user, opd_id);
+  if (Array.isArray(effectiveOpdScope) && effectiveOpdScope.length === 0) {
+    return res.status(403).json({
+      success: false,
+      message: 'Unit kerja (OPD) target berada di luar wewenang Anda'
+    });
+  }
+
   const targetSn = device_sn ? String(device_sn).trim() : null;
 
   if (targetSn) {
@@ -1283,7 +1267,7 @@ exports.createBroadcastMessage = async (req, res) => {
         message: `${config.RESPONSE.ADMIN.DEVICE_NOT_FOUND}: ${targetSn}`
       });
     }
-    if (!isSystemAdmin && dev.opd_id !== req.user.opd_id) {
+    if (!isSystemAdmin && !canAccessOpd(req.user, dev.opd_id)) {
       return res.status(403).json({
         success: false,
         message: 'Perangkat target berada di luar unit kerja (OPD) Anda'
@@ -1292,7 +1276,7 @@ exports.createBroadcastMessage = async (req, res) => {
   }
 
   const targetDevices = await queries.getTargetDevicesForBroadcast({
-    opdId: effectiveOpdId,
+    opdId: effectiveOpdScope,
     deviceSn: targetSn
   });
 
@@ -1315,8 +1299,10 @@ exports.createBroadcastMessage = async (req, res) => {
     ? req.user.id
     : null;
 
+  const primaryOpdId = isSystemAdmin ? (opd_id || null) : (opd_id || req.user.opd_id);
+
   const broadcastRecord = await queries.createBroadcastMessage({
-    opdId: effectiveOpdId || (targetDevices.length === 1 ? targetDevices[0].opd_id : null),
+    opdId: primaryOpdId || (targetDevices.length === 1 ? targetDevices[0].opd_id : null),
     deviceSn: targetSn,
     message: sanitizedMsg,
     tag: 253,
@@ -1354,7 +1340,7 @@ exports.createBroadcastMessage = async (req, res) => {
   logger.info('Public broadcast SMS queued for devices', {
     broadcast_id: broadcastRecord.id,
     target_count: targetDevices.length,
-    opd_id: effectiveOpdId,
+    opd_id: primaryOpdId,
     device_sn: targetSn,
     ip: req.ip
   });
@@ -1393,11 +1379,7 @@ exports.deleteBroadcastMessage = async (req, res) => {
 
   const isSystemAdmin = req.user.role === 'admin';
   if (!isSystemAdmin) {
-    const userOpdId = req.user.opd_id;
-    const allowed = Boolean(
-      userOpdId &&
-      (record.opd_id === userOpdId || record.device_opd_id === userOpdId)
-    );
+    const allowed = canAccessOpd(req.user, record.opd_id) || canAccessOpd(req.user, record.device_opd_id);
     if (!allowed) {
       return res.status(403).json({
         success: false,
@@ -1431,4 +1413,3 @@ exports.deleteBroadcastMessage = async (req, res) => {
     queued_devices: targetDevices.map(d => d.sn)
   });
 };
-

@@ -115,8 +115,22 @@ export default function Opds() {
                     <td className="px-4 py-3">
                       <Badge variant="info" className="font-mono">{o.kdunker}</Badge> {/* taste-skill-ignore */}
                     </td>
-                    <td className="px-4 py-3 font-medium text-ink">
-                      {o.nama_opd}
+                    <td className="px-4 py-3">
+                      <div className="flex flex-col gap-0.5">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium text-ink">{o.nama_opd}</span>
+                          {o.is_induk && (
+                            <Badge variant="success">
+                              OPD Induk{o.sub_count > 0 ? ` • ${o.sub_count} Sub-Unit` : ''}
+                            </Badge>
+                          )}
+                        </div>
+                        {o.parent_nama_opd && (
+                          <span className="text-[11px] text-muted">
+                            Induk: <span className="font-medium text-ink/80">{o.parent_nama_opd}</span>
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-muted">
                       {o.latitude != null && o.longitude != null ? (

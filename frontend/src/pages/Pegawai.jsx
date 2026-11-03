@@ -19,6 +19,7 @@ import {
 export default function Pegawai() {
   const { user, hasPermission } = useAuth();
   const isAdmin = user?.role === 'admin';
+  const canFilterByOpd = isAdmin || Boolean(user?.is_parent_opd);
   const { addToast } = useToast();
 
   const [pegawaiList, setPegawaiList] = useState([]);
@@ -47,7 +48,7 @@ export default function Pegawai() {
   }, [search]);
 
   useEffect(() => {
-    if (isAdmin) {
+    if (canFilterByOpd) {
       listOpds({ all: true })
         .then((res) => {
           const list = res.data || res.opds || [];
@@ -55,7 +56,7 @@ export default function Pegawai() {
         })
         .catch(() => {});
     }
-  }, [isAdmin]);
+  }, [canFilterByOpd]);
 
   const fetchPegawai = useCallback(async () => {
     setLoading(true);
@@ -64,7 +65,7 @@ export default function Pegawai() {
         limit,
         offset,
         search: debouncedSearch,
-        opdId: isAdmin ? opdId : undefined,
+        opdId: canFilterByOpd ? opdId : undefined,
       });
       setPegawaiList(res.data || []);
       setTotal(res.total || 0);
@@ -73,7 +74,7 @@ export default function Pegawai() {
     } finally {
       setLoading(false);
     }
-  }, [limit, offset, debouncedSearch, opdId, isAdmin, addToast]);
+  }, [limit, offset, debouncedSearch, opdId, canFilterByOpd, addToast]);
 
   useEffect(() => {
     fetchPegawai();
@@ -89,7 +90,7 @@ export default function Pegawai() {
     setDetailModalOpen(true);
   };
 
-  const hasActiveFilters = Boolean(search || (isAdmin && opdId));
+  const hasActiveFilters = Boolean(search || (canFilterByOpd && opdId));
 
   const handleResetFilters = () => {
     setSearch('');
@@ -150,7 +151,7 @@ export default function Pegawai() {
             </div>
           </div>
 
-          {isAdmin && (
+          {canFilterByOpd && opdOptions.length > 1 && (
             <div className="w-full sm:w-64 lg:w-72 shrink-0">
               <label className="block text-xs font-medium text-muted mb-1.5">
                 Unit Kerja (OPD)
@@ -164,10 +165,14 @@ export default function Pegawai() {
                 }}
                 options={opdOptions.map((o) => ({
                   value: o.id,
-                  label: o.kdunker ? `${o.nama_opd} (${o.kdunker})` : o.nama_opd,
+                  label: o.is_induk
+                    ? `★ ${o.nama_opd} (Induk)`
+                    : o.kdunker
+                    ? `${o.nama_opd} (${o.kdunker})`
+                    : o.nama_opd,
                 }))}
-                placeholder="Semua OPD"
-                defaultOptionLabel="Semua OPD"
+                placeholder="Semua Unit Kerja"
+                defaultOptionLabel="Semua Unit Kerja"
               />
             </div>
           )}

@@ -16,6 +16,8 @@ const authRoutes = require('./routes/auth');
 const roleRoutes = require('./routes/roles');
 const { getDatabaseStatus } = require('./db/connection');
 const { seedAdminFromEnv } = require('./db/seedAdmin');
+const { ensureOpdHierarchySchema } = require('./db/autoMapOpd');
+const { getAccessibleOpdIds } = require('./middleware/apiKeyAuth');
 
 const app = express();
 
@@ -205,8 +207,9 @@ const server = app.listen(port, config.SERVER.HOST, async () => {
     database: config.DATABASE_URL ? 'configured' : 'not configured'
   });
 
-  // Run auto-seed check for initial admin user
+  // Run auto-seed check for initial admin user & OPD hierarchy schema
   await seedAdminFromEnv();
+  await ensureOpdHierarchySchema();
 
   logger.info('Ready to accept attendance data from devices');
 });
@@ -225,7 +228,7 @@ io.use((socket, next) => {
   cookieParser()(socket.request, {}, next);
 });
 
-// Authenticate socket via JWT cookie and join OPD-scoped room
+// Authenticate socket via JWT cookie and join OPD-scoped room(s)
 io.use(async (socket, next) => {
   try {
     const jwt = require('jsonwebtoken');
@@ -245,9 +248,10 @@ io.use(async (socket, next) => {
 
     const decoded = jwt.verify(token, config.JWT_SECRET);
     const res = await query(
-      `SELECT u.opd_id, COALESCE(r.slug, u.role) AS role_slug
+      `SELECT u.opd_id, o.kdunker, COALESCE(r.slug, u.role) AS role_slug
        FROM users u
        LEFT JOIN roles r ON (u.role_id IS NOT NULL AND u.role_id = r.id) OR (u.role_id IS NULL AND LOWER(u.role) = r.slug)
+       LEFT JOIN opds o ON u.opd_id = o.id
        WHERE u.id = $1 AND u.is_active = true`,
       [decoded.id || decoded.username]
     );
@@ -261,7 +265,10 @@ io.use(async (socket, next) => {
     if (user.role_slug === 'admin') {
       socket.join('opd:all');
     } else if (user.opd_id) {
-      socket.join(`opd:${user.opd_id}`);
+      const accessibleIds = await getAccessibleOpdIds(user.opd_id, user.kdunker);
+      for (const id of accessibleIds) {
+        socket.join(`opd:${id}`);
+      }
     }
     next();
   } catch (err) {

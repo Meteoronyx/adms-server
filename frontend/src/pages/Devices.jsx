@@ -35,6 +35,7 @@ export default function Devices() {
   const [devices, setDevices] = useState([]);
   const [opds, setOpds] = useState([]);
   const [search, setSearch] = useState("");
+  const [selectedOpdId, setSelectedOpdId] = useState("");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lastFetchedAt, setLastFetchedAt] = useState(null);
@@ -47,16 +48,18 @@ export default function Devices() {
   const { addToast } = useToast();
   const { user, hasPermission } = useAuth();
   const isSystemAdmin = user?.role === "admin";
+  const isParentOpd = Boolean(user?.is_parent_opd);
+  const canFilterByOpd = isSystemAdmin || isParentOpd;
   const canWrite = hasPermission("devices:write");
   const canCommand = hasPermission("devices:command");
 
   useEffect(() => {
-    if (isSystemAdmin) {
+    if (canFilterByOpd) {
       listOpds({ all: true })
         .then((res) => setOpds(res.data || res.opds || []))
         .catch(() => {});
     }
-  }, [isSystemAdmin]);
+  }, [canFilterByOpd]);
 
   const fetchDevices = useCallback(
     async ({ manual = false } = {}) => {
@@ -128,17 +131,31 @@ export default function Devices() {
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
-    const list = query
-      ? devices.filter(
+    let list = devices;
+
+    if (selectedOpdId) {
+      if (isSystemAdmin) {
+        list = list.filter(
           (d) =>
-            (d.sn || "").toLowerCase().includes(query) ||
-            (d.name || "").toLowerCase().includes(query) ||
-            (d.device_name || "").toLowerCase().includes(query) ||
-            (d.nama_opd || "").toLowerCase().includes(query) ||
-            (d.kdunker || "").toLowerCase().includes(query) ||
-            (d.ip_address || "").includes(query),
-        )
-      : devices;
+            d.opd_id === selectedOpdId || d.parent_opd_id === selectedOpdId,
+        );
+      } else {
+        list = list.filter((d) => d.opd_id === selectedOpdId);
+      }
+    }
+
+    if (query) {
+      list = list.filter(
+        (d) =>
+          (d.sn || "").toLowerCase().includes(query) ||
+          (d.name || "").toLowerCase().includes(query) ||
+          (d.device_name || "").toLowerCase().includes(query) ||
+          (d.nama_opd || "").toLowerCase().includes(query) ||
+          (d.parent_nama_opd || "").toLowerCase().includes(query) ||
+          (d.kdunker || "").toLowerCase().includes(query) ||
+          (d.ip_address || "").includes(query),
+      );
+    }
 
     return [...list].sort((a, b) =>
       String(a.sn || "").localeCompare(String(b.sn || ""), "en", {
@@ -146,7 +163,7 @@ export default function Devices() {
         sensitivity: "base",
       }),
     );
-  }, [devices, search]);
+  }, [devices, search, selectedOpdId, isSystemAdmin]);
 
   const columns = useMemo(
     () => [
@@ -205,6 +222,7 @@ export default function Devices() {
         header: "Unit Kerja (OPD)",
         cell: ({ row }) => {
           const opdName = row.original.nama_opd;
+          const parentName = row.original.parent_nama_opd;
           const kdunker = row.original.kdunker;
           if (!opdName) {
             return (
@@ -221,8 +239,16 @@ export default function Devices() {
               >
                 {opdName}
               </span>
+              {parentName && (
+                <span
+                  className="text-[11px] text-muted truncate"
+                  title={`Induk: ${parentName}`}
+                >
+                  Induk: {parentName}
+                </span>
+              )}
               {kdunker && (
-                <span className="text-xs font-mono text-muted">
+                <span className="text-[11px] font-mono text-faint">
                   {" "}
                   {/* taste-skill-ignore */}
                   {kdunker}
@@ -442,22 +468,40 @@ export default function Devices() {
 
       {/* Filter / Search Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="relative w-full sm:w-[316px]">
-          <Search
-            size={14}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none"
-          />
-          <input
-            type="text"
-            placeholder="Cari SN, nama lokasi, OPD, atau IP…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full h-8 pl-8 pr-3 text-xs rounded-[6px] border border-control bg-surface text-ink placeholder:text-faint focus:outline-none focus:border-accent transition-colors"
-          />
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 flex-1">
+          <div className="relative w-full sm:w-[316px]">
+            <Search
+              size={14}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none"
+            />
+            <input
+              type="text"
+              placeholder="Cari SN, nama lokasi, OPD, atau IP…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full h-8 pl-8 pr-3 text-xs rounded-[6px] border border-control bg-surface text-ink placeholder:text-faint focus:outline-none focus:border-accent transition-colors"
+            />
+          </div>
+
+          {canFilterByOpd && opds.length > 1 && (
+            <div className="w-full sm:w-[300px]">
+              <SearchableSelect
+                value={selectedOpdId}
+                onChange={(val) => setSelectedOpdId(val)}
+                options={opds.map((o) => ({
+                  value: o.id,
+                  label: o.is_induk
+                    ? `★ ${o.nama_opd} (Induk)`
+                    : `${o.nama_opd}`,
+                }))}
+                placeholder="Filter Unit Kerja / Puskesmas…"
+                defaultOptionLabel="Semua Unit Kerja"
+              />
+            </div>
+          )}
         </div>
         <div className="text-xs text-muted num">
-          Menampilkan{" "}
-          <span className="font-medium text-ink">{filtered.length}</span>{" "}
+          Total <span className="font-medium text-ink">{filtered.length}</span>{" "}
           perangkat
         </div>
       </div>

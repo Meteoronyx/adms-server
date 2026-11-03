@@ -2,6 +2,7 @@
 
 const { query } = require('../db/connection');
 const logger = require('../utils/logger');
+const { canAccessOpd, resolveScopedOpdIds } = require('../middleware/apiKeyAuth');
 
 /**
  * GET /admin/opds
@@ -10,46 +11,47 @@ const logger = require('../utils/logger');
 async function listOpds(req, res) {
   const { search, all, page = 1, limit = 50 } = req.query;
   const isSystemAdmin = req.user.role === 'admin';
+  const opdScope = !isSystemAdmin ? await resolveScopedOpdIds(req.user) : null;
 
-  // Multi-tenant OPD scoping: non-admin hanya dapat melihat OPD miliknya sendiri
-  if (!isSystemAdmin) {
-    const ownOpdId = req.user.opd_id || null;
+  if (!isSystemAdmin && (!opdScope || opdScope.length === 0)) {
     if (all === 'true') {
-      if (!ownOpdId) return res.json({ success: true, data: [] });
-      const result = await query(
-        `SELECT id, kdunker, nama_opd
-         FROM opds
-         WHERE id = $1 AND deleted_at IS NULL`,
-        [ownOpdId]
-      );
-      return res.json({ success: true, data: result.rows });
+      return res.json({ success: true, data: [] });
     }
-    if (!ownOpdId) {
-      return res.json({
-        success: true,
-        data: [],
-        pagination: { total: 0, page: parseInt(page, 10), limit: parseInt(limit, 10), totalPages: 0 }
-      });
-    }
-    const ownResult = await query(
-      `SELECT id, kdunker, nama_opd, latitude, longitude, radius, ip_public, created_at, updated_at
-       FROM opds
-       WHERE id = $1 AND deleted_at IS NULL`,
-      [ownOpdId]
-    );
     return res.json({
       success: true,
-      data: ownResult.rows,
-      pagination: { total: ownResult.rows.length, page: parseInt(page, 10), limit: parseInt(limit, 10), totalPages: 1 }
+      data: [],
+      pagination: { total: 0, page: parseInt(page, 10), limit: parseInt(limit, 10), totalPages: 0 }
     });
   }
 
   if (all === 'true') {
+    const params = [];
+    let whereSql = 'WHERE o.deleted_at IS NULL';
+    if (opdScope) {
+      params.push(opdScope);
+      whereSql += ` AND o.id = ANY($${params.length}::uuid[])`;
+    }
+
     const result = await query(
-      `SELECT id, kdunker, nama_opd, latitude, longitude, radius, ip_public
-       FROM opds
-       WHERE deleted_at IS NULL
-       ORDER BY nama_opd ASC`
+      `SELECT 
+         o.id,
+         o.kdunker,
+         o.nama_opd,
+         o.latitude,
+         o.longitude,
+         o.radius,
+         o.ip_public,
+         (o.kdunker LIKE '%00000000000' AND length(o.kdunker) = 15) AS is_induk,
+         po.id AS parent_opd_id,
+         po.nama_opd AS parent_nama_opd
+       FROM opds o
+       LEFT JOIN opds po ON o.kdunker IS NOT NULL
+         AND NOT (o.kdunker LIKE '%00000000000' AND length(o.kdunker) = 15)
+         AND po.kdunker = SUBSTRING(o.kdunker FROM 1 FOR 4) || '00000000000'
+         AND po.deleted_at IS NULL
+       ${whereSql}
+       ORDER BY is_induk DESC, o.nama_opd ASC`,
+      params
     );
     return res.json({
       success: true,
@@ -60,21 +62,52 @@ async function listOpds(req, res) {
   const offset = (parseInt(page, 10) - 1) * parseInt(limit, 10);
   const searchFilter = search ? search.trim() : null;
 
-  let countQuery = 'SELECT COUNT(*)::int AS count FROM opds WHERE deleted_at IS NULL';
+  let countQuery = 'SELECT COUNT(*)::int AS count FROM opds o WHERE o.deleted_at IS NULL';
   let dataQuery = `
-    SELECT id, kdunker, nama_opd, latitude, longitude, radius, ip_public, created_at, updated_at
-    FROM opds
-    WHERE deleted_at IS NULL
+    SELECT 
+      o.id,
+      o.kdunker,
+      o.nama_opd,
+      o.latitude,
+      o.longitude,
+      o.radius,
+      o.ip_public,
+      o.created_at,
+      o.updated_at,
+      (o.kdunker LIKE '%00000000000' AND length(o.kdunker) = 15) AS is_induk,
+      po.id AS parent_opd_id,
+      po.nama_opd AS parent_nama_opd,
+      CASE
+        WHEN o.kdunker LIKE '%00000000000' AND length(o.kdunker) = 15 THEN (
+          SELECT COUNT(*)::int FROM opds sub
+          WHERE sub.deleted_at IS NULL
+            AND sub.id != o.id
+            AND sub.kdunker LIKE SUBSTRING(o.kdunker FROM 1 FOR 4) || '%'
+        )
+        ELSE 0
+      END AS sub_count
+    FROM opds o
+    LEFT JOIN opds po ON o.kdunker IS NOT NULL
+      AND NOT (o.kdunker LIKE '%00000000000' AND length(o.kdunker) = 15)
+      AND po.kdunker = SUBSTRING(o.kdunker FROM 1 FOR 4) || '00000000000'
+      AND po.deleted_at IS NULL
+    WHERE o.deleted_at IS NULL
   `;
 
   const params = [];
-  if (searchFilter) {
-    params.push(`%${searchFilter}%`);
-    countQuery += ' AND (nama_opd ILIKE $1 OR kdunker ILIKE $1)';
-    dataQuery += ' AND (nama_opd ILIKE $1 OR kdunker ILIKE $1)';
+  if (opdScope) {
+    params.push(opdScope);
+    countQuery += ` AND o.id = ANY($${params.length}::uuid[])`;
+    dataQuery += ` AND o.id = ANY($${params.length}::uuid[])`;
   }
 
-  dataQuery += ' ORDER BY nama_opd ASC LIMIT $' + (params.length + 1) + ' OFFSET $' + (params.length + 2);
+  if (searchFilter) {
+    params.push(`%${searchFilter}%`);
+    countQuery += ` AND (o.nama_opd ILIKE $${params.length} OR o.kdunker ILIKE $${params.length})`;
+    dataQuery += ` AND (o.nama_opd ILIKE $${params.length} OR o.kdunker ILIKE $${params.length})`;
+  }
+
+  dataQuery += ' ORDER BY is_induk DESC, o.nama_opd ASC LIMIT $' + (params.length + 1) + ' OFFSET $' + (params.length + 2);
   const dataParams = [...params, parseInt(limit, 10), offset];
 
   const [countRes, dataRes] = await Promise.all([
@@ -105,7 +138,7 @@ async function getOpd(req, res) {
 
   const isSystemAdmin = req.user.role === 'admin';
   if (!isSystemAdmin) {
-    const owned = !!req.user.opd_id && req.user.opd_id === id;
+    const owned = canAccessOpd(req.user, id);
     if (!owned) {
       return res.status(403).json({
         success: false,
@@ -115,9 +148,25 @@ async function getOpd(req, res) {
   }
 
   const result = await query(
-    `SELECT id, kdunker, nama_opd, latitude, longitude, radius, ip_public, created_at, updated_at
-     FROM opds
-     WHERE id = $1 AND deleted_at IS NULL`,
+    `SELECT 
+       o.id,
+       o.kdunker,
+       o.nama_opd,
+       o.latitude,
+       o.longitude,
+       o.radius,
+       o.ip_public,
+       o.created_at,
+       o.updated_at,
+       (o.kdunker LIKE '%00000000000' AND length(o.kdunker) = 15) AS is_induk,
+       po.id AS parent_opd_id,
+       po.nama_opd AS parent_nama_opd
+     FROM opds o
+     LEFT JOIN opds po ON o.kdunker IS NOT NULL
+       AND NOT (o.kdunker LIKE '%00000000000' AND length(o.kdunker) = 15)
+       AND po.kdunker = SUBSTRING(o.kdunker FROM 1 FOR 4) || '00000000000'
+       AND po.deleted_at IS NULL
+     WHERE o.id = $1 AND o.deleted_at IS NULL`,
     [id]
   );
 
@@ -173,6 +222,19 @@ async function createOpd(req, res) {
      RETURNING id, kdunker, nama_opd, latitude, longitude, radius, ip_public, created_at`,
     [cleanKdunker, cleanNamaOpd, latitude || null, longitude || null, radius, ip_public || null]
   );
+
+  // Sync parent_id if applicable
+  try {
+    if (cleanKdunker.length >= 4 && !(cleanKdunker.length === 15 && cleanKdunker.endsWith('00000000000'))) {
+      const parentKdunker = `${cleanKdunker.substring(0, 4)}00000000000`;
+      await query(
+        `UPDATE opds SET parent_id = (SELECT id FROM opds WHERE kdunker = $1 AND deleted_at IS NULL LIMIT 1) WHERE id = $2`,
+        [parentKdunker, result.rows[0].id]
+      );
+    }
+  } catch (_) {
+    // Ignore if parent_id column not yet migrated
+  }
 
   logger.info(`OPD baru '${cleanNamaOpd}' (${cleanKdunker}) berhasil ditambahkan oleh ${req.user.username}`);
 
@@ -231,6 +293,20 @@ async function updateOpd(req, res) {
     ]
   );
 
+  // Sync parent_id if kdunker updated
+  try {
+    const updatedKdunker = updateRes.rows[0].kdunker;
+    if (updatedKdunker && updatedKdunker.length >= 4 && !(updatedKdunker.length === 15 && updatedKdunker.endsWith('00000000000'))) {
+      const parentKdunker = `${updatedKdunker.substring(0, 4)}00000000000`;
+      await query(
+        `UPDATE opds SET parent_id = (SELECT id FROM opds WHERE kdunker = $1 AND deleted_at IS NULL LIMIT 1) WHERE id = $2`,
+        [parentKdunker, id]
+      );
+    }
+  } catch (_) {
+    // Ignore if parent_id column not yet migrated
+  }
+
   logger.info(`OPD '${updateRes.rows[0].nama_opd}' diperbarui oleh ${req.user.username}`);
 
   res.json({
@@ -275,7 +351,7 @@ async function triggerAutoMap(req, res) {
 
   res.json({
     success: true,
-    message: `Auto-mapping OPD selesai. ${result.mappedDevices} perangkat, ${result.mappedUsers} pengguna, dan ${result.mappedPegawai} pegawai berhasil dipetakan secara otomatis.`,
+    message: `Auto-mapping OPD selesai. ${result.mappedSubOpds || 0} sub-unit, ${result.mappedDevices} perangkat, ${result.mappedUsers} pengguna, dan ${result.mappedPegawai} pegawai berhasil dipetakan secara otomatis.`,
     data: result
   });
 }
