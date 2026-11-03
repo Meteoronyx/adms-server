@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "test": "node --test",
     "start": "node src/server.js",
     "dev": "node src/server.js",
     "migrate": "node-pg-migrate up --migrations-dir migrations --migration-file-language sql",
