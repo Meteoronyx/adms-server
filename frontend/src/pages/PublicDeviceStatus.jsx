@@ -40,12 +40,18 @@ export default function PublicDeviceStatus() {
   // Filter pencarian instan (SN, nama lokasi/perangkat, OPD)
   const filtered = useMemo(() => {
     if (!search.trim()) return devices;
-    const q = search.trim().toLowerCase();
+    const query = search.trim().toLowerCase();
     return devices.filter((d) => {
       const name = (d.name || "").toLowerCase();
       const opd = (d.opd || "").toLowerCase();
+      const parentOpd = (d.parent_opd || "").toLowerCase();
       const sn = (d.masked_sn || "").toLowerCase();
-      return name.includes(q) || opd.includes(q) || sn.includes(q);
+      return (
+        name.includes(query) ||
+        opd.includes(query) ||
+        parentOpd.includes(query) ||
+        sn.includes(query)
+      );
     });
   }, [devices, search]);
 
@@ -65,7 +71,7 @@ export default function PublicDeviceStatus() {
         header: "Nama / Lokasi Perangkat",
         cell: ({ row }) => (
           <div>
-            <span className="font-medium text-ink block text-xs">
+            <span className="font-medium text-ink block">
               {row.original.name || (
                 <span className="text-muted">Belum diberi nama</span>
               )}
@@ -78,16 +84,31 @@ export default function PublicDeviceStatus() {
         header: "Unit Kerja (OPD)",
         cell: ({ row }) => {
           const opdName = row.original.opd;
-          if (!opdName) {
-            return <span className="text-xs text-muted">—</span>;
+          const parentName = row.original.parent_opd;
+          if (!opdName || opdName === "Umum") {
+            return (
+              <span className="text-xs text-muted">
+                {opdName || "—"}
+              </span>
+            );
           }
           return (
-            <span
-              className="text-xs font-medium text-ink truncate block max-w-xs"
-              title={opdName}
-            >
-              {opdName}
-            </span>
+            <div className="flex flex-col max-w-xs">
+              <span
+                className="text-xs font-medium text-ink truncate"
+                title={opdName}
+              >
+                {opdName}
+              </span>
+              {parentName && (
+                <span
+                  className="text-[11px] text-muted truncate"
+                  title={`Induk: ${parentName}`}
+                >
+                  Induk: {parentName}
+                </span>
+              )}
+            </div>
           );
         },
       },
@@ -123,7 +144,7 @@ export default function PublicDeviceStatus() {
             />
             <input
               type="text"
-              placeholder="Cari SN, nama perangkat, atau OPD…"
+              placeholder="Cari SN, nama lokasi, OPD…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full h-8 pl-8 pr-3 text-xs rounded-[6px] border border-control bg-surface text-ink placeholder:text-faint focus:outline-none focus:border-accent transition-colors"
@@ -153,7 +174,7 @@ export default function PublicDeviceStatus() {
         </div>
       </div>
 
-      {/* Table */}
+      {/* Table tanpa pagination */}
       {loading ? (
         <div className="space-y-3">
           <Skeleton className="h-9 w-full" />
@@ -163,7 +184,7 @@ export default function PublicDeviceStatus() {
         <DataTable
           columns={columns}
           data={filtered}
-          pagination={true}
+          pagination={false}
           getRowId={(row) => row.masked_sn}
         />
       )}

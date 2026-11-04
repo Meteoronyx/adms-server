@@ -55,6 +55,7 @@ exports.getPublicDeviceStatus = async (req, res) => {
         name: d.device_name?.trim() || d.name?.trim() || "Perangkat Absensi",
         masked_sn: maskSerialNumber(d.sn),
         opd: d.nama_opd || d.parent_nama_opd || "Umum",
+        parent_opd: d.parent_nama_opd || null,
         status: isOnline ? "online" : "offline",
         last_activity: d.last_activity,
       };
