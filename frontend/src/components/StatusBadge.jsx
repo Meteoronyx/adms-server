@@ -21,6 +21,11 @@ const statusMap = {
     bg: 'bg-[#e3f1f4] text-[#124957]',
     dot: 'bg-[#1b6c80]',
   },
+  success: {
+    label: 'Success',
+    bg: 'bg-[#dcfae5] text-[#04250e]',
+    dot: 'bg-[#1e7b4f]',
+  },
   failed: {
     label: 'Failed',
     bg: 'bg-[#ffedea] text-[#831c1e]',

@@ -1,9 +1,9 @@
-import { useEffect, useState, useCallback, useId } from 'react';
-import { getCommandQueue } from '../lib/api';
-import { useToast } from '../hooks/useToast';
-import StatusBadge from '../components/StatusBadge';
-import { Skeleton } from '../components/ui/Skeleton';
-import { Tabs } from '../components/ui/Tabs';
+import { useEffect, useState, useCallback, useId } from "react";
+import { getCommandQueue } from "../lib/api";
+import { useToast } from "../hooks/useToast";
+import StatusBadge from "../components/StatusBadge";
+import { Skeleton } from "../components/ui/Skeleton";
+import { Tabs } from "../components/ui/Tabs";
 import {
   ListOrdered,
   RefreshCw,
@@ -14,7 +14,7 @@ import {
   X,
   Copy,
   Check,
-} from 'lucide-react';
+} from "lucide-react";
 
 export default function Commands() {
   const [commands, setCommands] = useState([]);
@@ -23,9 +23,9 @@ export default function Commands() {
   const [total, setTotal] = useState(0);
   const [limit, setLimit] = useState(25);
   const [offset, setOffset] = useState(0);
-  const [status, setStatus] = useState('pending');
-  const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [status, setStatus] = useState("pending");
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [copiedId, setCopiedId] = useState(null);
 
@@ -40,33 +40,42 @@ export default function Commands() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  const fetchCommands = useCallback(async (isSilent = false) => {
-    if (!isSilent) {
-      setLoading(true);
-    } else {
-      setIsRefreshing(true);
-    }
-
-    try {
-      const data = await getCommandQueue({
-        limit,
-        offset,
-        status: status === 'all' ? '' : status,
-        search: debouncedSearch,
-      });
-
-      const list = data.commands || data.data || [];
-      setCommands(list);
-      setTotal(data.total !== undefined ? data.total : (data.count !== undefined ? data.count : list.length));
-    } catch {
+  const fetchCommands = useCallback(
+    async (isSilent = false) => {
       if (!isSilent) {
-        addToast('Gagal memuat antrian perintah', 'error');
+        setLoading(true);
+      } else {
+        setIsRefreshing(true);
       }
-    } finally {
-      setLoading(false);
-      setIsRefreshing(false);
-    }
-  }, [limit, offset, status, debouncedSearch, addToast]);
+
+      try {
+        const data = await getCommandQueue({
+          limit,
+          offset,
+          status: status === "all" ? "" : status,
+          search: debouncedSearch,
+        });
+
+        const list = data.commands || data.data || [];
+        setCommands(list);
+        setTotal(
+          data.total !== undefined
+            ? data.total
+            : data.count !== undefined
+              ? data.count
+              : list.length,
+        );
+      } catch {
+        if (!isSilent) {
+          addToast("Gagal memuat antrian perintah", "error");
+        }
+      } finally {
+        setLoading(false);
+        setIsRefreshing(false);
+      }
+    },
+    [limit, offset, status, debouncedSearch, addToast],
+  );
 
   useEffect(() => {
     fetchCommands(false);
@@ -82,12 +91,13 @@ export default function Commands() {
 
   const handleCopyParams = (id, params) => {
     try {
-      const text = typeof params === 'string' ? params : JSON.stringify(params, null, 2);
+      const text =
+        typeof params === "string" ? params : JSON.stringify(params, null, 2);
       navigator.clipboard.writeText(text);
       setCopiedId(id);
       setTimeout(() => setCopiedId(null), 2000);
     } catch {
-      addToast('Gagal menyalin parameter', 'error');
+      addToast("Gagal menyalin parameter", "error");
     }
   };
 
@@ -102,21 +112,22 @@ export default function Commands() {
   };
 
   const handleResetFilters = () => {
-    setSearch('');
-    setDebouncedSearch('');
-    setStatus('pending');
+    setSearch("");
+    setDebouncedSearch("");
+    setStatus("pending");
     setOffset(0);
   };
 
-  const hasActiveFilters = Boolean(search || status !== 'pending');
+  const hasActiveFilters = Boolean(search || status !== "pending");
   const totalPages = Math.ceil(total / limit) || 1;
   const currentPage = Math.floor(offset / limit) + 1;
 
   const statusTabs = [
-    { key: 'pending', label: 'Pending (Antrian)' },
-    { key: 'executed', label: 'Executed (Selesai)' },
-    { key: 'failed', label: 'Failed (Gagal)' },
-    { key: 'all', label: 'Semua Status' },
+    { key: "pending", label: "Pending" },
+    { key: "executed", label: "Executed" },
+    { key: "success", label: "Success" },
+    { key: "failed", label: "Failed" },
+    { key: "all", label: "Semua Status" },
   ];
 
   return (
@@ -128,7 +139,11 @@ export default function Commands() {
             Antrian Perintah (ADMS)
           </h1>
           <p className="text-[13px] text-muted mt-0.5">
-            <span className="num font-medium text-ink">{total.toLocaleString('id-ID')}</span> perintah tercatat {status === 'pending' ? 'dalam antrian' : 'dalam sistem'}
+            <span className="num font-medium text-ink">
+              {total.toLocaleString("id-ID")}
+            </span>{" "}
+            perintah tercatat{" "}
+            {status === "pending" ? "dalam antrian" : "dalam sistem"}
           </p>
         </div>
 
@@ -138,13 +153,19 @@ export default function Commands() {
             onClick={() => setAutoRefresh(!autoRefresh)}
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
               autoRefresh
-                ? 'border-[#bde3cf] bg-[#eaf6f0] text-positive'
-                : 'border-border bg-surface text-muted'
+                ? "border-[#bde3cf] bg-[#eaf6f0] text-positive"
+                : "border-border bg-surface text-muted"
             }`}
-            title={autoRefresh ? 'Auto-refresh aktif setiap 10 detik' : 'Auto-refresh dijeda'}
+            title={
+              autoRefresh
+                ? "Auto-refresh aktif setiap 10 detik"
+                : "Auto-refresh dijeda"
+            }
           >
             <Activity size={13} />
-            <span>{autoRefresh ? 'Auto-refresh (10d)' : 'Auto-refresh Dijeda'}</span>
+            <span>
+              {autoRefresh ? "Auto-refresh (10d)" : "Auto-refresh Dijeda"}
+            </span>
           </button>
 
           <button
@@ -153,7 +174,10 @@ export default function Commands() {
             disabled={loading || isRefreshing}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-border bg-surface text-ink hover:bg-raised transition-colors disabled:opacity-50"
           >
-            <RefreshCw size={13} className={loading || isRefreshing ? 'animate-spin' : ''} />
+            <RefreshCw
+              size={13}
+              className={loading || isRefreshing ? "animate-spin" : ""}
+            />
             <span>Segarkan</span>
           </button>
         </div>
@@ -186,7 +210,7 @@ export default function Commands() {
               {search && (
                 <button
                   type="button"
-                  onClick={() => setSearch('')}
+                  onClick={() => setSearch("")}
                   className="absolute right-2 top-1/2 -translate-y-1/2 text-faint hover:text-ink p-0.5 rounded"
                   title="Hapus pencarian"
                 >
@@ -232,23 +256,45 @@ export default function Commands() {
             <table className="min-w-full text-sm">
               <thead>
                 <tr className="bg-raised/60 border-b border-border">
-                  <th className="text-left px-4 py-2.5 font-medium text-muted text-xs">ID</th>
-                  <th className="text-left px-4 py-2.5 font-medium text-muted text-xs">Device SN</th>
-                  <th className="text-left px-4 py-2.5 font-medium text-muted text-xs">Lokasi</th>
-                  <th className="text-left px-4 py-2.5 font-medium text-muted text-xs">Tipe Perintah</th>
-                  <th className="text-left px-4 py-2.5 font-medium text-muted text-xs">Parameter</th>
-                  <th className="text-left px-4 py-2.5 font-medium text-muted text-xs">Status</th>
-                  <th className="text-left px-4 py-2.5 font-medium text-muted text-xs">Dibuat</th>
-                  <th className="text-left px-4 py-2.5 font-medium text-muted text-xs">Dieksekusi</th>
+                  <th className="text-left px-4 py-2.5 font-medium text-muted text-xs">
+                    ID
+                  </th>
+                  <th className="text-left px-4 py-2.5 font-medium text-muted text-xs">
+                    Device SN
+                  </th>
+                  <th className="text-left px-4 py-2.5 font-medium text-muted text-xs">
+                    Lokasi
+                  </th>
+                  <th className="text-left px-4 py-2.5 font-medium text-muted text-xs">
+                    Tipe Perintah
+                  </th>
+                  <th className="text-left px-4 py-2.5 font-medium text-muted text-xs">
+                    Parameter
+                  </th>
+                  <th className="text-left px-4 py-2.5 font-medium text-muted text-xs">
+                    Status
+                  </th>
+                  <th className="text-left px-4 py-2.5 font-medium text-muted text-xs">
+                    Dibuat
+                  </th>
+                  <th className="text-left px-4 py-2.5 font-medium text-muted text-xs">
+                    Dieksekusi
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-rule">
                 {commands.map((c) => (
-                  <tr key={c.id} className="hover:bg-raised/70 transition-colors">
-                    <td className="px-4 py-2.5 font-mono text-ink text-xs font-medium num"> {/* taste-skill-ignore */}
-                      #{c.id}
+                  <tr
+                    key={c.id}
+                    className="hover:bg-raised/70 transition-colors"
+                  >
+                    <td className="px-4 py-2.5 font-mono text-ink text-xs font-medium num">
+                      {" "}
+                      {/* taste-skill-ignore */}#{c.id}
                     </td>
-                    <td className="px-4 py-2.5 font-mono text-xs text-ink"> {/* taste-skill-ignore */}
+                    <td className="px-4 py-2.5 font-mono text-xs text-ink">
+                      {" "}
+                      {/* taste-skill-ignore */}
                       {c.device_sn}
                     </td>
                     <td className="px-4 py-2.5 text-ink text-xs font-medium">
@@ -269,11 +315,17 @@ export default function Commands() {
                         </span>
                         <button
                           type="button"
-                          onClick={() => handleCopyParams(c.id, c.command_params)}
+                          onClick={() =>
+                            handleCopyParams(c.id, c.command_params)
+                          }
                           className="opacity-0 group-hover:opacity-100 transition-opacity text-faint hover:text-ink p-1 rounded"
                           title="Salin parameter"
                         >
-                          {copiedId === c.id ? <Check size={12} className="text-positive" /> : <Copy size={12} />}
+                          {copiedId === c.id ? (
+                            <Check size={12} className="text-positive" />
+                          ) : (
+                            <Copy size={12} />
+                          )}
                         </button>
                       </div>
                     </td>
@@ -281,10 +333,14 @@ export default function Commands() {
                       <StatusBadge status={c.status} />
                     </td>
                     <td className="px-4 py-2.5 text-muted text-xs whitespace-nowrap num">
-                      {c.created_at ? new Date(c.created_at).toLocaleString('id-ID') : '-'}
+                      {c.created_at
+                        ? new Date(c.created_at).toLocaleString("id-ID")
+                        : "-"}
                     </td>
                     <td className="px-4 py-2.5 text-muted text-xs whitespace-nowrap num">
-                      {c.executed_at ? new Date(c.executed_at).toLocaleString('id-ID') : '-'}
+                      {c.executed_at
+                        ? new Date(c.executed_at).toLocaleString("id-ID")
+                        : "-"}
                     </td>
                   </tr>
                 ))}
@@ -293,16 +349,20 @@ export default function Commands() {
                   <tr>
                     <td colSpan={8} className="px-6 py-12 text-center">
                       <div className="flex flex-col items-center gap-1.5">
-                        <ListOrdered size={22} className="text-faint" strokeWidth={1.5} />
+                        <ListOrdered
+                          size={22}
+                          className="text-faint"
+                          strokeWidth={1.5}
+                        />
                         <p className="text-sm text-ink font-medium">
                           {hasActiveFilters
-                            ? 'Tidak ada perintah yang sesuai dengan filter'
-                            : 'Tidak ada perintah dalam antrian'}
+                            ? "Tidak ada perintah yang sesuai dengan filter"
+                            : "Tidak ada perintah dalam antrian"}
                         </p>
                         <p className="text-xs text-muted">
                           {hasActiveFilters
-                            ? 'Coba sesuaikan kata kunci pencarian atau filter status Anda.'
-                            : 'Sistem sedang dalam keadaan siaga tanpa tugas yang tertunda.'}
+                            ? "Coba sesuaikan kata kunci pencarian atau filter status Anda."
+                            : "Sistem sedang dalam keadaan siaga tanpa tugas yang tertunda."}
                         </p>
                       </div>
                     </td>
@@ -317,11 +377,16 @@ export default function Commands() {
         {!loading && total > 0 && (
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-border bg-raised/40 text-xs">
             <div className="text-muted num">
-              Menampilkan <span className="font-medium text-ink">{offset + 1}</span>–
+              Menampilkan{" "}
+              <span className="font-medium text-ink">{offset + 1}</span>–
               <span className="font-medium text-ink">
                 {Math.min(offset + limit, total)}
-              </span>{' '}
-              dari <span className="font-medium text-ink">{total.toLocaleString('id-ID')}</span> perintah
+              </span>{" "}
+              dari{" "}
+              <span className="font-medium text-ink">
+                {total.toLocaleString("id-ID")}
+              </span>{" "}
+              perintah
             </div>
 
             <div className="flex items-center gap-2">
