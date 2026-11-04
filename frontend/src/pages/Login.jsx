@@ -105,7 +105,7 @@ export default function Login() {
             to="/public/device-status"
             className="text-xs text-muted hover:text-ink transition-colors inline-flex items-center gap-1.5"
           >
-            <span>Lihat Status Mesin Absensi Publik</span>
+            <span>Lihat Status Mesin Absensi</span>
             <span aria-hidden="true">&rarr;</span>
           </Link>
         </div>
