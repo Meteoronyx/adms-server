@@ -311,6 +311,22 @@ const getOfflineDevices = async (opdId = null) => {
   return result.rows;
 };
 
+// Get minimal device status list for public view (excluding IP, kdunker, tokens, internal sync flags)
+const getPublicDevicesStatus = async () => {
+  const query = `
+    SELECT d.sn, d.name, d.device_name, d.last_activity, d.status, d.nama_opd,
+           po.nama_opd AS parent_nama_opd
+    FROM devices_with_status d
+    LEFT JOIN opds po ON d.kdunker IS NOT NULL
+      AND NOT (d.kdunker LIKE '%00000000000' AND length(d.kdunker) = 15)
+      AND po.kdunker = SUBSTRING(d.kdunker FROM 1 FOR 4) || '00000000000'
+      AND po.deleted_at IS NULL
+    ORDER BY CASE WHEN d.status = 'online' THEN 1 ELSE 2 END ASC, COALESCE(d.device_name, d.name) ASC
+  `;
+  const result = await db.query(query);
+  return result.rows;
+};
+
 // Insert a command into queue
 const insertCommand = async (sn, commandType, params = {}) => {
   const query = `
@@ -1421,6 +1437,7 @@ module.exports = {
   updateDeviceDetails,
   getAllDevices,
   getOfflineDevices,
+  getPublicDevicesStatus,
   insertCommand,
   getNextPendingCommand,
   markCommandExecuted,

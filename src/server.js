@@ -14,6 +14,7 @@ const iclockRoutes = require('./routes/iclock');
 const adminRoutes = require('./routes/admin');
 const authRoutes = require('./routes/auth');
 const roleRoutes = require('./routes/roles');
+const publicRoutes = require('./routes/public');
 const { getDatabaseStatus } = require('./db/connection');
 const { seedAdminFromEnv } = require('./db/seedAdmin');
 const { ensureOpdHierarchySchema } = require('./db/autoMapOpd');
@@ -112,6 +113,7 @@ app.get('/health', async (req, res) => {
   }
 });
 
+app.use(publicRoutes);
 app.use(authRoutes);
 app.use(roleRoutes);
 app.use(iclockRoutes);

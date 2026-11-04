@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { useToast } from "../hooks/useToast";
 import { login as apiLogin } from "../lib/api";
@@ -99,6 +99,16 @@ export default function Login() {
             </div>
           </div>
         </form>
+
+        <div className="mt-4 text-center">
+          <Link
+            to="/public/device-status"
+            className="text-xs text-muted hover:text-ink transition-colors inline-flex items-center gap-1.5"
+          >
+            <span>Lihat Status Mesin Absensi Publik</span>
+            <span aria-hidden="true">&rarr;</span>
+          </Link>
+        </div>
       </div>
     </div>
   );

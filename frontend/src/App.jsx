@@ -14,6 +14,7 @@ import BroadcastMessages from './pages/BroadcastMessages';
 import AttendanceLogs from './pages/AttendanceLogs';
 import Users from './pages/Users';
 import Opds from './pages/Opds';
+import PublicDeviceStatus from './pages/PublicDeviceStatus';
 
 function PrivateRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
@@ -48,6 +49,8 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/public/device-status" element={<PublicDeviceStatus />} />
+      <Route path="/status" element={<Navigate to="/public/device-status" replace />} />
       <Route
         path="/"
         element={

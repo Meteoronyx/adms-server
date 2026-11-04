@@ -31,6 +31,9 @@ export const me = () =>
 export const getHealth = () =>
   fetchJSON('/health');
 
+export const getPublicDeviceStatus = () =>
+  fetchJSON('/api/public/device-status');
+
 export const listDevices = () =>
   fetchJSON('/admin/devices');
 
