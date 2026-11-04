@@ -3,14 +3,25 @@
 const bcrypt = require('bcrypt');
 const { query } = require('../db/connection');
 const logger = require('../utils/logger');
+const { canAccessOpd, resolveScopedOpdIds } = require('../middleware/apiKeyAuth');
 
 /**
  * GET /admin/users
  * List all registered users with role & OPD details
  */
 async function listUsers(req, res) {
-  const result = await query(
-    `SELECT 
+  const isSystemAdmin = req.user.role === 'admin';
+  const opdScope = !isSystemAdmin ? await resolveScopedOpdIds(req.user) : null;
+
+  if (!isSystemAdmin && (!opdScope || opdScope.length === 0)) {
+    return res.json({
+      success: true,
+      data: []
+    });
+  }
+
+  let sql = `
+    SELECT 
        u.id, 
        u.username, 
        u.name, 
@@ -27,8 +38,17 @@ async function listUsers(req, res) {
      FROM users u
      LEFT JOIN roles r ON u.role_id = r.id OR LOWER(u.role) = r.slug
      LEFT JOIN opds o ON u.opd_id = o.id
-     ORDER BY u.created_at ASC`
-  );
+  `;
+
+  const params = [];
+  if (!isSystemAdmin) {
+    params.push(opdScope);
+    sql += ` WHERE u.opd_id = ANY($${params.length}::uuid[]) AND COALESCE(r.slug, u.role) != 'admin'`;
+  }
+
+  sql += ` ORDER BY u.created_at ASC`;
+
+  const result = await query(sql, params);
 
   res.json({
     success: true,
@@ -87,6 +107,14 @@ async function createUser(req, res) {
     targetRole = defaultRes.rows[0] || { id: null, name: 'Operator', slug: 'operator' };
   }
 
+  // Vertical privilege escalation check: hanya admin yang dapat memberikan peran admin
+  if (targetRole.slug === 'admin' && req.user.role !== 'admin') {
+    return res.status(403).json({
+      success: false,
+      message: 'Hanya Administrator yang dapat memberikan peran Administrator'
+    });
+  }
+
   // Multi-tenant OPD scoping: user non-admin wajib terikat ke unit kerja (OPD)
   if (targetRole.slug !== 'admin') {
     if (!opd_id || typeof opd_id !== 'string') {
@@ -124,6 +152,14 @@ async function createUser(req, res) {
     targetOpdId = opdRes.rows[0].id;
     targetOpdName = opdRes.rows[0].nama_opd;
     targetKdunker = opdRes.rows[0].kdunker;
+  }
+
+  // Multi-tenant check: user non-admin hanya dapat membuat user di OPD naungannya
+  if (req.user.role !== 'admin' && (!targetOpdId || !canAccessOpd(req.user, targetOpdId))) {
+    return res.status(403).json({
+      success: false,
+      message: 'Anda tidak memiliki hak untuk membuat pengguna di unit kerja (OPD) ini'
+    });
   }
 
   // Check username uniqueness
@@ -176,6 +212,22 @@ async function updateUser(req, res) {
 
   const targetUser = userCheck.rows[0];
 
+  // Protect admin accounts: non-admin cannot modify admin accounts
+  if (targetUser.role === 'admin' && req.user.role !== 'admin') {
+    return res.status(403).json({
+      success: false,
+      message: 'Hanya Administrator yang dapat mengubah data Administrator'
+    });
+  }
+
+  // Multi-tenant isolation: non-admin cannot modify users outside their accessible OPD
+  if (req.user.role !== 'admin' && !canAccessOpd(req.user, targetUser.opd_id)) {
+    return res.status(403).json({
+      success: false,
+      message: 'Anda tidak memiliki hak untuk mengubah pengguna di unit kerja (OPD) ini'
+    });
+  }
+
   // Prevent admin from deactivating themselves
   if (req.user.id === targetUser.id && is_active === false) {
     return res.status(400).json({
@@ -191,6 +243,14 @@ async function updateUser(req, res) {
   } else if (role) {
     const rRes = await query('SELECT id, name, slug FROM roles WHERE slug = $1 OR LOWER(name) = LOWER($2)', [role, role]);
     targetRole = rRes.rows[0];
+  }
+
+  // Vertical privilege escalation check: non-admin cannot promote user to admin
+  if (targetRole && targetRole.slug === 'admin' && req.user.role !== 'admin') {
+    return res.status(403).json({
+      success: false,
+      message: 'Hanya Administrator yang dapat memberikan peran Administrator'
+    });
   }
 
   const newName = name && typeof name === 'string' ? name.trim() : null;
@@ -221,6 +281,12 @@ async function updateUser(req, res) {
         return res.status(400).json({
           success: false,
           message: 'Unit kerja (OPD) tidak ditemukan'
+        });
+      }
+      if (req.user.role !== 'admin' && !canAccessOpd(req.user, opd_id)) {
+        return res.status(403).json({
+          success: false,
+          message: 'Anda tidak memiliki hak untuk memindahkan pengguna ke unit kerja (OPD) ini'
         });
       }
     }
@@ -321,7 +387,7 @@ async function changePassword(req, res) {
     });
   }
 
-  const userRes = await query('SELECT id, username, password_hash FROM users WHERE id = $1', [id]);
+  const userRes = await query('SELECT id, username, role, opd_id, password_hash FROM users WHERE id = $1', [id]);
   if (userRes.rows.length === 0) {
     return res.status(404).json({
       success: false,
@@ -330,6 +396,22 @@ async function changePassword(req, res) {
   }
 
   const targetUser = userRes.rows[0];
+
+  // Protect admin accounts: non-admin cannot reset admin password
+  if (targetUser.role === 'admin' && req.user.role !== 'admin') {
+    return res.status(403).json({
+      success: false,
+      message: 'Hanya Administrator yang dapat mereset password Administrator'
+    });
+  }
+
+  // Multi-tenant isolation: non-admin cannot reset password for users outside their accessible OPD
+  if (req.user.role !== 'admin' && !canAccessOpd(req.user, targetUser.opd_id)) {
+    return res.status(403).json({
+      success: false,
+      message: 'Anda tidak memiliki hak untuk mereset password pengguna di unit kerja (OPD) ini'
+    });
+  }
 
   const newHash = await bcrypt.hash(newPassword, 10);
   await query('UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2', [newHash, id]);
@@ -356,11 +438,29 @@ async function deleteUser(req, res) {
     });
   }
 
-  const userRes = await query('SELECT id, username FROM users WHERE id = $1', [id]);
+  const userRes = await query('SELECT id, username, role, opd_id FROM users WHERE id = $1', [id]);
   if (userRes.rows.length === 0) {
     return res.status(404).json({
       success: false,
       message: 'Pengguna tidak ditemukan'
+    });
+  }
+
+  const targetUser = userRes.rows[0];
+
+  // Protect admin accounts: non-admin cannot delete admin accounts
+  if (targetUser.role === 'admin' && req.user.role !== 'admin') {
+    return res.status(403).json({
+      success: false,
+      message: 'Hanya Administrator yang dapat menghapus akun Administrator'
+    });
+  }
+
+  // Multi-tenant isolation: non-admin cannot delete users outside their accessible OPD
+  if (req.user.role !== 'admin' && !canAccessOpd(req.user, targetUser.opd_id)) {
+    return res.status(403).json({
+      success: false,
+      message: 'Anda tidak memiliki hak untuk menghapus pengguna di unit kerja (OPD) ini'
     });
   }
 

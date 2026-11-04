@@ -178,36 +178,44 @@ export function UsersTab({
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        {hasPermission('users:write') && (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => onOpenEdit(u)}
-                              title="Edit Pengguna"
-                              className="p-1.5 text-muted hover:text-ink hover:bg-raised rounded-md transition-colors"
-                            >
-                              <Pencil size={14} />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => onOpenResetPass(u)}
-                              title="Reset Password"
-                              className="p-1.5 text-muted hover:text-warning hover:bg-[#fdf5e6] rounded-md transition-colors"
-                            >
-                              <KeyRound size={14} />
-                            </button>
-                          </>
-                        )}
-                        {hasPermission('users:delete') && !isSelf && (
-                          <button
-                            type="button"
-                            onClick={() => onOpenDelete(u)}
-                            title="Hapus Pengguna"
-                            className="p-1.5 text-muted hover:text-negative hover:bg-[#fdeded] rounded-md transition-colors"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        )}
+                        {(() => {
+                          const isTargetAdmin = u.role === 'admin';
+                          const canModify = currentUser?.role === 'admin' || !isTargetAdmin;
+                          return (
+                            <>
+                              {hasPermission('users:write') && canModify && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => onOpenEdit(u)}
+                                    title="Edit Pengguna"
+                                    className="p-1.5 text-muted hover:text-ink hover:bg-raised rounded-md transition-colors"
+                                  >
+                                    <Pencil size={14} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => onOpenResetPass(u)}
+                                    title="Reset Password"
+                                    className="p-1.5 text-muted hover:text-warning hover:bg-[#fdf5e6] rounded-md transition-colors"
+                                  >
+                                    <KeyRound size={14} />
+                                  </button>
+                                </>
+                              )}
+                              {hasPermission('users:delete') && canModify && !isSelf && (
+                                <button
+                                  type="button"
+                                  onClick={() => onOpenDelete(u)}
+                                  title="Hapus Pengguna"
+                                  className="p-1.5 text-muted hover:text-negative hover:bg-[#fdeded] rounded-md transition-colors"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              )}
+                            </>
+                          );
+                        })()}
                       </div>
                     </td>
                   </tr>

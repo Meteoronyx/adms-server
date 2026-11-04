@@ -84,6 +84,7 @@ export default function Users() {
         roles={rolesHook.roles}
         opds={usersHook.opds}
         submitting={usersHook.submitting}
+        currentUser={currentUser}
       />
 
       <EditUserModal
@@ -94,6 +95,7 @@ export default function Users() {
         roles={rolesHook.roles}
         opds={usersHook.opds}
         submitting={usersHook.submitting}
+        currentUser={currentUser}
       />
 
       <ResetPasswordModal

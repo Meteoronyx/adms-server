@@ -10,6 +10,7 @@ export function CreateUserModal({
   roles = [],
   opds = [],
   submitting,
+  currentUser,
 }) {
   const [formData, setFormData] = useState({
     username: '',
@@ -20,7 +21,12 @@ export function CreateUserModal({
   });
   const [error, setError] = useState('');
 
-  const selectedRole = roles?.find((r) => String(r.id) === String(formData.role_id));
+  // Saring role admin jika pengguna yang login bukan admin
+  const availableRoles = currentUser?.role === 'admin'
+    ? roles
+    : roles.filter((r) => r.slug !== 'admin');
+
+  const selectedRole = availableRoles?.find((r) => String(r.id) === String(formData.role_id));
   const isAdminRole = selectedRole?.slug === 'admin';
 
   useEffect(() => {
@@ -29,12 +35,12 @@ export function CreateUserModal({
         username: '',
         name: '',
         password: '',
-        role_id: roles.length > 0 ? roles[0].id : '',
+        role_id: availableRoles.length > 0 ? availableRoles[0].id : '',
         opd_id: '',
       });
       setError('');
     }
-  }, [open, roles]);
+  }, [open, availableRoles]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -136,7 +142,7 @@ export function CreateUserModal({
               className="w-full px-3 py-2 text-xs bg-surface border border-border rounded-lg focus:outline-none focus:border-accent text-ink transition-colors appearance-none cursor-pointer pr-8"
             >
               <option value="">-- Tanpa Role --</option>
-              {roles.map((r) => (
+              {availableRoles.map((r) => (
                 <option key={r.id} value={r.id}>
                   {r.name} {r.description ? `(${r.description})` : ''}
                 </option>
