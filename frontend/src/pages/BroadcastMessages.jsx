@@ -8,7 +8,6 @@ import {
 } from "../lib/api";
 import { useToast } from "../hooks/useToast";
 import { useAuth } from "../hooks/useAuth";
-import { useSocket } from "../hooks/useSocket";
 import { SearchableSelect } from "../components/ui/SearchableSelect";
 import { Badge } from "../components/ui/Badge";
 import {
@@ -35,7 +34,6 @@ export default function BroadcastMessages() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
   const { addToast } = useToast();
-  const { socket } = useSocket();
 
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -74,13 +72,6 @@ export default function BroadcastMessages() {
         .catch(() => {});
     }
   }, [fetchMessages, isAdmin]);
-
-  useEffect(() => {
-    if (!socket) return;
-    const handleUpdate = () => fetchMessages();
-    socket.on("device_update", handleUpdate);
-    return () => socket.off("device_update", handleUpdate);
-  }, [socket, fetchMessages]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
