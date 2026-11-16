@@ -18,6 +18,7 @@ module.exports = {
       USER: '/admin/user/:sn',
       USER_DELETE: '/admin/user/:sn/:pin',
       ENROLL_FP: '/admin/enrollfp/:sn',
+      ENROLL_FACE: '/admin/enrollface/:sn',
       TRANSFER_FP: '/admin/transferfp/:sn',
       TRANSFER_FACE: '/admin/transferface/:sn',
       TRANSFER_ALL: '/admin/transferall/:sn',

@@ -51,6 +51,7 @@ router.delete(config.PATHS.ADMIN.USER_DELETE, requirePermission('devices:write')
 
 // Biometrics Management Commands (Fingerprint & Face)
 router.post(config.PATHS.ADMIN.ENROLL_FP, requirePermission('fingerprint:manage'), validateDevice, asyncHandler(biometricController.enrollFingerprint));
+router.post(config.PATHS.ADMIN.ENROLL_FACE, requirePermission('fingerprint:manage'), validateDevice, asyncHandler(biometricController.enrollFace));
 router.get('/admin/fingerprint-check', requirePermission('fingerprint:manage'), asyncHandler(biometricController.checkFingerprintOnDevice));
 router.post(config.PATHS.ADMIN.TRANSFER_FP, requirePermission('fingerprint:manage'), validateDevice, asyncHandler(biometricController.transferFingerprint));
 router.get('/admin/face-check', requirePermission('fingerprint:manage'), asyncHandler(biometricController.checkFaceOnDevice));

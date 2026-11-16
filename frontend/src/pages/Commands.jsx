@@ -136,7 +136,7 @@ export default function Commands() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-[20px] font-semibold text-ink tracking-[-0.015em]">
-            Antrian Perintah (ADMS)
+            Antrian Perintah
           </h1>
           <p className="text-[13px] text-muted mt-0.5">
             <span className="num font-medium text-ink">

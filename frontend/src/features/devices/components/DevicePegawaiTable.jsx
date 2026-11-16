@@ -131,7 +131,7 @@ export function DevicePegawaiTable({
                             ...(canManageFingerprint
                               ? [
                                   {
-                                    label: 'Enroll Sidik Jari',
+                                    label: 'Enroll Biometrik',
                                     icon: Fingerprint,
                                     onClick: () => onOpenEnroll(p),
                                   },

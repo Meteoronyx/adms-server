@@ -1,9 +1,9 @@
-import { useState } from 'react';
-import { Modal } from '../../../../components/ui/Modal';
-import { Pencil, Edit, Fingerprint } from 'lucide-react';
+import { useState } from "react";
+import { Modal } from "../../../../components/ui/Modal";
+import { Pencil, Edit, Fingerprint, ScanFace } from "lucide-react";
 
 export function EditDeviceNameModal({ open, onClose, onSubmit, currentName }) {
-  const [name, setName] = useState(currentName || '');
+  const [name, setName] = useState(currentName || "");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -63,9 +63,9 @@ export function UpdateUserModal({ open, onClose, onSubmit, targetUser }) {
     if (!targetUser) return;
     const fd = new FormData(e.target);
     const success = await onSubmit(targetUser.pin, {
-      name: fd.get('name'),
-      privilege: fd.get('privilege'),
-      passwd: fd.get('passwd'),
+      name: fd.get("name"),
+      privilege: fd.get("privilege"),
+      passwd: fd.get("passwd"),
     });
     if (success) {
       onClose();
@@ -76,7 +76,7 @@ export function UpdateUserModal({ open, onClose, onSubmit, targetUser }) {
     <Modal
       open={open}
       onOpenChange={(val) => !val && onClose()}
-      title={`Ubah User Mesin (PIN: ${targetUser?.pin || ''})`}
+      title={`Ubah User Mesin (PIN: ${targetUser?.pin || ""})`}
       description="Kirim perintah pembaruan nama, hak akses, atau password ke perangkat."
       size="md"
       footer={
@@ -99,7 +99,11 @@ export function UpdateUserModal({ open, onClose, onSubmit, targetUser }) {
         </>
       }
     >
-      <form id="update-user-dev-form" onSubmit={handleSubmit} className="space-y-4 py-1">
+      <form
+        id="update-user-dev-form"
+        onSubmit={handleSubmit}
+        className="space-y-4 py-1"
+      >
         <div>
           <label className="block text-sm font-medium text-ink mb-2">
             Nama Pegawai
@@ -107,7 +111,7 @@ export function UpdateUserModal({ open, onClose, onSubmit, targetUser }) {
           <input
             type="text"
             name="name"
-            defaultValue={targetUser?.name || ''}
+            defaultValue={targetUser?.name || ""}
             className="w-full h-[38px] px-3 text-sm bg-surface border border-control rounded-[6px] focus:outline-none focus:border-accent text-ink transition-colors"
           />
         </div>
@@ -118,7 +122,7 @@ export function UpdateUserModal({ open, onClose, onSubmit, targetUser }) {
           </label>
           <select
             name="privilege"
-            defaultValue={targetUser?.privilege || '0'}
+            defaultValue={targetUser?.privilege || "0"}
             className="w-full h-[38px] px-3 text-sm bg-surface border border-control rounded-[6px] focus:outline-none focus:border-accent text-ink transition-colors"
           >
             <option value="0">0 — Pengguna Normal</option>
@@ -143,33 +147,47 @@ export function UpdateUserModal({ open, onClose, onSubmit, targetUser }) {
   );
 }
 
-export function EnrollFingerprintModal({ open, onClose, onSubmit, targetUser }) {
+export function EnrollFingerprintModal({
+  open,
+  onClose,
+  onSubmit,
+  targetUser,
+}) {
+  const [biometricType, setBiometricType] = useState("fingerprint");
+
+  const handleClose = () => {
+    setBiometricType("fingerprint");
+    onClose();
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!targetUser) return;
     const fd = new FormData(e.target);
     const success = await onSubmit(targetUser.pin, {
-      fid: fd.get('fid'),
-      retry: fd.get('retry'),
-      overwrite: fd.get('overwrite'),
+      fid: biometricType === "face" ? 111 : fd.get("fid"),
+      retry: fd.get("retry"),
+      overwrite: fd.get("overwrite"),
     });
     if (success) {
-      onClose();
+      handleClose();
     }
   };
+
+  const isFace = biometricType === "face";
 
   return (
     <Modal
       open={open}
-      onOpenChange={(val) => !val && onClose()}
-      title={`Enroll Sidik Jari (PIN: ${targetUser?.pin || ''})`}
-      description="Kirim perintah perekaman sidik jari jarak jauh ke perangkat."
+      onOpenChange={(val) => !val && handleClose()}
+      title={`Enroll Biometrik (PIN: ${targetUser?.pin || ""})`}
+      description="Kirim perintah perekaman sidik jari atau wajah ke perangkat."
       size="md"
       footer={
         <>
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             className="h-8 px-3.5 text-xs font-medium text-ink bg-surface border border-control hover:bg-raised rounded-[6px] transition-colors"
           >
             Batal
@@ -179,29 +197,67 @@ export function EnrollFingerprintModal({ open, onClose, onSubmit, targetUser }) 
             form="enroll-fp-dev-form"
             className="inline-flex items-center gap-1.5 h-8 px-3.5 text-xs font-medium text-white bg-ink hover:bg-ink/90 rounded-[6px] transition-colors"
           >
-            <Fingerprint size={13} />
-            Kirim Perintah Enroll
+            {isFace ? <ScanFace size={13} /> : <Fingerprint size={13} />}
+            {isFace ? "Kirim Perintah Enroll Wajah" : "Kirim Perintah Enroll"}
           </button>
         </>
       }
     >
-      <form id="enroll-fp-dev-form" onSubmit={handleSubmit} className="space-y-4 py-1">
+      <form
+        id="enroll-fp-dev-form"
+        onSubmit={handleSubmit}
+        className="space-y-4 py-1"
+      >
         <div>
           <label className="block text-sm font-medium text-ink mb-2">
-            Indeks Jari (0–9)
+            Tipe Biometrik
           </label>
-          <select
-            name="fid"
-            defaultValue="0"
-            className="w-full h-[38px] px-3 text-sm bg-surface border border-control rounded-[6px] focus:outline-none focus:border-accent text-ink transition-colors"
-          >
-            {[...Array(10).keys()].map((i) => (
-              <option key={i} value={i}>
-                Jari #{i} {i === 0 ? '(Jempol Kanan — Default)' : ''}
-              </option>
-            ))}
-          </select>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setBiometricType("fingerprint")}
+              className={`inline-flex items-center justify-center gap-1.5 h-9 px-3 text-xs font-medium rounded-[6px] border transition-colors ${
+                !isFace
+                  ? "bg-ink text-white border-ink"
+                  : "bg-surface text-ink border-control hover:bg-raised"
+              }`}
+            >
+              <Fingerprint size={14} />
+              Sidik Jari
+            </button>
+            <button
+              type="button"
+              onClick={() => setBiometricType("face")}
+              className={`inline-flex items-center justify-center gap-1.5 h-9 px-3 text-xs font-medium rounded-[6px] border transition-colors ${
+                isFace
+                  ? "bg-ink text-white border-ink"
+                  : "bg-surface text-ink border-control hover:bg-raised"
+              }`}
+            >
+              <ScanFace size={14} />
+              Wajah
+            </button>
+          </div>
         </div>
+
+        {!isFace && (
+          <div>
+            <label className="block text-sm font-medium text-ink mb-2">
+              Indeks Jari (0–9)
+            </label>
+            <select
+              name="fid"
+              defaultValue="0"
+              className="w-full h-[38px] px-3 text-sm bg-surface border border-control rounded-[6px] focus:outline-none focus:border-accent text-ink transition-colors"
+            >
+              {[...Array(10).keys()].map((i) => (
+                <option key={i} value={i}>
+                  Jari #{i} {i === 0 ? "(Jempol Kanan — Default)" : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div>
           <label className="block text-sm font-medium text-ink mb-2">
@@ -226,7 +282,11 @@ export function EnrollFingerprintModal({ open, onClose, onSubmit, targetUser }) 
             defaultValue="1"
             className="w-full h-[38px] px-3 text-sm bg-surface border border-control rounded-[6px] focus:outline-none focus:border-accent text-ink transition-colors"
           >
-            <option value="1">1 — Timpa jika template jari sudah ada</option>
+            <option value="1">
+              {isFace
+                ? "1 — Timpa jika template wajah sudah ada"
+                : "1 — Timpa jika template jari sudah ada"}
+            </option>
             <option value="0">0 — Jangan timpa</option>
           </select>
         </div>

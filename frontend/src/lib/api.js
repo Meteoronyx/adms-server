@@ -147,6 +147,9 @@ export const transferAllBiometrics = (sn, { pin, source_sn }) =>
 export const enrollFingerprint = (sn, { pin, fid, retry, overwrite }) =>
   fetchJSON(`/admin/enrollfp/${sn}`, { method: 'POST', body: JSON.stringify({ pin, fid, retry, overwrite }) });
 
+export const enrollFace = (sn, { pin, retry, overwrite }) =>
+  fetchJSON(`/admin/enrollface/${sn}`, { method: 'POST', body: JSON.stringify({ pin, retry, overwrite }) });
+
 export const getRecentAttendancePhotos = ({ limit = 8, sn = '', opdId = '' } = {}) => {
   const p = new URLSearchParams();
   if (limit) p.append('limit', limit);

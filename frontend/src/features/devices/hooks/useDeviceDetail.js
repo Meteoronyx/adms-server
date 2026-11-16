@@ -6,6 +6,7 @@ import {
   updateUser,
   deleteUser,
   enrollFingerprint,
+  enrollFace,
 } from '../../../lib/api';
 
 export function useDeviceDetail(sn) {
@@ -94,13 +95,27 @@ export function useDeviceDetail(sn) {
   };
 
   const submitEnrollFingerprint = async (pin, enrollData) => {
+    const isFace = Number(enrollData.fid) === 111;
     try {
-      await enrollFingerprint(sn, { pin, ...enrollData });
-      addToast('Pendaftaran sidik jari dimasukkan ke antrean', 'success');
+      if (isFace) {
+        await enrollFace(sn, {
+          pin,
+          retry: enrollData.retry,
+          overwrite: enrollData.overwrite,
+        });
+      } else {
+        await enrollFingerprint(sn, { pin, ...enrollData });
+      }
+      addToast(
+        isFace
+          ? 'Pendaftaran wajah dimasukkan ke antrean'
+          : 'Pendaftaran sidik jari dimasukkan ke antrean',
+        'success'
+      );
       setEnrollModal({ open: false, data: null });
       return true;
     } catch (err) {
-      addToast(err.message || 'Gagal merekam sidik jari', 'error');
+      addToast(err.message || (isFace ? 'Gagal merekam wajah' : 'Gagal merekam sidik jari'), 'error');
       return false;
     }
   };

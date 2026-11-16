@@ -7,53 +7,92 @@ const queries = require('../../db/queries');
 const logger = require('../../utils/logger');
 const { canAccessOpd } = require('../../middleware/apiKeyAuth');
 
-// Device Commands (enrollfp)
-exports.enrollFingerprint = async (req, res) => {
+const FACE_FID = 111;
+
+const isValidEnrollFid = (fid) =>
+  Number.isInteger(fid) && ((fid >= 0 && fid <= 9) || fid === FACE_FID);
+
+/**
+ * Validate parameters and queue an ENROLL_FP command (fid 0-9 for fingerprint, 111 for face).
+ */
+const queueEnrollBiometric = async (req, res, { pin, fid, retry, overwrite }) => {
   const { sn } = req.params;
-  const { pin, fid, retry, overwrite } = req.body;
   const device = req.device;
 
-  if (pin === undefined || pin === null) {
+  if (pin === undefined || pin === null || String(pin).trim() === '') {
     return res.status(400).json({
       success: false,
       message: 'Missing required parameter: pin'
     });
   }
 
-  if (fid === undefined || fid === null) {
+  const parsedPin = parseInt(pin, 10);
+  if (!Number.isInteger(parsedPin)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid pin: must be an integer'
+    });
+  }
+
+  const parsedFid = parseInt(fid, 10);
+  if (!isValidEnrollFid(parsedFid)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid fid: must be 0-9 (fingerprint) or 111 (face)'
+    });
+  }
+
+  const parsedRetry = retry !== undefined ? parseInt(retry, 10) : 1;
+  const parsedOverwrite = overwrite !== undefined ? parseInt(overwrite, 10) : 0;
+
+  await commandService.queueCommand(sn, config.COMMAND_TYPES.ENROLL_FP, {
+    pin: parsedPin,
+    fid: parsedFid,
+    retry: parsedRetry,
+    overwrite: parsedOverwrite
+  });
+
+  logger.info('Enroll biometric command queued', {
+    sn,
+    pin: parsedPin,
+    fid: parsedFid,
+    biometric_type: parsedFid === FACE_FID ? 'face' : 'fingerprint',
+    retry: parsedRetry,
+    overwrite: parsedOverwrite,
+    ip: req.ip
+  });
+
+  return res.json({
+    success: true,
+    message: `${config.RESPONSE.ADMIN.COMMAND_QUEUED}: ENROLL_FP`,
+    device: { sn: device.sn, name: device.name },
+    params: {
+      pin: parsedPin,
+      fid: parsedFid,
+      retry: parsedRetry,
+      overwrite: parsedOverwrite
+    }
+  });
+};
+
+// Device Commands (enrollfp: supports fid 0-9 for fingerprint and fid 111 for face)
+exports.enrollFingerprint = async (req, res) => {
+  const { pin, fid, retry, overwrite } = req.body;
+
+  if (fid === undefined || fid === null || String(fid).trim() === '') {
     return res.status(400).json({
       success: false,
       message: 'Missing required parameter: fid'
     });
   }
 
-  await commandService.queueCommand(sn, config.COMMAND_TYPES.ENROLL_FP, {
-    pin: parseInt(pin),
-    fid: parseInt(fid),
-    retry: retry !== undefined ? parseInt(retry) : 1,
-    overwrite: overwrite !== undefined ? parseInt(overwrite) : 0
-  });
+  return queueEnrollBiometric(req, res, { pin, fid, retry, overwrite });
+};
 
-  logger.info('Enroll fingerprint command queued', {
-    sn,
-    pin,
-    fid,
-    retry: retry !== undefined ? parseInt(retry) : 1,
-    overwrite: overwrite !== undefined ? parseInt(overwrite) : 0,
-    ip: req.ip
-  });
-
-  res.json({
-    success: true,
-    message: `${config.RESPONSE.ADMIN.COMMAND_QUEUED}: ENROLL_FP`,
-    device: { sn: device.sn, name: device.name },
-    params: {
-      pin: parseInt(pin),
-      fid: parseInt(fid),
-      retry: retry !== undefined ? parseInt(retry) : 1,
-      overwrite: overwrite !== undefined ? parseInt(overwrite) : 0
-    }
-  });
+// Device Commands (enrollface: alias for ENROLL_FP with fid=111)
+exports.enrollFace = async (req, res) => {
+  const { pin, retry, overwrite } = req.body;
+  return queueEnrollBiometric(req, res, { pin, fid: FACE_FID, retry, overwrite });
 };
 
 // Data Retrieval Routes (checkfingerprintondevice)
