@@ -231,7 +231,10 @@ const parseCommandResults = (rawBody) => {
   const flushCurrent = () => {
     if (!current) return;
     if (!current.content && stdoutLines.length > 0) {
-      current.content = stdoutLines.join('\n').trim();
+      const joined = stdoutLines.join('\n').trim();
+      if (joined) {
+        current.content = joined;
+      }
     }
     stdoutLines.length = 0;
     results.push(current);
@@ -269,6 +272,22 @@ const parseCommandResults = (rawBody) => {
         };
       }
     } else if (current) {
+      // Multi-line key=value format (e.g. SN=...\nReturn=0\nCMD=Shell\nFILENAME=shellout.txt\nContent=...)
+      const returnMatch = trimmed.match(/^Return=(-?\d+)$/i);
+      if (returnMatch && current.returnValue === null) {
+        current.returnValue = parseInt(returnMatch[1], 10);
+        continue;
+      }
+      if (/^(SN|CMD|FILENAME)=/i.test(trimmed)) {
+        continue;
+      }
+      const contentMatch = trimmed.match(/^Content=(.*)$/i);
+      if (contentMatch && current.content === null) {
+        if (contentMatch[1]) {
+          stdoutLines.push(contentMatch[1]);
+        }
+        continue;
+      }
       stdoutLines.push(line);
     }
   }

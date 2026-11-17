@@ -119,13 +119,20 @@ const resolveMenuSelection = async (rl, rawSelection) => {
   }
 
   if (selection.toUpperCase() === 'C') {
-    const manual = (await rl.question('Masukkan pasangan app:func (pisahkan koma): ')).trim();
+    const manual = (await rl.question('Masukkan pasangan app:func (pisahkan koma, mis. comset:netset,logquery:attlog): ')).trim();
     const apps = [];
     const funcs = [];
-    for (const pair of manual.split(',')) {
-      const [app, func] = pair.split(':').map((s) => (s || '').trim());
-      if (app && !apps.includes(app)) apps.push(app);
-      if (func && !funcs.includes(func)) funcs.push(func);
+    for (const rawPair of manual.split(',')) {
+      const pair = rawPair.trim();
+      if (!pair) continue;
+      const parts = pair.split(':');
+      if (parts.length !== 2 || !parts[0].trim() || !parts[1].trim()) {
+        throw new Error(`Format app:func tidak valid: "${pair}". Gunakan format app:func, contoh comset:netset.`);
+      }
+      const app = parts[0].trim();
+      const func = parts[1].trim();
+      if (!apps.includes(app)) apps.push(app);
+      if (!funcs.includes(func)) funcs.push(func);
     }
     return { apps, funcs };
   }
@@ -175,7 +182,7 @@ const showStatus = async (args) => {
       type: r.command_type,
       status: r.status,
       return_code: r.return_code !== null && r.return_code !== undefined ? r.return_code : '-',
-      response: r.response_content ? r.response_content.slice(0, 60) : '-'
+      response: r.response_content ? r.response_content.replace(/\s+/g, ' ').slice(0, 80) : '-'
     }))
   );
 };
@@ -286,11 +293,12 @@ const runProvision = async (args) => {
     const needsShell = Boolean(comKeyInput) || apps.length > 0 || funcs.length > 0;
     let serverUrl = null;
     if (needsShell) {
-      serverUrl = await askIfMissing(
+      const rawServerUrl = await askIfMissing(
         rl,
         args.serverUrl,
         'Masukkan Base URL ADMS untuk wget mesin (contoh: http://dbspot.meteoronyx.my.id): '
       );
+      serverUrl = commandService.normalizeServerUrl(rawServerUrl);
       // Cek panjang menggunakan contoh ID 8 digit agar aman dari -1007
       commandService.buildShellStagingCommand(99999999, serverUrl);
     }

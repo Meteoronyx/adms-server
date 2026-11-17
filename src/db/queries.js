@@ -338,6 +338,25 @@ const insertCommand = async (sn, commandType, params = {}) => {
   return result.rows[0];
 };
 
+// Atomically claim next pending command for a device (FIFO) to prevent duplicate dispatch
+const claimNextPendingCommand = async (sn) => {
+  const query = `
+    UPDATE device_commands
+    SET status = 'executed', executed_at = NOW()
+    WHERE id = (
+      SELECT id
+      FROM device_commands
+      WHERE device_sn = $1 AND status = 'pending'
+      ORDER BY created_at ASC, id ASC
+      LIMIT 1
+      FOR UPDATE SKIP LOCKED
+    )
+    RETURNING id, device_sn, command_type, command_params, created_at
+  `;
+  const result = await db.query(query, [sn]);
+  return result.rows[0] || null;
+};
+
 // Get next pending command for a device (FIFO)
 const getNextPendingCommand = async (sn) => {
   const query = `
@@ -1495,6 +1514,7 @@ module.exports = {
   getOfflineDevices,
   getPublicDevicesStatus,
   insertCommand,
+  claimNextPendingCommand,
   getNextPendingCommand,
   markCommandExecuted,
   getAllPendingCommands,

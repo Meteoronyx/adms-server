@@ -6,8 +6,17 @@ const logger = require('../utils/logger');
 
 const MAX_SHELL_CMD_LENGTH = 78;
 
+const normalizeServerUrl = (serverUrl) => {
+  const trimmed = String(serverUrl || '').trim().replace(/\/+$/, '');
+  if (!trimmed) return '';
+  if (!/^https?:\/\//i.test(trimmed)) {
+    return `http://${trimmed}`;
+  }
+  return trimmed;
+};
+
 const buildShellStagingCommand = (cmdId, serverUrl) => {
-  const baseUrl = String(serverUrl || '').trim().replace(/\/+$/, '');
+  const baseUrl = normalizeServerUrl(serverUrl);
   if (!baseUrl) {
     throw new Error('serverUrl is required for SHELL staging command');
   }
@@ -141,7 +150,9 @@ const queueCommand = async (sn, commandType, params = {}) => {
 };
 
 const getAndExecuteNext = async (sn) => {
-  const command = await queries.getNextPendingCommand(sn);
+  const command = queries.claimNextPendingCommand
+    ? await queries.claimNextPendingCommand(sn)
+    : await queries.getNextPendingCommand(sn);
 
   if (!command) {
     return null;
@@ -150,7 +161,9 @@ const getAndExecuteNext = async (sn) => {
   const commandString = buildCommandString(command);
 
   if (commandString) {
-    await queries.markCommandExecuted(command.id);
+    if (!queries.claimNextPendingCommand) {
+      await queries.markCommandExecuted(command.id);
+    }
     return {
       id: command.id,
       type: command.command_type,
@@ -158,6 +171,7 @@ const getAndExecuteNext = async (sn) => {
     };
   }
 
+  await queries.updateCommandStatus(command.id, 'failed', null, 'Invalid or oversized command payload');
   return null;
 };
 
@@ -188,6 +202,16 @@ const processCommandResult = async (sn, id, returnValue, content = null) => {
 
   // Update status based on execution return code
   const status = returnValue === 0 ? 'success' : 'failed';
+  if (command.status === 'success' && status !== 'success') {
+    logger.warn('Ignoring non-success result for already-succeeded command', {
+      sn,
+      id,
+      type: command.command_type,
+      returnValue
+    });
+    return;
+  }
+
   const normalizedContent = content ? String(content).trim() : null;
   await queries.updateCommandStatus(id, status, returnValue, normalizedContent);
   logger.info('Command execution status updated', { sn, id, type: command.command_type, status, returnValue });
@@ -217,6 +241,7 @@ const processCommandResult = async (sn, id, returnValue, content = null) => {
 
 module.exports = {
   MAX_SHELL_CMD_LENGTH,
+  normalizeServerUrl,
   queueCommand,
   getAndExecuteNext,
   getQueueStatus,
