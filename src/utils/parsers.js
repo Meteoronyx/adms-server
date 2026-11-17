@@ -216,42 +216,64 @@ const parseFaceData = (rawBody) => {
 };
 
 // Parse command execution feedback from POST /devicecmd
-// Body format is typically key=value pairs, possibly multiple lines like ID=12&Return=0
+// Supports single-line (ID=12&Return=0&CMD=DATA), Content=..., and multi-line stdout blocks (ID=12 Return=0 CMD=Shell:\n...)
 const parseCommandResults = (rawBody) => {
   if (!rawBody) {
     return [];
   }
-  
+
   const rawBodyStr = rawBody.toString ? rawBody.toString() : String(rawBody);
-  const lines = rawBodyStr.trim().split(/\r?\n/);
+  const lines = rawBodyStr.split(/\r?\n/);
   const results = [];
+  let current = null;
+  const stdoutLines = [];
+
+  const flushCurrent = () => {
+    if (!current) return;
+    if (!current.content && stdoutLines.length > 0) {
+      current.content = stdoutLines.join('\n').trim();
+    }
+    stdoutLines.length = 0;
+    results.push(current);
+    current = null;
+  };
 
   for (const line of lines) {
     const trimmed = line.trim();
     if (!trimmed) continue;
-    
-    const info = {};
-    const pairs = trimmed.split('&');
-    for (const pair of pairs) {
-      const eqIdx = pair.indexOf('=');
-      if (eqIdx > 0) {
-        let key = pair.slice(0, eqIdx);
-        const val = pair.slice(eqIdx + 1);
-        if (key.startsWith('~')) {
-          key = key.slice(1);
-        }
-        info[key] = val;
-      }
-    }
 
-    if (info.ID) {
-      results.push({
-        id: parseInt(info.ID, 10),
-        returnValue: info.Return !== undefined ? parseInt(info.Return, 10) : null
-      });
+    // Header line starts with ID= or ~ID=
+    if (/^~?ID=\d+/.test(trimmed)) {
+      flushCurrent();
+
+      const info = {};
+      // Split by & or whitespace (for "ID=9102 Return=0 CMD=Shell:")
+      const pairs = trimmed.includes('&') ? trimmed.split('&') : trimmed.split(/\s+/);
+      for (const pair of pairs) {
+        const eqIdx = pair.indexOf('=');
+        if (eqIdx > 0) {
+          let key = pair.slice(0, eqIdx);
+          const val = pair.slice(eqIdx + 1);
+          if (key.startsWith('~')) {
+            key = key.slice(1);
+          }
+          info[key] = val;
+        }
+      }
+
+      if (info.ID) {
+        current = {
+          id: parseInt(info.ID, 10),
+          returnValue: info.Return !== undefined ? parseInt(info.Return, 10) : null,
+          content: info.Content !== undefined ? info.Content : null
+        };
+      }
+    } else if (current) {
+      stdoutLines.push(line);
     }
   }
 
+  flushCurrent();
   return results;
 };
 

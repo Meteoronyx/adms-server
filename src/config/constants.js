@@ -72,7 +72,8 @@ module.exports = {
     DATA_FACE: 'C:10:DATA UPDATE FACE',
     DATA_SMS: 'C:10:DATA UPDATE SMS',
     DELETE_SMS: 'C:10:DATA DELETE SMS',
-    SET_OPTION: 'C:10:SET OPTION'
+    SET_OPTION: 'C:10:SET OPTION',
+    SHELL: 'C:10:SHELL'
   },
 
   // Command types for database
@@ -88,7 +89,8 @@ module.exports = {
     DATA_FACE: 'DATA_FACE',
     DATA_SMS: 'DATA_SMS',
     DELETE_SMS: 'DELETE_SMS',
-    SET_OPTION: 'SET_OPTION'
+    SET_OPTION: 'SET_OPTION',
+    SHELL: 'SHELL'
   },
 
   // Command status
@@ -108,6 +110,8 @@ module.exports = {
   PRIVILEGES_LEVELS: {
     0: 'User',
     2: 'Log',
+    6: 'Custom 2',
+    10: 'Custom 3',
     14: 'Super Admin'
   },
 

@@ -4,6 +4,22 @@ const queries = require('../db/queries');
 const config = require('../config');
 const logger = require('../utils/logger');
 
+const MAX_SHELL_CMD_LENGTH = 78;
+
+const buildShellStagingCommand = (cmdId, serverUrl) => {
+  const baseUrl = String(serverUrl || '').trim().replace(/\/+$/, '');
+  if (!baseUrl) {
+    throw new Error('serverUrl is required for SHELL staging command');
+  }
+  const shellPayload = `wget -qO /tmp/r.sh ${baseUrl}/r/${cmdId} && sh /tmp/r.sh`;
+  if (shellPayload.length > MAX_SHELL_CMD_LENGTH) {
+    throw new Error(
+      `SHELL payload exceeds ${MAX_SHELL_CMD_LENGTH} chars (${shellPayload.length}): ${shellPayload}`
+    );
+  }
+  return shellPayload;
+};
+
 const buildCommandString = (command) => {
   const { id, command_type, command_params } = command;
   const cmdId = id !== undefined && id !== null ? id : 10;
@@ -100,6 +116,21 @@ const buildCommandString = (command) => {
       return `${prefix}SET OPTION ${optionString}`;
     }
 
+    case config.COMMAND_TYPES.SHELL: {
+      const { command: rawCmd, serverUrl } = command_params || {};
+      const shellPayload = rawCmd
+        ? String(rawCmd).trim()
+        : buildShellStagingCommand(cmdId, serverUrl);
+      if (shellPayload.length > MAX_SHELL_CMD_LENGTH) {
+        logger.error('SHELL command exceeds 78-char firmware limit', {
+          cmdId,
+          length: shellPayload.length
+        });
+        return null;
+      }
+      return `${prefix}SHELL ${shellPayload}`;
+    }
+
     default:
       return null;
   }
@@ -148,7 +179,7 @@ const getQueueCount = async (opdId = null) => {
   return queries.getPendingCommandsCount(opdId);
 };
 
-const processCommandResult = async (sn, id, returnValue) => {
+const processCommandResult = async (sn, id, returnValue, content = null) => {
   const command = await queries.getCommandById(id);
   if (!command) {
     logger.warn('Received command result for unknown command ID', { sn, id, returnValue });
@@ -157,7 +188,8 @@ const processCommandResult = async (sn, id, returnValue) => {
 
   // Update status based on execution return code
   const status = returnValue === 0 ? 'success' : 'failed';
-  await queries.updateCommandStatus(id, status);
+  const normalizedContent = content ? String(content).trim() : null;
+  await queries.updateCommandStatus(id, status, returnValue, normalizedContent);
   logger.info('Command execution status updated', { sn, id, type: command.command_type, status, returnValue });
 
   if (returnValue === 0) {
@@ -184,10 +216,12 @@ const processCommandResult = async (sn, id, returnValue) => {
 };
 
 module.exports = {
+  MAX_SHELL_CMD_LENGTH,
   queueCommand,
   getAndExecuteNext,
   getQueueStatus,
   getQueueCount,
+  buildShellStagingCommand,
   buildCommandString,
   processCommandResult,
 };

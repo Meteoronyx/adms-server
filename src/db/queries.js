@@ -1066,7 +1066,7 @@ const getPegawaiBasicInfo = async (pin, deviceSN = null) => {
 // Get a command by ID
 const getCommandById = async (id) => {
   const query = `
-    SELECT id, device_sn, command_type, command_params, status
+    SELECT id, device_sn, command_type, command_params, status, created_at, executed_at
     FROM device_commands
     WHERE id = $1
   `;
@@ -1074,14 +1074,70 @@ const getCommandById = async (id) => {
   return result.rows[0] || null;
 };
 
-// Update command status
-const updateCommandStatus = async (id, status) => {
+// Update command status and optional return code / response content
+const updateCommandStatus = async (id, status, returnCode = null, responseContent = null) => {
   const query = `
     UPDATE device_commands
-    SET status = $2, executed_at = NOW()
+    SET status = $2,
+        return_code = COALESCE($3, return_code),
+        response_content = COALESCE($4, response_content),
+        executed_at = NOW()
     WHERE id = $1
   `;
-  return db.query(query, [id, status]);
+  return db.query(query, [id, status, returnCode, responseContent]);
+};
+
+// Get verified devices filtered by sn, opdId, or all (for CLI provisioning)
+const getVerifiedDevices = async ({ sn = null, opdId = null } = {}) => {
+  const conditions = ['d.verified = TRUE'];
+  const params = [];
+
+  if (sn) {
+    params.push(sn);
+    conditions.push(`d.sn = $${params.length}`);
+  }
+  if (opdId) {
+    params.push(opdId);
+    conditions.push(`d.opd_id = $${params.length}`);
+  }
+
+  const query = `
+    SELECT d.sn, d.device_name, d.ip_address, d.opd_id, o.nama_opd
+    FROM devices d
+    LEFT JOIN opds o ON o.id = d.opd_id
+    WHERE ${conditions.join(' AND ')}
+    ORDER BY o.nama_opd ASC NULLS LAST, d.device_name ASC NULLS LAST, d.sn ASC
+  `;
+  const result = await db.query(query, params);
+  return result.rows;
+};
+
+// Get recent provisioning commands status for CLI monitoring
+const getProvisioningCommandStatuses = async ({ sn = null, opdId = null, limit = 50 } = {}) => {
+  const conditions = [`dc.command_type IN ('SET_OPTION', 'SHELL', 'DATA_USER', 'REBOOT')`];
+  const params = [];
+
+  if (sn) {
+    params.push(sn);
+    conditions.push(`dc.device_sn = $${params.length}`);
+  }
+  if (opdId) {
+    params.push(opdId);
+    conditions.push(`d.opd_id = $${params.length}`);
+  }
+
+  params.push(limit);
+  const query = `
+    SELECT dc.id, dc.device_sn, d.device_name, dc.command_type, dc.status,
+           dc.return_code, dc.response_content, dc.created_at, dc.executed_at
+    FROM device_commands dc
+    LEFT JOIN devices d ON d.sn = dc.device_sn
+    WHERE ${conditions.join(' AND ')}
+    ORDER BY dc.id DESC
+    LIMIT $${params.length}
+  `;
+  const result = await db.query(query, params);
+  return result.rows;
 };
 
 // Soft delete pegawai device mapping
@@ -1460,6 +1516,8 @@ module.exports = {
   getDashboardStats,
   getCommandById,
   updateCommandStatus,
+  getVerifiedDevices,
+  getProvisioningCommandStatuses,
   softDeletePegawaiDeviceMapping,
   deletePegawaiFingerprints,
   deletePegawaiFaces,

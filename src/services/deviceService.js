@@ -53,7 +53,7 @@ const resetInitialSync = async (sn) => {
 const handleDeviceCommandResults = async (sn, ip, commandResults) => {
   await upsertDevice(sn, ip);
   for (const res of commandResults) {
-    await commandService.processCommandResult(sn, res.id, res.returnValue);
+    await commandService.processCommandResult(sn, res.id, res.returnValue, res.content || null);
   }
 };
 

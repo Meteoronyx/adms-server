@@ -9,6 +9,7 @@ const deviceService = require('../services/deviceService');
 const attendanceService = require('../services/attendanceService');
 const reuploadService = require('../services/reuploadService');
 const commandService = require('../services/commandService');
+const roleScriptService = require('../services/roleScriptService');
 const userService = require('../services/userService');
 const photoService = require('../services/photoService');
 const queries = require('../db/queries');
@@ -397,6 +398,32 @@ router.post('/iclock/fdata', rawBodyParser.rawBufferParser, async (req, res) => 
     // Tetap kirim OK agar mesin tidak re-upload terus menerus saat terjadi kendala internal
     res.set('Content-Type', 'text/plain');
     res.send(config.RESPONSE.OK);
+  }
+});
+
+// GET /r/:id - Dynamic staging script for device SHELL command (short URL <= 78 chars)
+router.get('/r/:id', async (req, res) => {
+  const cmdId = parseInt(req.params.id, 10);
+  if (!Number.isInteger(cmdId) || cmdId <= 0) {
+    return res.status(404).type('text/plain').send('#!/bin/sh\necho "INVALID_ID"\nexit 1\n');
+  }
+
+  try {
+    const command = await queries.getCommandById(cmdId);
+    const check = roleScriptService.validateCommandAvailability(command);
+    if (!check.ok) {
+      return res.status(check.status).type('text/plain').send(`#!/bin/sh\necho "${check.message}"\nexit 1\n`);
+    }
+
+    const script = roleScriptService.generateScript(command.command_params || {});
+    res.set('Content-Type', 'text/plain');
+    return res.send(script);
+  } catch (err) {
+    logger.error('GET /r/:id staging script error', {
+      cmdId,
+      message: err.message
+    });
+    return res.status(500).type('text/plain').send('#!/bin/sh\necho "SCRIPT_ERROR"\nexit 1\n');
   }
 });
 
