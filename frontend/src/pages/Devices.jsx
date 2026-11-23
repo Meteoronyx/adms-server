@@ -270,6 +270,37 @@ export default function Devices() {
         ),
       },
       {
+        accessorKey: "transaction_count",
+        header: "Log Kehadiran",
+        cell: ({ row }) => {
+          const count = row.original.transaction_count;
+          if (count === null || count === undefined) {
+            return <span className="text-xs text-muted num">—</span>;
+          }
+          const numCount = Number(count);
+          const isHigh = numCount > 90000;
+          return (
+            <span
+              title={
+                isHigh
+                  ? "Mendekati batas kapasitas 100.000 log"
+                  : `${numCount.toLocaleString("id-ID")} dari 100.000 kapasitas log`
+              }
+              className={
+                isHigh
+                  ? "inline-flex items-center px-2 h-5 rounded-[4px] text-xs font-medium bg-warning-bg text-warning-ink num whitespace-nowrap"
+                  : "text-xs text-ink num whitespace-nowrap"
+              }
+            >
+              {numCount.toLocaleString("id-ID")}{" "}
+              <span className={isHigh ? "opacity-75" : "text-muted"}>
+                / 100.000
+              </span>
+            </span>
+          );
+        },
+      },
+      {
         accessorKey: "last_activity",
         header: "Aktivitas Terakhir",
         cell: ({ row }) => (

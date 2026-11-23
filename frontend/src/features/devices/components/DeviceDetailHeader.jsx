@@ -52,7 +52,7 @@ export function DeviceDetailHeader({
       </div>
 
       {/* Divided Info Strip */}
-      <div className="bg-surface border border-border rounded-[8px] grid grid-cols-2 lg:grid-cols-4 divide-y lg:divide-y-0 lg:divide-x divide-border">
+      <div className="bg-surface border border-border rounded-[8px] grid grid-cols-2 lg:grid-cols-5 divide-y lg:divide-y-0 lg:divide-x divide-border">
         <div className="px-5 py-3.5">
           <p className="text-xs text-muted">Status Koneksi</p>
           <div className="mt-1">
@@ -78,6 +78,26 @@ export function DeviceDetailHeader({
           <p className="text-sm font-medium text-ink mt-1 num">
             {Number(pegawaiCount).toLocaleString('id-ID')} <span className="text-xs text-muted font-normal">orang</span>
           </p>
+        </div>
+        <div className="px-5 py-3.5 col-span-2 lg:col-span-1">
+          <p className="text-xs text-muted">Log Kehadiran</p>
+          {device.transaction_count === null || device.transaction_count === undefined ? (
+            <p className="text-sm font-medium text-muted mt-1 num">—</p>
+          ) : (
+            <p
+              title={
+                Number(device.transaction_count) > 90000
+                  ? 'Mendekati batas kapasitas 100.000 log'
+                  : undefined
+              }
+              className={`text-sm font-medium mt-1 num ${
+                Number(device.transaction_count) > 90000 ? 'text-warning-ink' : 'text-ink'
+              }`}
+            >
+              {Number(device.transaction_count).toLocaleString('id-ID')}{' '}
+              <span className="text-xs text-muted font-normal">/ 100.000</span>
+            </p>
+          )}
         </div>
       </div>
     </div>

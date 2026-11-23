@@ -19,6 +19,7 @@ const { getDatabaseStatus } = require('./db/connection');
 const { seedAdminFromEnv } = require('./db/seedAdmin');
 const { ensureOpdHierarchySchema } = require('./db/autoMapOpd');
 const { getAccessibleOpdIds } = require('./middleware/apiKeyAuth');
+const autoClearScheduler = require('./services/autoClearScheduler');
 
 const app = express();
 
@@ -146,6 +147,7 @@ app.use((err, req, res, next) => {
 // Graceful shutdown handling
 const gracefulShutdown = (signal) => {
   logger.warn(`Received ${signal}, starting graceful shutdown...`);
+  autoClearScheduler.stop();
 
   // Stop accepting new connections
   server.close((err) => {
@@ -212,6 +214,7 @@ const server = app.listen(port, config.SERVER.HOST, async () => {
   // Run auto-seed check for initial admin user & OPD hierarchy schema
   await seedAdminFromEnv();
   await ensureOpdHierarchySchema();
+  autoClearScheduler.start();
 
   logger.info('Ready to accept attendance data from devices');
 });

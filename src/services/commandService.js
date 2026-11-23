@@ -3,6 +3,7 @@
 const queries = require('../db/queries');
 const config = require('../config');
 const logger = require('../utils/logger');
+const parsers = require('../utils/parsers');
 
 const MAX_SHELL_CMD_LENGTH = 78;
 
@@ -193,6 +194,38 @@ const getQueueCount = async (opdId = null) => {
   return queries.getPendingCommandsCount(opdId);
 };
 
+const parseCommandParams = (rawParams) => {
+  if (!rawParams) return {};
+  if (typeof rawParams === 'string') {
+    try {
+      return JSON.parse(rawParams) || {};
+    } catch {
+      return {};
+    }
+  }
+  return typeof rawParams === 'object' ? rawParams : {};
+};
+
+const sanitizeDeviceInfoFromCmd = (parsed) => {
+  const info = {};
+  if (parsed.deviceName !== undefined) info.deviceName = parsed.deviceName;
+  if (parsed.mac !== undefined) info.mac = parsed.mac;
+  if (parsed.mainTime !== undefined) info.mainTime = parsed.mainTime;
+  if (parsed.platform !== undefined) info.platform = parsed.platform;
+  if (parsed.fwVersion !== undefined) info.fwVersion = parsed.fwVersion;
+  if (parsed.ipAddress !== undefined) info.ipAddress = parsed.ipAddress;
+
+  if (parsed.userCount !== undefined) {
+    const userCount = parseInt(parsed.userCount, 10);
+    if (Number.isFinite(userCount)) info.userCount = userCount;
+  }
+  if (parsed.transactionCount !== undefined) {
+    const transactionCount = parseInt(parsed.transactionCount, 10);
+    if (Number.isFinite(transactionCount)) info.transactionCount = transactionCount;
+  }
+  return info;
+};
+
 const processCommandResult = async (sn, id, returnValue, content = null) => {
   const command = await queries.getCommandById(id);
   if (!command) {
@@ -200,10 +233,9 @@ const processCommandResult = async (sn, id, returnValue, content = null) => {
     return;
   }
 
-  // Update status based on execution return code
-  const status = returnValue === 0 ? 'success' : 'failed';
-  if (command.status === 'success' && status !== 'success') {
-    logger.warn('Ignoring non-success result for already-succeeded command', {
+  // Idempotency guard: firmware (e.g. X601) may POST /iclock/devicecmd twice for the same ID
+  if (command.status === 'success') {
+    logger.debug('Ignoring duplicate command result for already-succeeded command', {
       sn,
       id,
       type: command.command_type,
@@ -212,29 +244,84 @@ const processCommandResult = async (sn, id, returnValue, content = null) => {
     return;
   }
 
+  const status = returnValue === 0 ? 'success' : 'failed';
   const normalizedContent = content ? String(content).trim() : null;
   await queries.updateCommandStatus(id, status, returnValue, normalizedContent);
   logger.info('Command execution status updated', { sn, id, type: command.command_type, status, returnValue });
 
-  if (returnValue === 0) {
-    if (command.command_type === config.COMMAND_TYPES.DELETE_USER) {
-      const pin = String(command.command_params.pin);
+  if (returnValue !== 0) {
+    return;
+  }
 
-      // 1. Soft delete the mapping
-      await queries.softDeletePegawaiDeviceMapping(pin, sn);
-      logger.info('Soft-deleted pegawai device mapping', { pin, sn });
+  const cmdParams = parseCommandParams(command.command_params);
 
-      // 2. Delete the biometrics on this device
-      await queries.deletePegawaiFingerprints(pin, sn);
-      await queries.deletePegawaiFaces(pin, sn);
-      logger.info('Deleted fingerprints and faces for pegawai on device', { pin, sn });
-
-      // 3. If the pegawai is no longer mapped to any active devices, soft-delete them globally
-      const activeCount = await queries.countActiveDeviceMappings(pin);
-      if (activeCount === 0) {
-        await queries.softDeletePegawai(pin);
-        logger.info('Pegawai has no remaining active mappings. Soft-deleted pegawai globally.', { pin });
+  if (command.command_type === config.COMMAND_TYPES.INFO) {
+    let txCount;
+    if (normalizedContent) {
+      const parsed = parsers.parseDeviceInfo(normalizedContent);
+      const deviceInfo = sanitizeDeviceInfoFromCmd(parsed);
+      txCount = deviceInfo.transactionCount;
+      if (Object.keys(deviceInfo).length > 0) {
+        await queries.updateDeviceInfo(sn, deviceInfo);
       }
+    }
+
+    if (cmdParams.autoClearConfirm === true) {
+      logger.info('Auto-clear log confirmation received', { sn, id, transactionCount: txCount });
+    } else if (
+      config.AUTO_CLEAR_LOG?.ENABLED &&
+      cmdParams.autoClearCheck === true &&
+      Number.isFinite(txCount) &&
+      txCount > config.AUTO_CLEAR_LOG.THRESHOLD
+    ) {
+      const verified = await queries.getDeviceVerificationStatus(sn);
+      const alreadyPending = await queries.hasPendingCommand(sn, config.COMMAND_TYPES.CLEAR_LOG);
+      if (verified && !alreadyPending) {
+        await queueCommand(sn, config.COMMAND_TYPES.CLEAR_LOG, {
+          autoClear: true,
+          triggeredByCommandId: id,
+          transactionCount: txCount
+        });
+        logger.info('Auto-clear log queued because transactionCount exceeded threshold', {
+          sn,
+          id,
+          transactionCount: txCount,
+          threshold: config.AUTO_CLEAR_LOG.THRESHOLD
+        });
+      }
+    }
+    return;
+  }
+
+  if (command.command_type === config.COMMAND_TYPES.CLEAR_LOG) {
+    const alreadyPendingInfo = await queries.hasPendingCommand(sn, config.COMMAND_TYPES.INFO);
+    if (!alreadyPendingInfo) {
+      await queueCommand(sn, config.COMMAND_TYPES.INFO, {
+        autoClearConfirm: true,
+        triggeredByClearCommandId: id
+      });
+      logger.info('Confirmation INFO command queued after CLEAR_LOG', { sn, id });
+    }
+    return;
+  }
+
+  if (command.command_type === config.COMMAND_TYPES.DELETE_USER) {
+    const pin = String(cmdParams.pin);
+
+    // 1. Soft delete the mapping
+    await queries.softDeletePegawaiDeviceMapping(pin, sn);
+    logger.info('Soft-deleted pegawai device mapping', { pin, sn });
+
+    // 2. Delete the biometrics on this device
+    await queries.deletePegawaiFingerprints(pin, sn);
+    await queries.deletePegawaiFaces(pin, sn);
+    logger.info('Deleted fingerprints and faces for pegawai on device', { pin, sn });
+
+    // 3. If the pegawai is no longer mapped to any active devices, soft-delete them globally
+    const activeCount = await queries.countActiveDeviceMappings(pin);
+    if (activeCount === 0) {
+      await queries.softDeletePegawai(pin);
+      logger.info('Pegawai has no remaining active mappings. Soft-deleted pegawai globally.', { pin });
     }
   }
 };

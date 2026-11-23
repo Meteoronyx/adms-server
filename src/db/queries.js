@@ -173,7 +173,7 @@ const getDeviceVerificationStatus = async (sn) => {
 // Get device info for admin
 const getDeviceInfo = async (sn) => {
   const query = `
-    SELECT d.sn, d.name, d.device_name, d.last_activity, d.status, d.ip_address, d.verified, d.opd_id, d.nama_opd, d.kdunker,
+    SELECT d.sn, d.name, d.device_name, d.last_activity, d.status, d.ip_address, d.verified, d.transaction_count, d.opd_id, d.nama_opd, d.kdunker,
            po.id AS parent_opd_id, po.nama_opd AS parent_nama_opd
     FROM devices_with_status d
     LEFT JOIN opds po ON d.kdunker IS NOT NULL
@@ -267,7 +267,7 @@ const updateDeviceName = async (sn, deviceName) => {
 const getAllDevices = async (opdId = null) => {
   const opdIds = normalizeOpdFilter(opdId);
   let query = `
-    SELECT d.sn, d.name, d.device_name, d.ip_address, d.last_activity, d.status, d.verified, d.initial_sync_completed, d.opd_id, d.nama_opd, d.kdunker,
+    SELECT d.sn, d.name, d.device_name, d.ip_address, d.last_activity, d.status, d.verified, d.initial_sync_completed, d.transaction_count, d.opd_id, d.nama_opd, d.kdunker,
            po.id AS parent_opd_id, po.nama_opd AS parent_nama_opd
     FROM devices_with_status d
     LEFT JOIN opds po ON d.kdunker IS NOT NULL
@@ -1495,6 +1495,21 @@ const deactivateBroadcastMessage = async (id) => {
   return result.rows[0] || null;
 };
 
+// Get all verified device serial numbers
+const getVerifiedDeviceSns = async () => {
+  const result = await db.query('SELECT sn FROM devices WHERE verified = TRUE ORDER BY sn ASC');
+  return result.rows.map((r) => r.sn);
+};
+
+// Check if a device already has a pending command of a given type
+const hasPendingCommand = async (sn, commandType) => {
+  const result = await db.query(
+    `SELECT 1 FROM device_commands WHERE device_sn = $1 AND command_type = $2 AND status = 'pending' LIMIT 1`,
+    [sn, commandType]
+  );
+  return result.rows.length > 0;
+};
+
 module.exports = {
   normalizeOpdFilter,
   upsertDevice,
@@ -1503,6 +1518,8 @@ module.exports = {
   getDeviceVerificationStatus,
   getDeviceInfo,
   getDeviceOpdId,
+  getVerifiedDeviceSns,
+  hasPendingCommand,
   getInitialSyncStatus,
   markInitialSyncCompleted,
   resetInitialSync,

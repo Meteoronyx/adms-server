@@ -119,5 +119,16 @@ module.exports = {
   TIME: {
     UNVERIFIED_OFFSET_HOURS: parseInt(process.env.UNVERIFIED_OFFSET_HOURS) || 1,
     UNVERIFIED_TIMEZONE: '+08:00'
+  },
+
+  // Auto-clear attendance log schedule & threshold
+  AUTO_CLEAR_LOG: {
+    ENABLED: true,
+    SCHEDULE_HOUR: 2,
+    SCHEDULE_MINUTE: 0,
+    TIMEZONE: 'Asia/Jakarta',
+    CHECK_INTERVAL_MS: 60000,
+    THRESHOLD: 90000,
+    MAX_CAPACITY: 100000
   }
 };
