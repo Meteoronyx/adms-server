@@ -12,6 +12,7 @@ module.exports = {
     },
     ADMIN: {
       REUPLOAD: '/admin/reupload/:sn',
+      SYNC_USERS: '/admin/sync-users/:sn',
       CLEAR_LOG: '/admin/clearlog/:sn',
       INFO: '/admin/info/:sn',
       REBOOT: '/admin/reboot/:sn',
@@ -51,6 +52,7 @@ module.exports = {
     },
     ADMIN: {
       REUPLOAD_QUEUED: 'Reupload queued for device',
+      SYNC_USERS_QUEUED: 'User sync queued for device',
       DEVICE_NOT_FOUND: 'Device not found',
       UNAUTHORIZED: 'Unauthorized: Invalid API Key',
       COMMAND_QUEUED: 'Command queued for device',

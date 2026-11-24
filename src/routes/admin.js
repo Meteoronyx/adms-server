@@ -28,6 +28,7 @@ router.delete('/admin/opds/:id', requirePermission('opds:delete'), asyncHandler(
 
 // Device Reupload & Commands Queue
 router.post(config.PATHS.ADMIN.REUPLOAD, requirePermission('devices:command'), validateDevice, asyncHandler(deviceController.reuploadDevice));
+router.post(config.PATHS.ADMIN.SYNC_USERS, requirePermission('devices:command'), validateDevice, asyncHandler(deviceController.syncDeviceUsers));
 router.get('/admin/reupload/queue', requirePermission('devices:command'), asyncHandler(deviceController.getReuploadQueue));
 router.get(config.PATHS.ADMIN.COMMAND_QUEUE, requirePermission('devices:command'), asyncHandler(commandController.getCommandQueue));
 router.get('/admin/commands/count', requirePermission('devices:command'), asyncHandler(commandController.getPendingCommandsCount));

@@ -1510,6 +1510,39 @@ const hasPendingCommand = async (sn, commandType) => {
   return result.rows.length > 0;
 };
 
+// Get latest ATTLOG Stamp reported by a device
+const getDeviceAttlogStamp = async (sn) => {
+  const result = await db.query('SELECT last_attlog_stamp FROM devices WHERE sn = $1', [sn]);
+  const raw = result.rows[0]?.last_attlog_stamp;
+  return raw !== undefined && raw !== null ? Number(raw) : null;
+};
+
+// Update latest ATTLOG Stamp reported by a device (monotonic non-decreasing)
+const updateDeviceAttlogStamp = async (sn, stamp) => {
+  return db.query(
+    `UPDATE devices SET last_attlog_stamp = GREATEST(COALESCE(last_attlog_stamp, 0), $2) WHERE sn = $1`,
+    [sn, stamp]
+  );
+};
+
+// Ensure pegawai exists and update name when provided without overwriting card/group/timezone/verify_mode
+const ensurePegawaiBasicInfo = async (pin, name = '') => {
+  const normalizedName = name !== undefined && name !== null ? String(name).trim() : '';
+  const query = `
+    INSERT INTO pegawai (pin, name, updated_at, deleted_at)
+    VALUES ($1, COALESCE(NULLIF($2, ''), $1), NOW(), NULL)
+    ON CONFLICT (pin) DO UPDATE SET
+      name = CASE
+        WHEN EXCLUDED.name IS NOT NULL AND EXCLUDED.name != '' AND EXCLUDED.name != EXCLUDED.pin THEN EXCLUDED.name
+        ELSE pegawai.name
+      END,
+      updated_at = NOW(),
+      deleted_at = NULL
+    RETURNING pin
+  `;
+  return db.query(query, [pin, normalizedName]);
+};
+
 module.exports = {
   normalizeOpdFilter,
   upsertDevice,
@@ -1520,6 +1553,9 @@ module.exports = {
   getDeviceOpdId,
   getVerifiedDeviceSns,
   hasPendingCommand,
+  getDeviceAttlogStamp,
+  updateDeviceAttlogStamp,
+  ensurePegawaiBasicInfo,
   getInitialSyncStatus,
   markInitialSyncCompleted,
   resetInitialSync,

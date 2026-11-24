@@ -1,36 +1,84 @@
 'use strict';
 
-const pendingQueue = new Map();
+const HANDSHAKE_MODE_TTL_MS = 15 * 1000;
 
-const addToQueue = (sn) => {
-    pendingQueue.set(sn, Date.now());
+const pendingQueue = new Map();
+const pendingHandshakeModes = new Map();
+
+const addToQueue = (sn, mode = 'full') => {
+  pendingQueue.set(sn, {
+    mode,
+    queuedAt: Date.now()
+  });
+};
+
+const setHandshakeMode = (sn, mode) => {
+  pendingHandshakeModes.set(sn, {
+    mode,
+    expiresAt: Date.now() + HANDSHAKE_MODE_TTL_MS
+  });
+};
+
+const getHandshakeMode = (sn) => {
+  const entry = pendingHandshakeModes.get(sn);
+  if (!entry) {
+    return null;
+  }
+  if (entry.expiresAt <= Date.now()) {
+    pendingHandshakeModes.delete(sn);
+    return null;
+  }
+  return entry.mode;
+};
+
+const clearHandshakeMode = (sn) => {
+  pendingHandshakeModes.delete(sn);
+};
+
+const consumeHandshakeMode = (sn) => {
+  const entry = pendingHandshakeModes.get(sn);
+  if (!entry) {
+    return null;
+  }
+  pendingHandshakeModes.delete(sn);
+  if (entry.expiresAt <= Date.now()) {
+    return null;
+  }
+  return entry.mode;
 };
 
 const checkAndRemove = (sn) => {
-    if (pendingQueue.has(sn)) {
-        pendingQueue.delete(sn);
-        return true;
-    }
-    return false;
+  const entry = pendingQueue.get(sn);
+  if (!entry) {
+    return null;
+  }
+  pendingQueue.delete(sn);
+  setHandshakeMode(sn, entry.mode);
+  return entry;
 };
 
 const getQueueStatus = () => {
-    const status = {};
-    pendingQueue.forEach((timestamp, sn) => {
-        status[sn] = {
-            queuedAt: new Date(timestamp).toISOString()
-        };
-    });
-    return status;
+  const status = {};
+  pendingQueue.forEach((entry, sn) => {
+    status[sn] = {
+      queuedAt: new Date(entry.queuedAt).toISOString(),
+      mode: entry.mode
+    };
+  });
+  return status;
 };
 
 const isInQueue = (sn) => {
-    return pendingQueue.has(sn);
+  return pendingQueue.has(sn);
 };
 
 module.exports = {
-    addToQueue,
-    checkAndRemove,
-    getQueueStatus,
-    isInQueue
+  addToQueue,
+  checkAndRemove,
+  setHandshakeMode,
+  getHandshakeMode,
+  clearHandshakeMode,
+  consumeHandshakeMode,
+  getQueueStatus,
+  isInQueue
 };

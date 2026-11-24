@@ -46,6 +46,9 @@ export const unverifyDevice = (sn) =>
 export const reuploadDevice = (sn) =>
   fetchJSON(`/admin/reupload/${sn}`, { method: 'POST' });
 
+export const syncDeviceUsers = (sn) =>
+  fetchJSON(`/admin/sync-users/${sn}`, { method: 'POST' });
+
 export const rebootDevice = (sn) =>
   fetchJSON(`/admin/reboot/${sn}`, { method: 'POST' });
 

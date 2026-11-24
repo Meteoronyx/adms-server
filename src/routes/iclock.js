@@ -44,14 +44,21 @@ router.get(config.PATHS.ICLOCK.CDATA, async (req, res) => {
 
   try {
     await deviceService.upsertDevice(SN, ip);
-    
+
     if (type === 'time') {
       const response = await attendanceService.getTimeResponse(SN);
       res.set('Content-Type', 'text/plain');
       res.send(response);
     } else {
-      const response = await attendanceService.getHandshakeResponse(SN);
-      logger.info('Device handshake completed', { sn: SN, ip: ip });
+      const handshakeMode = reuploadService.getHandshakeMode(SN);
+      const response = await attendanceService.getHandshakeResponse(SN, {
+        usersOnly: handshakeMode === 'users_only'
+      });
+      {
+        sn: SN,
+        ip: ip,
+        handshakeMode: handshakeMode || 'default'
+      });
       res.set('Content-Type', 'text/plain');
       res.send(response);
     }
@@ -202,18 +209,38 @@ router.post(config.PATHS.ICLOCK.CDATA, rawBodyParser, async (req, res) => {
       res.send(config.RESPONSE.ERROR.DEVICE_NOT_VERIFIED);
       return;
     }
-    
+
     const logs = parsers.parseAttendanceLogs(req.rawBody);
-    
+
     // Log when receiving attendance data
     logger.info('Receiving attendance logs from device', {
       sn: SN,
       ip: ip,
       log_count: logs.length
     });
-    
+
     await attendanceService.insertAttendanceLogs(SN, logs);
-    
+
+    const rawStamp = req.query.Stamp || req.query.stamp;
+    const parsedStamp = rawStamp !== undefined ? parseInt(String(rawStamp), 10) : NaN;
+    let stampToSave = Number.isSafeInteger(parsedStamp) && parsedStamp > 9999 ? parsedStamp : null;
+    if (!stampToSave && logs.length > 0) {
+      let maxSec = 0;
+      for (const log of logs) {
+        if (log.checkTime) {
+          const ms = Date.parse(`${log.checkTime}+07:00`);
+          if (Number.isFinite(ms)) {
+            const sec = Math.floor(ms / 1000);
+            if (sec > maxSec) maxSec = sec;
+          }
+        }
+      }
+      stampToSave = maxSec > 0 ? maxSec : Math.floor(Date.now() / 1000);
+    }
+    if (stampToSave) {
+      await queries.updateDeviceAttlogStamp(SN, stampToSave);
+    }
+
     // Broadcast attendance update (OPD-scoped)
     await broadcastDeviceEvent(req.app, SN, 'attendance_update', { sn: SN, logCount: logs.length });
 
@@ -244,36 +271,36 @@ router.get(config.PATHS.ICLOCK.GETREQUEST, async (req, res) => {
 
   try {
     await deviceService.handleDeviceHeartbeat(SN, ip, INFO);
-    
+
     // Broadcast device status update (OPD-scoped)
     await broadcastDeviceEvent(req.app, SN, 'device_update', { sn: SN });
 
-    // Step 1: Check if admin requested reupload
-    const needsReupload = reuploadService.checkAndRemove(SN);
-    if (needsReupload) {
-      logger.info('Triggering reupload for device', { sn: SN });
+    // Step 1: Check if admin requested reupload / users-only sync
+    const reuploadReq = reuploadService.checkAndRemove(SN);
+    if (reuploadReq) {
+      logger.info('Triggering reupload for device', { sn: SN, mode: reuploadReq.mode });
       res.set('Content-Type', 'text/plain');
       res.send(config.COMMANDS.CHECK);
       return;
     }
-    
+
     // Step 2: Check for pending commands in queue
     const pendingCommand = await commandService.getAndExecuteNext(SN);
     if (pendingCommand) {
-      logger.info('Sending command to device', { 
-        sn: SN, 
+      logger.info('Sending command to device', {
+        sn: SN,
         type: pendingCommand.type,
-        command: pendingCommand.commandString 
+        command: pendingCommand.commandString
       });
       res.set('Content-Type', 'text/plain');
       res.send(pendingCommand.commandString);
       return;
     }
-    
+
     // Step 3: Only send CHECK command on first connection (when initial_sync_completed is false)
     if (INFO) {
       const syncCompleted = await deviceService.getInitialSyncStatus(SN);
-      
+
       if (!syncCompleted) {
         // First time sync - send CHECK command and mark as completed
         logger.info('Initial sync triggered for device', { sn: SN });
@@ -283,7 +310,7 @@ router.get(config.PATHS.ICLOCK.GETREQUEST, async (req, res) => {
         return;
       }
     }
-    
+
     // Normal response - just OK
     res.set('Content-Type', 'text/plain');
     res.send(config.RESPONSE.OK);
@@ -317,10 +344,14 @@ router.post(config.PATHS.ICLOCK.DEVICECMD, rawBodyParser, async (req, res) => {
       const deviceInfo = parsers.parseDeviceInfo(req.rawBody);
       await deviceService.handleDeviceCommand(SN, ip, deviceInfo);
     }
-    
+
+    if (req.rawBody && /CMD=CHECK/i.test(req.rawBody)) {
+      reuploadService.clearHandshakeMode(SN);
+    }
+
     // Broadcast device update via Socket.io to trigger frontend real-time updates (OPD-scoped)
     await broadcastDeviceEvent(req.app, SN, 'device_update', { sn: SN });
-    
+
     res.set('Content-Type', 'text/plain');
     res.send(config.RESPONSE.OK);
   } catch (err) {

@@ -5,6 +5,7 @@ import {
   verifyDevice,
   unverifyDevice,
   reuploadDevice,
+  syncDeviceUsers,
   rebootDevice,
   clearLog,
   infoDevice,
@@ -29,6 +30,7 @@ import {
   Search,
   Pencil,
   MoreHorizontal,
+  Users,
 } from "lucide-react";
 
 export default function Devices() {
@@ -398,13 +400,23 @@ export default function Devices() {
           if (canCommand) {
             actionItems.push(
               {
-                label: "Tarik Ulang Log Presensi",
+                label: "Sync Log Presensi",
                 icon: RefreshCw,
                 onClick: () =>
                   doAction(
                     reuploadDevice,
                     d.sn,
                     `Perintah reupload dikirim ke ${d.sn}`,
+                  ),
+              },
+              {
+                label: "Sync Pegawai (FP+FC)",
+                icon: Users,
+                onClick: () =>
+                  doAction(
+                    syncDeviceUsers,
+                    d.sn,
+                    `Perintah sync pegawai (tanpa log presensi) dikirim ke ${d.sn}`,
                   ),
               },
               {

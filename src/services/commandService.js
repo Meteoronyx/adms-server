@@ -323,6 +323,52 @@ const processCommandResult = async (sn, id, returnValue, content = null) => {
       await queries.softDeletePegawai(pin);
       logger.info('Pegawai has no remaining active mappings. Soft-deleted pegawai globally.', { pin });
     }
+    return;
+  }
+
+  if (command.command_type === config.COMMAND_TYPES.DATA_USER) {
+    const pin = cmdParams.pin !== undefined && cmdParams.pin !== null ? String(cmdParams.pin).trim() : '';
+    if (!pin) return;
+
+    const name = cmdParams.name !== undefined && cmdParams.name !== null ? String(cmdParams.name).trim() : '';
+    const privilege = Number.isFinite(Number(cmdParams.privilege)) ? Number(cmdParams.privilege) : 0;
+    const passwd = cmdParams.passwd || null;
+
+    await queries.ensurePegawaiBasicInfo(pin, name);
+    const deviceInfo = await queries.getDeviceInfo(sn);
+    await queries.upsertPegawaiDeviceMapping(pin, sn, deviceInfo?.device_name || null, privilege, passwd);
+    logger.info('Auto-synced pegawai to target device mapping after DATA_USER success', { pin, sn });
+    return;
+  }
+
+  if (command.command_type === config.COMMAND_TYPES.DATA_FP) {
+    const pin = cmdParams.pin !== undefined && cmdParams.pin !== null ? String(cmdParams.pin).trim() : '';
+    const fingerId = Number(cmdParams.finger_id);
+    const template = cmdParams.template;
+
+    if (pin && Number.isFinite(fingerId) && template) {
+      if (cmdParams.user_info?.name) {
+        await queries.ensurePegawaiBasicInfo(pin, String(cmdParams.user_info.name).trim());
+      }
+      await queries.ensurePegawaiDeviceMapping(pin, sn);
+      await queries.upsertFingerprint(pin, sn, fingerId, template);
+      logger.info('Auto-synced fingerprint to target device after DATA_FP success', { pin, sn, fingerId });
+    }
+    return;
+  }
+
+  if (command.command_type === config.COMMAND_TYPES.DATA_FACE) {
+    const pin = cmdParams.pin !== undefined && cmdParams.pin !== null ? String(cmdParams.pin).trim() : '';
+    const faceId = Number(cmdParams.face_id);
+    const size = Number(cmdParams.size) || 1214;
+    const valid = cmdParams.valid !== undefined ? Number(cmdParams.valid) : 1;
+    const template = cmdParams.template;
+
+    if (pin && Number.isFinite(faceId) && template) {
+      await queries.ensurePegawaiDeviceMapping(pin, sn);
+      await queries.upsertFace(pin, sn, faceId, size, valid, template);
+      logger.info('Auto-synced face template to target device after DATA_FACE success', { pin, sn, faceId });
+    }
   }
 };
 

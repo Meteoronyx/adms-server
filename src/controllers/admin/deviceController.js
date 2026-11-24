@@ -11,8 +11,8 @@ exports.reuploadDevice = async (req, res) => {
   const { sn } = req.params;
   const device = req.device;
 
-  reuploadService.addToQueue(sn);
-  logger.info('Device queued for reupload', { sn, ip: req.ip });
+  reuploadService.addToQueue(sn, 'full');
+  logger.info('Device queued for reupload', { sn, mode: 'full', ip: req.ip });
 
   res.json({
     success: true,
@@ -23,6 +23,22 @@ exports.reuploadDevice = async (req, res) => {
       lastActivity: device.last_activity,
       status: device.status
     }
+  });
+};
+
+exports.syncDeviceUsers = async (req, res) => {
+  const { sn } = req.params;
+  const device = req.device;
+
+  reuploadService.addToQueue(sn, 'users_only');
+  logger.info('Device queued for users-only sync', { sn, mode: 'users_only', ip: req.ip });
+
+  res.json({
+    success: true,
+    message: `${config.RESPONSE.ADMIN.SYNC_USERS_QUEUED} ${sn}`,
+    sn: device.sn,
+    mode: 'users_only',
+    queued_at: new Date().toISOString()
   });
 };
 

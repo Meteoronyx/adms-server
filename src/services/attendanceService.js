@@ -35,12 +35,20 @@ const getTimeResponse = async (sn) => {
   return `Time=${timeStr}`;
 };
 
-const getHandshakeResponse = async (sn) => {
+const getHandshakeResponse = async (sn, options = {}) => {
   const verified = await queries.getDeviceVerificationStatus(sn);
   const timezone = verified ? config.DEVICE.DEFAULT_TIMEZONE : config.TIME.UNVERIFIED_TIMEZONE;
-  
+
+  let attlogStamp = '0';
+  if (options.usersOnly === true) {
+    const lastStamp = await queries.getDeviceAttlogStamp(sn);
+    attlogStamp = lastStamp && Number(lastStamp) > 0
+      ? String(lastStamp)
+      : String(Math.floor(Date.now() / 1000));
+  }
+
   return `GET OPTION FROM: ${sn}
-Stamp=0
+Stamp=${attlogStamp}
 OpStamp=0
 PhotoStamp=0
 ErrorDelay=10
@@ -52,7 +60,7 @@ Realtime=1
 Encrypt=0
 TimeZone=${timezone}
 ServerVer=3.4.1 2018-06-30
-ATTLOGStamp=0`;
+ATTLOGStamp=${attlogStamp}`;
 };
 
 module.exports = {
