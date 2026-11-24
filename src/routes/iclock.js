@@ -54,7 +54,7 @@ router.get(config.PATHS.ICLOCK.CDATA, async (req, res) => {
       const response = await attendanceService.getHandshakeResponse(SN, {
         usersOnly: handshakeMode === 'users_only'
       });
-      {
+      logger.info('Device handshake completed', {
         sn: SN,
         ip: ip,
         handshakeMode: handshakeMode || 'default'
