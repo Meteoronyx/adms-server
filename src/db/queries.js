@@ -1024,7 +1024,7 @@ const getDashboardStats = async (opdId = null) => {
       SELECT
         (SELECT COUNT(*) FROM opds WHERE id = ANY($1::uuid[]) AND deleted_at IS NULL) AS total_opd,
         (SELECT COUNT(*) FROM pegawai p WHERE p.deleted_at IS NULL AND p.opd_id = ANY($1::uuid[])) AS total_pegawai,
-        (SELECT COUNT(*) FROM pegawai_fingerprints pf JOIN pegawai p ON pf.pegawai_pin = p.pin WHERE p.opd_id = ANY($1::uuid[])) AS total_fingerprints,
+        (SELECT COUNT(DISTINCT pf.pegawai_pin) FROM pegawai_fingerprints pf JOIN pegawai p ON pf.pegawai_pin = p.pin WHERE p.deleted_at IS NULL AND p.opd_id = ANY($1::uuid[])) AS total_fingerprints,
         (SELECT COUNT(DISTINCT pf.pegawai_pin) FROM pegawai_faces pf JOIN pegawai p ON pf.pegawai_pin = p.pin WHERE p.deleted_at IS NULL AND p.opd_id = ANY($1::uuid[])) AS total_faces,
         (SELECT COUNT(*) FROM pegawai_device_mapping pdm JOIN pegawai p ON pdm.pegawai_pin = p.pin WHERE pdm.privilege > 0 AND pdm.deleted_at IS NULL AND p.opd_id = ANY($1::uuid[])) AS total_admins,
         (SELECT COUNT(*) FROM attendance_logs a JOIN devices d ON a.device_sn = d.sn WHERE a.check_time >= CURRENT_DATE AND d.opd_id = ANY($1::uuid[])) AS logs_today,
@@ -1036,7 +1036,7 @@ const getDashboardStats = async (opdId = null) => {
       SELECT
         (SELECT COUNT(*) FROM opds WHERE deleted_at IS NULL) AS total_opd,
         (SELECT COUNT(*) FROM pegawai WHERE deleted_at IS NULL) AS total_pegawai,
-        (SELECT COUNT(*) FROM pegawai_fingerprints) AS total_fingerprints,
+        (SELECT COUNT(DISTINCT pf.pegawai_pin) FROM pegawai_fingerprints pf JOIN pegawai p ON pf.pegawai_pin = p.pin WHERE p.deleted_at IS NULL) AS total_fingerprints,
         (SELECT COUNT(DISTINCT pf.pegawai_pin) FROM pegawai_faces pf JOIN pegawai p ON pf.pegawai_pin = p.pin WHERE p.deleted_at IS NULL) AS total_faces,
         (SELECT COUNT(*) FROM pegawai_device_mapping WHERE privilege > 0 AND deleted_at IS NULL) AS total_admins,
         (SELECT COUNT(*) FROM attendance_logs WHERE check_time >= CURRENT_DATE) AS logs_today,
