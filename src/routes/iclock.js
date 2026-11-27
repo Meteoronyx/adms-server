@@ -370,6 +370,7 @@ router.post(config.PATHS.ICLOCK.DEVICECMD, rawBodyParser, async (req, res) => {
 router.post('/iclock/fdata', rawBodyParser.rawBufferParser, async (req, res) => {
   const snParam = req.query.SN || req.query.sn;
   const ip = req.ip || 'unknown';
+  let targetSn = snParam;
 
   try {
     const parsed = parsers.parseAttendancePhotoStream(req.rawBuffer);
@@ -379,7 +380,7 @@ router.post('/iclock/fdata', rawBodyParser.rawBufferParser, async (req, res) => 
       return res.send(config.RESPONSE.OK);
     }
 
-    const targetSn = parsed.sn || snParam;
+    targetSn = parsed.sn || snParam;
     if (!targetSn) {
       logger.warn('Missing SN in /iclock/fdata upload', { ip });
       res.set('Content-Type', 'text/plain');
