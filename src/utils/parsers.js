@@ -421,7 +421,7 @@ const parseAttendancePhotoStream = (buffer) => {
 
 /**
  * Parse payload Base64 dari POST /iclock/cdata?table=ATTPHOTO
- * Format: pin=12064\tsn=AEYU...\ttime=2026-10-14 08:00:00\tsize=14250\tphoto=/9j/4AAQ...
+ * Format: pin=12064\tsn=SN_DEVICE_001\ttime=2026-10-14 08:00:00\tsize=14250\tphoto=/9j/4AAQ...
  * @param {string} rawBody
  * @returns {Array}
  */

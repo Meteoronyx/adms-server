@@ -161,8 +161,8 @@ async function autoMapOpdData() {
   let mappedDevices = 0;
 
   for (const d of devicesRes.rows) {
-    // MESIN MASTER (AEYU182460710) khusus Superadmin, dibiarkan NULL
-    if (d.sn === 'AEYU182460710' || (d.name && d.name.toUpperCase().includes('MESIN MASTER')) || (d.device_name && d.device_name.toUpperCase().includes('MESIN MASTER'))) {
+    // MESIN MASTER khusus Superadmin (via env MASTER_DEVICE_SN atau nama perangkat), dibiarkan NULL
+    if ((process.env.MASTER_DEVICE_SN && d.sn === process.env.MASTER_DEVICE_SN) || (d.name && d.name.toUpperCase().includes('MESIN MASTER')) || (d.device_name && d.device_name.toUpperCase().includes('MESIN MASTER'))) {
       logger.info(`Device '${d.name || d.sn}' adalah MESIN MASTER (khusus Superadmin), dilewati dari auto-mapping OPD.`);
       continue;
     }

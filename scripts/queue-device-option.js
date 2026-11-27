@@ -13,10 +13,10 @@
  *
  *   # 2. Preset Cepat:
  *   node scripts/queue-device-option.js --disable-photo --all
- *   node scripts/queue-device-option.js --enable-photo --sn AEYU182060296
+ *   node scripts/queue-device-option.js --enable-photo --sn SN_DEVICE_001
  *
  *   # 3. Opsi kustom dinamis (bisa multiple opsi sekaligus):
- *   node scripts/queue-device-option.js --sn AEYU182060296 --option CapturePic=0 --reboot
+ *   node scripts/queue-device-option.js --sn SN_DEVICE_001 --option CapturePic=0 --reboot
  *   node scripts/queue-device-option.js --all -o CapturePic=0 -o TransFlag=110111111111
  *
  *   # 4. Cek daftar mesin & antrean command:
@@ -34,7 +34,7 @@ const db = require('../src/db/connection');
 const DEVICE_OPTION_CONFIG = {
   // Target perangkat:
   // - 'ALL' : Terapkan ke semua mesin fisik terverifikasi di database
-  // - '<SN>' : Serial number mesin tertentu (contoh: 'AEYU182060296')
+  // - '<SN>' : Serial number mesin tertentu (contoh: 'SN_DEVICE_001')
   target: 'ALL',
 
   // Preset aktif default saat dijalankan tanpa argumen:
@@ -168,13 +168,13 @@ Contoh Praktis:
   node scripts/queue-device-option.js
 
   # 2. Matikan foto hanya untuk mesin tertentu:
-  node scripts/queue-device-option.js --disable-photo --sn AEYU182060296
+  node scripts/queue-device-option.js --disable-photo --sn SN_DEVICE_001
 
   # 3. Aktifkan kembali foto untuk semua mesin:
   node scripts/queue-device-option.js --enable-photo --all
 
   # 4. Kirim opsi bebas manual:
-  node scripts/queue-device-option.js --sn AEYU182060296 -o CapturePic=0 -o Delay=30
+  node scripts/queue-device-option.js --sn SN_DEVICE_001 -o CapturePic=0 -o Delay=30
 `);
 }
 

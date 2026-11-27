@@ -2,7 +2,7 @@
   "name": "dbspot",
   "version": "2.0",
   "description": "",
-  "main": "index.js",
+  "main": "src/server.js",
   "scripts": {
     "test": "node --test",
     "start": "node src/server.js",
@@ -30,7 +30,6 @@
     "puppeteer": "^25.7.0",
     "raw-body": "^3.0.2",
     "socket.io": "^4.8.3",
-    "winston": "^3.19.0",
-    "yauzl": "^3.4.0"
+    "winston": "^3.19.0"
   }
 }
