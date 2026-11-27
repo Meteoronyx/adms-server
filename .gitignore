@@ -7,7 +7,11 @@ uploads
 rencana_upload/
 /docs/
 .claude/
-.github/
+# Local dev & AI tooling
+preview-local.mjs
+AGENTS.md
+GEMINI.md
+.mcp.json
 # Data & CSV files
 src/db/data/*.csv
 *.csv
