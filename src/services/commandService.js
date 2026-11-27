@@ -226,6 +226,73 @@ const sanitizeDeviceInfoFromCmd = (parsed) => {
   return info;
 };
 
+const syncBiometricCommandToDb = async (sn, id, commandType, cmdParams) => {
+  const pin = cmdParams.pin !== undefined && cmdParams.pin !== null ? String(cmdParams.pin).trim() : '';
+
+  if (commandType === config.COMMAND_TYPES.DATA_USER) {
+    if (!pin) {
+      logger.warn('Skipping DATA_USER auto-sync due to missing pin', { sn, id });
+      return;
+    }
+
+    const name = cmdParams.name !== undefined && cmdParams.name !== null ? String(cmdParams.name).trim() : '';
+    const privilege = Number.isFinite(Number(cmdParams.privilege)) ? Number(cmdParams.privilege) : 0;
+    const passwd = cmdParams.passwd || null;
+
+    await queries.ensurePegawaiBasicInfo(pin, name);
+    const deviceInfo = await queries.getDeviceInfo(sn);
+    await queries.upsertPegawaiDeviceMapping(pin, sn, deviceInfo?.device_name || null, privilege, passwd);
+    logger.info('Auto-synced pegawai to target device mapping after DATA_USER success', { pin, sn });
+    return;
+  }
+
+  if (commandType === config.COMMAND_TYPES.DATA_FP) {
+    const fingerId = Number(cmdParams.finger_id);
+    const template = cmdParams.template;
+
+    if (!pin || !Number.isFinite(fingerId) || !template) {
+      logger.warn('Skipping DATA_FP auto-sync due to incomplete command_params', {
+        sn,
+        id,
+        hasPin: Boolean(pin),
+        fingerId: cmdParams.finger_id,
+        hasTemplate: Boolean(template)
+      });
+      return;
+    }
+
+    if (cmdParams.user_info?.name) {
+      await queries.ensurePegawaiBasicInfo(pin, String(cmdParams.user_info.name).trim());
+    }
+    await queries.ensurePegawaiDeviceMapping(pin, sn);
+    await queries.upsertFingerprint(pin, sn, fingerId, template);
+    logger.info('Auto-synced fingerprint to target device after DATA_FP success', { pin, sn, fingerId });
+    return;
+  }
+
+  if (commandType === config.COMMAND_TYPES.DATA_FACE) {
+    const faceId = Number(cmdParams.face_id);
+    const size = Number(cmdParams.size) || 1214;
+    const valid = cmdParams.valid !== undefined ? Number(cmdParams.valid) : 1;
+    const template = cmdParams.template;
+
+    if (!pin || !Number.isFinite(faceId) || !template) {
+      logger.warn('Skipping DATA_FACE auto-sync due to incomplete command_params', {
+        sn,
+        id,
+        hasPin: Boolean(pin),
+        faceId: cmdParams.face_id,
+        hasTemplate: Boolean(template)
+      });
+      return;
+    }
+
+    await queries.ensurePegawaiDeviceMapping(pin, sn);
+    await queries.upsertFace(pin, sn, faceId, size, valid, template);
+    logger.info('Auto-synced face template to target device after DATA_FACE success', { pin, sn, faceId });
+  }
+};
+
 const processCommandResult = async (sn, id, returnValue, content = null) => {
   const command = await queries.getCommandById(id);
   if (!command) {
@@ -244,12 +311,11 @@ const processCommandResult = async (sn, id, returnValue, content = null) => {
     return;
   }
 
-  const status = returnValue === 0 ? 'success' : 'failed';
   const normalizedContent = content ? String(content).trim() : null;
-  await queries.updateCommandStatus(id, status, returnValue, normalizedContent);
-  logger.info('Command execution status updated', { sn, id, type: command.command_type, status, returnValue });
 
   if (returnValue !== 0) {
+    await queries.updateCommandStatus(id, 'failed', returnValue, normalizedContent);
+    logger.info('Command execution status updated', { sn, id, type: command.command_type, status: 'failed', returnValue });
     return;
   }
 
@@ -290,10 +356,7 @@ const processCommandResult = async (sn, id, returnValue, content = null) => {
         });
       }
     }
-    return;
-  }
-
-  if (command.command_type === config.COMMAND_TYPES.CLEAR_LOG) {
+  } else if (command.command_type === config.COMMAND_TYPES.CLEAR_LOG) {
     const alreadyPendingInfo = await queries.hasPendingCommand(sn, config.COMMAND_TYPES.INFO);
     if (!alreadyPendingInfo) {
       await queueCommand(sn, config.COMMAND_TYPES.INFO, {
@@ -302,10 +365,7 @@ const processCommandResult = async (sn, id, returnValue, content = null) => {
       });
       logger.info('Confirmation INFO command queued after CLEAR_LOG', { sn, id });
     }
-    return;
-  }
-
-  if (command.command_type === config.COMMAND_TYPES.DELETE_USER) {
+  } else if (command.command_type === config.COMMAND_TYPES.DELETE_USER) {
     const pin = String(cmdParams.pin);
 
     // 1. Soft delete the mapping
@@ -323,53 +383,17 @@ const processCommandResult = async (sn, id, returnValue, content = null) => {
       await queries.softDeletePegawai(pin);
       logger.info('Pegawai has no remaining active mappings. Soft-deleted pegawai globally.', { pin });
     }
-    return;
+  } else if (
+    command.command_type === config.COMMAND_TYPES.DATA_USER ||
+    command.command_type === config.COMMAND_TYPES.DATA_FP ||
+    command.command_type === config.COMMAND_TYPES.DATA_FACE
+  ) {
+    await syncBiometricCommandToDb(sn, id, command.command_type, cmdParams);
   }
 
-  if (command.command_type === config.COMMAND_TYPES.DATA_USER) {
-    const pin = cmdParams.pin !== undefined && cmdParams.pin !== null ? String(cmdParams.pin).trim() : '';
-    if (!pin) return;
-
-    const name = cmdParams.name !== undefined && cmdParams.name !== null ? String(cmdParams.name).trim() : '';
-    const privilege = Number.isFinite(Number(cmdParams.privilege)) ? Number(cmdParams.privilege) : 0;
-    const passwd = cmdParams.passwd || null;
-
-    await queries.ensurePegawaiBasicInfo(pin, name);
-    const deviceInfo = await queries.getDeviceInfo(sn);
-    await queries.upsertPegawaiDeviceMapping(pin, sn, deviceInfo?.device_name || null, privilege, passwd);
-    logger.info('Auto-synced pegawai to target device mapping after DATA_USER success', { pin, sn });
-    return;
-  }
-
-  if (command.command_type === config.COMMAND_TYPES.DATA_FP) {
-    const pin = cmdParams.pin !== undefined && cmdParams.pin !== null ? String(cmdParams.pin).trim() : '';
-    const fingerId = Number(cmdParams.finger_id);
-    const template = cmdParams.template;
-
-    if (pin && Number.isFinite(fingerId) && template) {
-      if (cmdParams.user_info?.name) {
-        await queries.ensurePegawaiBasicInfo(pin, String(cmdParams.user_info.name).trim());
-      }
-      await queries.ensurePegawaiDeviceMapping(pin, sn);
-      await queries.upsertFingerprint(pin, sn, fingerId, template);
-      logger.info('Auto-synced fingerprint to target device after DATA_FP success', { pin, sn, fingerId });
-    }
-    return;
-  }
-
-  if (command.command_type === config.COMMAND_TYPES.DATA_FACE) {
-    const pin = cmdParams.pin !== undefined && cmdParams.pin !== null ? String(cmdParams.pin).trim() : '';
-    const faceId = Number(cmdParams.face_id);
-    const size = Number(cmdParams.size) || 1214;
-    const valid = cmdParams.valid !== undefined ? Number(cmdParams.valid) : 1;
-    const template = cmdParams.template;
-
-    if (pin && Number.isFinite(faceId) && template) {
-      await queries.ensurePegawaiDeviceMapping(pin, sn);
-      await queries.upsertFace(pin, sn, faceId, size, valid, template);
-      logger.info('Auto-synced face template to target device after DATA_FACE success', { pin, sn, faceId });
-    }
-  }
+  // Mark command as success only after DB side-effects succeed so failures remain retryable
+  await queries.updateCommandStatus(id, 'success', returnValue, normalizedContent);
+  logger.info('Command execution status updated', { sn, id, type: command.command_type, status: 'success', returnValue });
 };
 
 module.exports = {
