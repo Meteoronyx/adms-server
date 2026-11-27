@@ -1,6 +1,6 @@
 'use strict';
 
-const HANDSHAKE_MODE_TTL_MS = 15 * 1000;
+const HANDSHAKE_MODE_TTL_MS = 60 * 1000;
 
 const pendingQueue = new Map();
 const pendingHandshakeModes = new Map();

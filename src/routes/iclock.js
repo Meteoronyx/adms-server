@@ -223,7 +223,8 @@ router.post(config.PATHS.ICLOCK.CDATA, rawBodyParser, async (req, res) => {
 
     const rawStamp = req.query.Stamp || req.query.stamp;
     const parsedStamp = rawStamp !== undefined ? parseInt(String(rawStamp), 10) : NaN;
-    let stampToSave = Number.isSafeInteger(parsedStamp) && parsedStamp > 9999 ? parsedStamp : null;
+    const MIN_VALID_EPOCH_SEC = 1577836800; // 2020-01-01T00:00:00Z
+    let stampToSave = Number.isSafeInteger(parsedStamp) && parsedStamp >= MIN_VALID_EPOCH_SEC ? parsedStamp : null;
     if (!stampToSave && logs.length > 0) {
       let maxSec = 0;
       for (const log of logs) {
@@ -346,7 +347,15 @@ router.post(config.PATHS.ICLOCK.DEVICECMD, rawBodyParser, async (req, res) => {
     }
 
     if (req.rawBody && /CMD=CHECK/i.test(req.rawBody)) {
+      const activeMode = reuploadService.getHandshakeMode(SN);
       reuploadService.clearHandshakeMode(SN);
+      if (activeMode === 'users_only') {
+        await commandService.queueCommand(SN, config.COMMAND_TYPES.SET_OPTION, {
+          name: 'TransFlag',
+          value: attendanceService.DEFAULT_TRANS_FLAG
+        });
+        logger.info('Queued TransFlag restore after users-only sync', { sn: SN });
+      }
     }
 
     // Broadcast device update via Socket.io to trigger frontend real-time updates (OPD-scoped)

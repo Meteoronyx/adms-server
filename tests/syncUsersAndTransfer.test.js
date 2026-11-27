@@ -191,6 +191,8 @@ test('attendanceService.getHandshakeResponse uses last_attlog_stamp in usersOnly
 
   try {
     const defaultResp = await attendanceService.getHandshakeResponse('SN-TEST');
+    assert.equal(attendanceService.DEFAULT_TRANS_FLAG, '110111111111');
+    assert.equal(attendanceService.USERS_ONLY_TRANS_FLAG, '000111111111');
     assert.match(defaultResp, /\nStamp=0\n/);
     assert.match(defaultResp, /\nOpStamp=0\n/);
     assert.match(defaultResp, /\nTransFlag=110111111111\n/);
@@ -199,6 +201,7 @@ test('attendanceService.getHandshakeResponse uses last_attlog_stamp in usersOnly
     const usersOnlyResp = await attendanceService.getHandshakeResponse('SN-TEST', { usersOnly: true });
     assert.match(usersOnlyResp, /\nStamp=1795496400\n/);
     assert.match(usersOnlyResp, /\nOpStamp=0\n/);
+    assert.match(usersOnlyResp, /\nTransFlag=000111111111\n/);
     assert.match(usersOnlyResp, /\nATTLOGStamp=1795496400$/);
 
     mockStamp = null;
@@ -207,6 +210,7 @@ test('attendanceService.getHandshakeResponse uses last_attlog_stamp in usersOnly
     assert.ok(stampMatch);
     assert.ok(Number(stampMatch[1]) > 0);
     assert.match(fallbackResp, /\nOpStamp=0\n/);
+    assert.match(fallbackResp, /\nTransFlag=000111111111\n/);
   } finally {
     restore();
   }
