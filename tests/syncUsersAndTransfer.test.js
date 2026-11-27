@@ -211,3 +211,29 @@ test('attendanceService.getHandshakeResponse uses last_attlog_stamp in usersOnly
     restore();
   }
 });
+
+test('queries.ensurePegawaiBasicInfo avoids PostgreSQL $1 type mismatch and falls back to pin when name is empty', async () => {
+  const db = require('../src/db/connection');
+  const origQuery = db.query;
+  const calls = [];
+  db.query = async (sql, params) => {
+    calls.push({ sql, params });
+    return { rows: [{ pin: params[0] }] };
+  };
+
+  try {
+    await queries.ensurePegawaiBasicInfo('101', 'Budi Santoso');
+    await queries.ensurePegawaiBasicInfo('102', '   ');
+    await queries.ensurePegawaiBasicInfo('103');
+
+    assert.equal(calls.length, 3);
+    assert.deepEqual(calls[0].params, ['101', 'Budi Santoso']);
+    assert.deepEqual(calls[1].params, ['102', '102']);
+    assert.deepEqual(calls[2].params, ['103', '103']);
+    // Must not reuse $1 inside COALESCE(NULLIF($2, ''), $1) which causes PG inconsistent parameter type deduction
+    assert.match(calls[0].sql, /VALUES\s*\(\s*\$1\s*,\s*\$2\s*,/i);
+    assert.doesNotMatch(calls[0].sql, /NULLIF\s*\(\s*\$2/i);
+  } finally {
+    db.query = origQuery;
+  }
+});

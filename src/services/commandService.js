@@ -210,7 +210,12 @@ const sanitizeDeviceInfoFromCmd = (parsed) => {
   const info = {};
   if (parsed.deviceName !== undefined) info.deviceName = parsed.deviceName;
   if (parsed.mac !== undefined) info.mac = parsed.mac;
-  if (parsed.mainTime !== undefined) info.mainTime = parsed.mainTime;
+  if (parsed.mainTime !== undefined) {
+    const trimmedMainTime = String(parsed.mainTime).trim();
+    if (trimmedMainTime && !Number.isNaN(Date.parse(trimmedMainTime))) {
+      info.mainTime = trimmedMainTime;
+    }
+  }
   if (parsed.platform !== undefined) info.platform = parsed.platform;
   if (parsed.fwVersion !== undefined) info.fwVersion = parsed.fwVersion;
   if (parsed.ipAddress !== undefined) info.ipAddress = parsed.ipAddress;

@@ -1527,10 +1527,12 @@ const updateDeviceAttlogStamp = async (sn, stamp) => {
 
 // Ensure pegawai exists and update name when provided without overwriting card/group/timezone/verify_mode
 const ensurePegawaiBasicInfo = async (pin, name = '') => {
+  const normalizedPin = String(pin).trim();
   const normalizedName = name !== undefined && name !== null ? String(name).trim() : '';
+  const effectiveName = normalizedName || normalizedPin;
   const query = `
     INSERT INTO pegawai (pin, name, updated_at, deleted_at)
-    VALUES ($1, COALESCE(NULLIF($2, ''), $1), NOW(), NULL)
+    VALUES ($1, $2, NOW(), NULL)
     ON CONFLICT (pin) DO UPDATE SET
       name = CASE
         WHEN EXCLUDED.name IS NOT NULL AND EXCLUDED.name != '' AND EXCLUDED.name != EXCLUDED.pin THEN EXCLUDED.name
@@ -1540,7 +1542,7 @@ const ensurePegawaiBasicInfo = async (pin, name = '') => {
       deleted_at = NULL
     RETURNING pin
   `;
-  return db.query(query, [pin, normalizedName]);
+  return db.query(query, [normalizedPin, effectiveName]);
 };
 
 module.exports = {
